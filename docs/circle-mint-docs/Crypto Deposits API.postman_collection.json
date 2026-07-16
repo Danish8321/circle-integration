@@ -1,0 +1,1104 @@
+{
+  "info": {
+    "_postman_id": "27cbac71-8b44-4d50-9c83-7e39a90a7325",
+    "name": "Crypto Deposits API",
+    "description": "The Circle Payments API allows you to take payments from your end users in USDC. It has been designed with any business or internet commerce in mind, not just crypto applications.\n\n[Crypto Deposits API](https://developers.circle.com/circle-mint/docs/overview)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38686296"
+  },
+  "item": [
+    {
+      "name": "Crypto Payment Intents",
+      "item": [
+        {
+          "name": "Create a payment intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  },\n  \"settlementCurrency\": \"USD\",\n  \"paymentMethods\": [\n    {\n      \"type\": \"blockchain\",\n      \"chain\": \"BASE\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/paymentIntents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "paymentIntents"
+              ]
+            },
+            "description": "Create a transient or continuous payment intent\n#### Body Params\n\nOption 1\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**amount** *object* (REQUIRED)\n\n  * **amount** *string* (REQUIRED)\n  Magnitude of the amount, in units of the currency, with a `.`.\n\n  * **currency** *string* (REQUIRED)\n  Currency code.\n\n**settlementCurrency** *string* (REQUIRED)\nDesired currency for the payments to settle in.\n\n**paymentMethods** *array* (REQUIRED)\n\n**merchantWalletId** *string*\nUnique system generated identifier for the wallet of the merchant.\n\n\nOption 2\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**currency** *string* (REQUIRED)\nDesired currency for the payment\n\n**settlementCurrency** *string* (REQUIRED)\nDesired currency for the payments to settle in.\n\n**paymentMethods** *array* (REQUIRED)\n\n**merchantWalletId** *string*\nUnique system generated identifier for the wallet of the merchant.\n\n**type** *string*\n\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a continuous payment intent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"amount\": {\n    \"currency\": \"USD\"\n  },\n  \"settlementCurrency\": \"USD\",\n  \"currency\": \"USD\",\n  \"paymentMethods\": [\n    {\n      \"type\": \"blockchain\",\n      \"chain\": \"ETH\"\n    }\n  ],\n  \"type\": \"continuous\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/paymentIntents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "paymentIntents"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 18:14:55 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "462"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/5c38ab9d-0858-4f2c-816c-bff50b87dc2b"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "1e9ac103aa88462a55dae8db3c877543"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "1e9ac103aa88462a55dae8db3c877543"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847094a6eeb0823c-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"type\": \"continuous\",\n        \"id\": \"5c38ab9d-0858-4f2c-816c-bff50b87dc2b\",\n        \"amountPaid\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"amountRefunded\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"settlementCurrency\": \"USD\",\n        \"paymentMethods\": [\n            {\n                \"type\": \"blockchain\",\n                \"chain\": \"ETH\"\n            }\n        ],\n        \"timeline\": [\n            {\n                \"status\": \"created\",\n                \"time\": \"2024-01-17T18:14:55.875875Z\"\n            }\n        ],\n        \"createDate\": \"2024-01-17T18:14:55.873663Z\",\n        \"updateDate\": \"2024-01-17T18:14:55.873663Z\",\n        \"merchantWalletId\": \"1000594146\",\n        \"currency\": \"USD\"\n    }\n}"
+            },
+            {
+              "name": "Create a transient payment intent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  },\n  \"settlementCurrency\": \"USD\",\n  \"paymentMethods\": [\n    {\n      \"type\": \"blockchain\",\n      \"chain\": \"ETH\",\n      \"address\": \"0x35cEd7A9A8d31D68Ad149049cCDa3a6D832a2EF8\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/paymentIntents",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "paymentIntents"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:59:03 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "549"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/5e1d524b-79f7-420e-8437-c17c84a79c34"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "7a6132c9e271554e8e82fa247a79bac5"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "7a6132c9e271554e8e82fa247a79bac5"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84707d64ff572d1e-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"5e1d524b-79f7-420e-8437-c17c84a79c34\",\n        \"amountPaid\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"amountRefunded\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"settlementCurrency\": \"USD\",\n        \"paymentMethods\": [\n            {\n                \"type\": \"blockchain\",\n                \"chain\": \"ETH\",\n                \"address\": \"0x35cEd7A9A8d31D68Ad149049cCDa3a6D832a2EF8\"\n            }\n        ],\n        \"timeline\": [\n            {\n                \"status\": \"created\",\n                \"time\": \"2024-01-17T17:59:03.247814Z\"\n            }\n        ],\n        \"createDate\": \"2024-01-17T17:59:03.245Z\",\n        \"updateDate\": \"2024-01-17T17:59:03.245Z\",\n        \"merchantWalletId\": \"1000594146\",\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"paymentIds\": [],\n        \"refundIds\": []\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all payment intents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/paymentIntents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "paymentIntents"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "Filters by the most recent `timeline.status` within the payment intent.",
+                  "disabled": true
+                },
+                {
+                  "key": "context",
+                  "value": "paid",
+                  "description": "Filters by the most recent `timeline.context` within the payment intent.",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "anim amet commodo",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "anim amet commodo",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all payment intents",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/paymentIntents?pageSize=1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "paymentIntents"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "pending",
+                      "description": "Filters by the most recent `timeline.status` within the payment intent.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "context",
+                      "value": "paid",
+                      "description": "Filters by the most recent `timeline.context` within the payment intent.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "anim amet commodo",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "anim amet commodo",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "1",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:12:51 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "365"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/paymentIntents?pageSize=1&to=2024-01-17T21%3A12%3A51.715296879Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/paymentIntents?pageSize=1&to=2024-01-17T21%3A12%3A51.715296879Z>; rel=\"self\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/paymentIntents?pageSize=1&to=2024-01-17T21%3A12%3A51.715296879Z&pageAfter=513fee57-0557-448d-bee5-32e8e6518f25>; rel=\"next\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ab7c2a6924cabcc2924fb001485c6991"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ab7c2a6924cabcc2924fb001485c6991"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471994a68927f56-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"513fee57-0557-448d-bee5-32e8e6518f25\",\n            \"amountPaid\": {\n                \"amount\": \"0.00\",\n                \"currency\": \"USD\"\n            },\n            \"amountRefunded\": {\n                \"amount\": \"0.00\",\n                \"currency\": \"USD\"\n            },\n            \"settlementCurrency\": \"USD\",\n            \"paymentMethods\": [\n                {\n                    \"type\": \"blockchain\",\n                    \"chain\": \"ETH\",\n                    \"address\": \"0xde982c93966731273f730b35967a36d5b9b1c01d\"\n                }\n            ],\n            \"fees\": [\n                {\n                    \"type\": \"blockchainLeaseFee\",\n                    \"amount\": \"0.00\",\n                    \"currency\": \"USD\"\n                }\n            ],\n            \"timeline\": [\n                {\n                    \"status\": \"pending\",\n                    \"time\": \"2024-01-17T18:58:59.610789Z\"\n                },\n                {\n                    \"status\": \"created\",\n                    \"time\": \"2024-01-17T18:58:56.811398Z\"\n                }\n            ],\n            \"createDate\": \"2024-01-17T18:58:56.810528Z\",\n            \"updateDate\": \"2024-01-17T18:58:59.608404Z\",\n            \"merchantWalletId\": \"1000594146\",\n            \"amount\": {\n                \"amount\": \"3.14\",\n                \"currency\": \"USD\"\n            },\n            \"expiresOn\": \"2024-01-18T02:58:59.499965Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a payment intent",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/paymentIntents/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "paymentIntents",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a payment intent",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/paymentIntents/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "paymentIntents",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "5c38ab9d-0858-4f2c-816c-bff50b87dc2b",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 18:17:41 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "346"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "efcc5bfafe1873b6a1811a1b7518047b"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "efcc5bfafe1873b6a1811a1b7518047b"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847098b04b60823c-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"type\": \"continuous\",\n        \"id\": \"5c38ab9d-0858-4f2c-816c-bff50b87dc2b\",\n        \"amountPaid\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"amountRefunded\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"settlementCurrency\": \"USD\",\n        \"paymentMethods\": [\n            {\n                \"type\": \"blockchain\",\n                \"chain\": \"ETH\",\n                \"address\": \"0x9f0ca4a0a77a3946ec1c8be2e5664e01ab4378e5\"\n            }\n        ],\n        \"fees\": [\n            {\n                \"type\": \"blockchainLeaseFee\",\n                \"amount\": \"0.00\",\n                \"currency\": \"USD\"\n            }\n        ],\n        \"timeline\": [\n            {\n                \"status\": \"active\",\n                \"time\": \"2024-01-17T18:14:58.461352Z\"\n            },\n            {\n                \"status\": \"created\",\n                \"time\": \"2024-01-17T18:14:55.875875Z\"\n            }\n        ],\n        \"createDate\": \"2024-01-17T18:14:55.873663Z\",\n        \"updateDate\": \"2024-01-17T18:14:58.457863Z\",\n        \"merchantWalletId\": \"1000594146\",\n        \"currency\": \"USD\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Expire a payment intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/paymentIntents/:id/expire",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "paymentIntents",
+                ":id",
+                "expire"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            },
+            "description": "\n#### Body Params\n\n"
+          },
+          "response": [
+            {
+              "name": "Expire a payment intent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/paymentIntents/:id/expire",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "paymentIntents",
+                    ":id",
+                    "expire"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "5e1d524b-79f7-420e-8437-c17c84a79c34",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:13:30 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "fa132a529f96d9a0f03890320635bb23"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "fa132a529f96d9a0f03890320635bb23"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84719a3c1c007f56-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"5e1d524b-79f7-420e-8437-c17c84a79c34\",\n        \"amountPaid\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"amountRefunded\": {\n            \"amount\": \"0.00\",\n            \"currency\": \"USD\"\n        },\n        \"settlementCurrency\": \"USD\",\n        \"paymentMethods\": [\n            {\n                \"type\": \"blockchain\",\n                \"chain\": \"ETH\",\n                \"address\": \"0x35cEd7A9A8d31D68Ad149049cCDa3a6D832a2EF8\"\n            }\n        ],\n        \"timeline\": [\n            {\n                \"status\": \"expired\",\n                \"context\": \"underpaid\",\n                \"reason\": \"requested_by_merchant\",\n                \"time\": \"2024-01-17T21:13:30.301Z\"\n            },\n            {\n                \"status\": \"created\",\n                \"time\": \"2024-01-17T17:59:03.247814127Z\"\n            }\n        ],\n        \"createDate\": \"2024-01-17T17:59:03.245Z\",\n        \"updateDate\": \"2024-01-17T21:13:30.301Z\",\n        \"merchantWalletId\": \"1000594146\",\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"paymentIds\": [],\n        \"refundIds\": [],\n        \"expiresOn\": \"2024-01-17T21:13:30.298Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refund a payment intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"address\": \"0x8381470ED67C3802402dbbFa0058E8871F017A6F\",\n    \"chain\": \"POLY\",\n    \"addressTag\": \"123456789\"\n  },\n  \"amount\": {\n    \"currency\": \"USD\"\n  },\n  \"toAmount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/paymentIntents/:id/refund",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "paymentIntents",
+                ":id",
+                "refund"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            },
+            "description": "\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**destination** *object* (REQUIRED)\nThe destination of a crypto refund.\n\n  * **address** *string* (REQUIRED)\n  The blockchain address.\n\n  * **addressTag** *string*\n  The secondary identifier for a blockchain address. An example of this is the memo field on the Stellar network, which can be text, id, or hash format.\n\n  * **chain** *string* (REQUIRED)\n  A blockchain that a given currency is available on.\n\n**amount** (REQUIRED)\nThe source amount of the refund, it can be in either the original payment currency or the settlement currency.\n\n  * **currency** *string* (REQUIRED)\n  Currency code.\n\n**toAmount** (REQUIRED)\nThe destination amount of the refund, it must be in the original payment currency.\n\n  * **amount** *string* (REQUIRED)\n  Magnitude of the amount, in units of the currency, with a `.`.\n\n  * **currency** *string* (REQUIRED)\n  Currency code.\n\n"
+          },
+          "response": [
+            {
+              "name": "Refund a payment intent",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"address\": \"0x8381470ED67C3802402dbbFa0058E8871F017A6F\",\n    \"chain\": \"POLY\",\n    \"addressTag\": \"123456789\"\n  },\n  \"amount\": {\n    \"currency\": \"USD\"\n  },\n  \"toAmount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/paymentIntents/:id/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "paymentIntents",
+                    ":id",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "513fee57-0557-448d-bee5-32e8e6518f25",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:37:14 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "528"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/e02e0a19-823f-378b-a468-c713d669eb15"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d3734d61debf4df4418b04e605b12573"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d3734d61debf4df4418b04e605b12573"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471bd026f969c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"e02e0a19-823f-378b-a468-c713d669eb15\",\n        \"type\": \"refund\",\n        \"status\": \"pending\",\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"createDate\": \"2024-01-17T21:37:14.685264Z\",\n        \"updateDate\": \"2024-01-17T21:37:14.685264Z\",\n        \"merchantId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n        \"merchantWalletId\": \"1000594146\",\n        \"paymentIntentId\": \"513fee57-0557-448d-bee5-32e8e6518f25\",\n        \"settlementAmount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"depositAddress\": {\n            \"chain\": \"POLY\",\n            \"address\": \"0x8381470ED67C3802402dbbFa0058E8871F017A6F\",\n            \"addressTag\": \"123456789\"\n        }\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create and track intent for end users to pay via crypto."
+    },
+    {
+      "name": "Balances",
+      "item": [
+        {
+          "name": "List all balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/balances",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "balances"
+              ]
+            },
+            "description": "Retrieves the balance of merchant funds that have settled and also of funds that have been sent for processing but have not yet settled."
+          },
+          "response": [
+            {
+              "name": "List all balances",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/balances",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "balances"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:36:55 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "c2055d0bba873af1f19fcc42c50df712"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471bc8a8d879c7f-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"available\": [\n            {\n                \"amount\": \"0.123330811621508032\",\n                \"currency\": \"ETH\"\n            },\n            {\n                \"amount\": \"4824523946.77\",\n                \"currency\": \"USD\"\n            }\n        ],\n        \"unsettled\": [\n            {\n                \"amount\": \"884.95\",\n                \"currency\": \"USD\"\n            }\n        ]\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Get information on settled and unsettled balances."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "<your-api-key-here>",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api-sandbox.circle.com"
+    }
+  ]
+}

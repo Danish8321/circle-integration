@@ -1,0 +1,955 @@
+{
+  "info": {
+    "_postman_id": "e6b3ea60-0ff0-4919-9a58-eaf262989f82",
+    "name": "API Overview",
+    "description": "Common endpoints shared across all Circle APIs.\n\n[API Reference](https://developers.circle.com/circle-mint/reference/ping)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38686296"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ping",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ping"
+              ]
+            },
+            "description": "Checks that the service is running."
+          },
+          "response": [
+            {
+              "name": "Ping",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/ping",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "ping"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:33:32 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "18"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a0fc4604ea5d24f718d6115c3e1625a7"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84482ccfaa980800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"message\": \"pong\"\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Inspect the health of the API."
+    },
+    {
+      "name": "Management",
+      "item": [
+        {
+          "name": "Get configuration info",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "configuration"
+              ]
+            },
+            "description": "Retrieves general configuration information."
+          },
+          "response": [
+            {
+              "name": "Get configuration info",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/configuration",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "configuration"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:34:07 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a521ae78e0c9f2972b1197bbcb1fff83"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a521ae78e0c9f2972b1197bbcb1fff83"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84482daefa290800-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"payments\": {\n            \"masterWalletId\": \"1002753955\"\n        }\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "General account and management information."
+    },
+    {
+      "name": "Encryption",
+      "item": [
+        {
+          "name": "Get public key",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/encryption/public",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "encryption",
+                "public"
+              ]
+            },
+            "description": "Retrieves an RSA public key to be used in encrypting data sent to the API. Your public keys change infrequently, so we encourage you to cache this response value locally for a duration of 24 hours or more."
+          },
+          "response": [
+            {
+              "name": "Get public key",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/encryption/public",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "encryption",
+                    "public"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:34:20 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "1728"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "389f109aefea4cbb8b8a6e1f4dd339b5"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "389f109aefea4cbb8b8a6e1f4dd339b5"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84482dfc0ddd0800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"keyId\": \"key1\",\n        \"publicKey\": \"LS0tLS1CRUdJTiBQR1AgUFVCTElDIEtFWSBCTE9DSy0tLS0tCgptUUVOQkY0YzhWZ0JDQUM4QnN6WElCTytiZDZ4VnhLMUdlc3hLK2sybnlpamZ0NDdWa2xnbU80VmpTSmMzQS8yCkljeDNyWFR3S0ZIV282ckJBVUduSVhoK2ZYKzIwZGYwbld6WlNvN3ZNK0ZpMTMzVlpuTG0zalk4cVozdnR5WEMKenhqZnJ5UnlDSncrMlh6cnRGVklYT0RLSEd0RjhUSXZFNUdjdVMxclNmMGlsVUtzOWxUdXlOTEx1bXZJQ2RTeQpCMWQ3MUVCM3VDMUJpekRtaWplMHNFbjB0QXBGS3V0ZnB5aWtsbTZwWm9zWnVnYVUzL1Z3NWNkQTU5VlhHWnFpCjNTWGdzeHU1RE4zc21TU3ZVVkthMUtQd3hackZRZHQ2a3lOVUFuR0lRS3d4b3BjejAyY255R3JvZEdGU3c5TC8KbzlmeHo3Q3FpcnJvL3F6VjJzQmxFMkRvZWVLY09ZVTlzVHRCQUJFQkFBRzBCa05wY21Oc1pZa0JWQVFUQVFnQQpQaFloQlBTc3RXN3o4TkgrWVQ1MGE3S1dkbkdNTUlYQUJRSmVIUEZZQWhzREJRazRaQWtBQlFzSkNBY0NCaFVLCkNRZ0xBZ1FXQWdNQkFoNEJBaGVBQUFvSkVMS1dkbkdNTUlYQXhSQUgvM2xVL1hJbEkrZG5PR2pGRHJCTHMzcUYKN1grV0xsSU5YRmlaNWFuRC9ySnRUbGptb2R2dkhSSmlJTm1GcTRrNi90MURqcTJsdWpXTTFIUmJIaUtxTE56dQovWVJNNG5aL1lGUUd2YktqY3dNWHJDZ1Y1UFNESjZJdTE3MW4vdFFrYXFmRzd0M2ZXQzQzek10VFM4YnV6ZEtGCkQ1ai9yd0VkUjhhOXlsc0luWDdPZXlqekpUeENjQm1udmE1LzhZRFF4NFd4bk1WQWJ4ZnRRSjJzUXNJa0pNQ2MKV1d0TVZwZWlSSExlbWg1cnNhWnBnSkZ5cW1QODJXaDd0aGRkWHd3eVFGcHVUc2x6b1VKMmJaakZyMUxDSjBxRQp3MVJBOFVHaWhPUFB2SVprc2RvdFVDVDhoeXJPYU9GbUtDVUhhV0FQYzRDT3NzdVJpMU5VSGpJUVA0bVUyU0M1CkFRMEVYaHp4V0FFSUFMZFhXTUJaODlQZHFrSVRPWWZlL1pZZko4c2Nudk1PdlovQW1Vb3JpakM4M1VMdjVLbWsKSGpjVXJTR0pFYkpOdDl2NWVpc2RGOFRDNzVwZmhBLzZiOHZCUTVoMU0yT0FoUklYZGlJY1hLaTJyTXhINU9jWQo2YWFkWlVIRFIrYUZWRmtWdm53UnkxVFRDOFNleWs5UDRtd2lrTzl2RGlpMmU1SFl0R1pQcUVEWXVRN05pQnM2CktMRWpHclMwWFpieHg4WVk5enRRTUZKc2ZjdXRJd2lvTy9HcU1ZMFRKdkI0QnVJWTh2TjhPTnVubHZjb2JBYS8KcVRpYVFUcE93T3g2eElPbHB0TkFST1pncUNPZEk2R2NqMjRZRmcycEV4d0h0SjBXOFJpRDBpNEJJU0tEYkZEVAovWmlkMkptZW9vdG0vZXpaNUlDSUZNNk1wOEhDTjB6eWFSMEFFUUVBQVlrQlBBUVlBUWdBSmhZaEJQU3N0Vzd6CjhOSCtZVDUwYTdLV2RuR01NSVhBQlFKZUhQRllBaHNNQlFrNFpBa0FBQW9KRUxLV2RuR01NSVhBdmVJSC9BM1IKOTdlSENUOHdlOUFDUXkxcDJmNk41UFd6QWRaTUtQNm9QTXhpNFlCVUoyK1orNDVibnB2a0ZSdllMVjNwVFRIRApEY0N5cWh4Z0cxdEVGaVUyclZINlFzRStnWldYZkJPZU1lWHhqRkt0U0lzNktQUWViVlMrUHJhOHljK3RPakxOCkZsNlFCRjNGcGJ3YmE5L1pPbk1rbW9yTE1IV241RnJOVy9aZnVLdzhTMHFGQ29nUVNxUUVpbjZnQ0ZEd0gzK0QKQ2JzcDVKMm4xN1pncjBpcGRRYjk4MDJ1bXdDVG9aVGtwL0pwb2t4YzJTZlczaG0xUEc4M1NPUGdMUll0a3JuTApRbURYSmtDdEN6amN3eGQwdnJpVzM4Y29zQko1aVN4WHU5MEZHRWZaaGQ1Y0o4cFpKSkd2VGMrMyt6eE1sWU1HCnZmUjNvUFFoWmtwT2NyRUhlajA9Cj1BT0QzCi0tLS0tRU5EIFBHUCBQVUJMSUMgS0VZIEJMT0NLLS0tLS0K\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Encrypt sensitive data."
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Create a notification subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endpoint\": \"https://webhook.site/f0c4231b-50b4-4d3a-9239-e36d1e1e8a7b\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications/subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "notifications",
+                "subscriptions"
+              ]
+            },
+            "description": "Subscribe to receiving notifications at a given endpoint. The endpoint should be able to handle AWS SNS subscription requests. For more details see https://docs.aws.amazon.com/mobile/sdkforxamarin/developerguide/sns-send-http.html. Note, the sandbox environment allows a maximum of 3 active subscriptions; otherwise, this is limited to 1 active subscription and subsequent create requests will be rejected with a Limit Exceeded error.\n\n#### Body Params\n\n**endpoint** *string* (REQUIRED)\nURL of the subscriber endpoint. Must be publicly accessible and utilize HTTPS.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a notification subscription",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"endpoint\": \"https://webhook.site/f0c4231b-50b4-4d3a-9239-e36d1e1e8a7b\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/subscriptions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "subscriptions"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:38:32 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "30f70654f7c76eec4749674d501e3ef3"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "30f70654f7c76eec4749674d501e3ef3"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8448341caad50800-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"02da464c-426b-40ca-aa2c-4a7899f5dcb5\",\n        \"endpoint\": \"https://webhook.site/f0c4231b-50b4-4d3a-9239-e36d1e1e8a7b\",\n        \"subscriptionDetails\": [\n            {\n                \"url\": \"arn:aws:sns:us-east-1:908968368384:sandbox_platform-notifications-topic:1b8c6ff7-f633-420e-a45b-4c8941960e33\",\n                \"status\": \"pending\"\n            },\n            {\n                \"url\": \"arn:aws:sns:us-west-2:908968368384:sandbox_platform-notifications-topic:f3bee00e-60d4-45ee-a7f2-d1824e5d3cec\",\n                \"status\": \"pending\"\n            }\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all notification subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications/subscriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "notifications",
+                "subscriptions"
+              ]
+            },
+            "description": "Retrieve a list of existing notification subscriptions with details."
+          },
+          "response": [
+            {
+              "name": "List all notification subscriptions",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/subscriptions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "subscriptions"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:39:17 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "283"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ea45796e60b1f42b59d59867469c28a4"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ea45796e60b1f42b59d59867469c28a4"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8448353a2a480800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"02da464c-426b-40ca-aa2c-4a7899f5dcb5\",\n            \"endpoint\": \"https://webhook.site/f0c4231b-50b4-4d3a-9239-e36d1e1e8a7b\",\n            \"subscriptionDetails\": [\n                {\n                    \"url\": \"arn:aws:sns:us-east-1:908968368384:sandbox_platform-notifications-topic:1b8c6ff7-f633-420e-a45b-4c8941960e33\",\n                    \"status\": \"confirmed\"\n                },\n                {\n                    \"url\": \"arn:aws:sns:us-west-2:908968368384:sandbox_platform-notifications-topic:f3bee00e-60d4-45ee-a7f2-d1824e5d3cec\",\n                    \"status\": \"pending\"\n                }\n            ]\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove a notification subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications/subscriptions/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "notifications",
+                "subscriptions",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            },
+            "description": "To remove a subscription, all its subscription requests' statuses must be either 'confirmed', 'deleted' or a combination of those. A subscription with at least one 'pending' subscription request cannot be removed."
+          },
+          "response": [
+            {
+              "name": "Remove a notification subscription",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/notifications/subscriptions/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "notifications",
+                    "subscriptions",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "02da464c-426b-40ca-aa2c-4a7899f5dcb5",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:40:27 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "11"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "015034a0cfe8a64c0d98f676e9879493"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "015034a0cfe8a64c0d98f676e9879493"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "844836f3bdbf0800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {}\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Manage subscriptions to notifications."
+    },
+    {
+      "name": "Stablecoins",
+      "item": [
+        {
+          "name": "List all stablecoins",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/stablecoins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "stablecoins"
+              ]
+            },
+            "description": "Retrieves total circulating supply for supported stablecoins across all chains. This endpoint is rate limited to one call per minute (based on IP)."
+          },
+          "response": [
+            {
+              "name": "List all stablecoins",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/stablecoins",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "stablecoins"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Fri, 12 Jan 2024 20:40:58 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "555"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "e5f590d72918e17d4e479b46763c23e6"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "e5f590d72918e17d4e479b46763c23e6"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "844837b65b900800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"name\": \"Euro Coin\",\n            \"symbol\": \"EUROC\",\n            \"chains\": [\n                {\n                    \"amount\": \"103791823.39\",\n                    \"chain\": \"AVAX\",\n                    \"updateDate\": \"2024-01-12T20:40:07.224906Z\"\n                },\n                {\n                    \"amount\": \"605987765.72\",\n                    \"chain\": \"ETH\",\n                    \"updateDate\": \"2024-01-12T20:40:07.199584Z\"\n                },\n                {\n                    \"amount\": \"102445144.7\",\n                    \"chain\": \"SOL\",\n                    \"updateDate\": \"2024-01-12T20:40:07.096560Z\"\n                },\n                {\n                    \"amount\": \"51390218.72\",\n                    \"chain\": \"XLM\",\n                    \"updateDate\": \"2024-01-12T20:40:07.160499Z\"\n                }\n            ],\n            \"totalAmount\": \"863614952.53\"\n        },\n        {\n            \"name\": \"USD Coin\",\n            \"symbol\": \"USDC\",\n            \"chains\": [\n                {\n                    \"amount\": \"79604738486.590489\",\n                    \"chain\": \"ALGO\",\n                    \"updateDate\": \"2024-01-12T20:40:08.194818Z\"\n                },\n                {\n                    \"amount\": \"113885612615.444011\",\n                    \"chain\": \"ARB\",\n                    \"updateDate\": \"2024-01-12T20:40:08.224161Z\"\n                },\n                {\n                    \"amount\": \"11550572713.192507\",\n                    \"chain\": \"AVAX\",\n                    \"updateDate\": \"2024-01-12T20:40:08.259884Z\"\n                },\n                {\n                    \"amount\": \"30233862221.837329\",\n                    \"chain\": \"BASE\",\n                    \"updateDate\": \"2024-01-12T20:40:08.303653Z\"\n                },\n                {\n                    \"amount\": \"12751911350400.624488\",\n                    \"chain\": \"ETH\",\n                    \"updateDate\": \"2024-01-12T20:40:07.538518Z\"\n                },\n                {\n                    \"amount\": \"1974948716.48\",\n                    \"chain\": \"FLOW\",\n                    \"updateDate\": \"2024-01-12T20:40:07.612545Z\"\n                },\n                {\n                    \"amount\": \"2327566368.16\",\n                    \"chain\": \"HBAR\",\n                    \"updateDate\": \"2024-01-12T20:40:08.145318Z\"\n                },\n                {\n                    \"amount\": \"566221389.3\",\n                    \"chain\": \"NEAR\",\n                    \"updateDate\": \"2024-01-12T20:40:07.042757Z\"\n                },\n                {\n                    \"amount\": \"11968771925.586714\",\n                    \"chain\": \"NOBLE\",\n                    \"updateDate\": \"2024-01-12T20:40:07.140334Z\"\n                },\n                {\n                    \"amount\": \"29715457753.802399\",\n                    \"chain\": \"OP\",\n                    \"updateDate\": \"2024-01-12T20:40:07.166522Z\"\n                },\n                {\n                    \"amount\": \"33577871109.677139\",\n                    \"chain\": \"POLY\",\n                    \"updateDate\": \"2024-01-12T20:40:07.195240Z\"\n                },\n                {\n                    \"amount\": \"55356513430.902\",\n                    \"chain\": \"SOL\",\n                    \"updateDate\": \"2024-01-12T20:40:07.477721Z\"\n                },\n                {\n                    \"amount\": \"19076442370.4\",\n                    \"chain\": \"PAH\",\n                    \"updateDate\": \"2024-01-12T20:40:07.360872Z\"\n                },\n                {\n                    \"amount\": \"45077826529.91\",\n                    \"chain\": \"TRX\",\n                    \"updateDate\": \"2024-01-12T20:40:07.226457Z\"\n                },\n                {\n                    \"amount\": \"5552285581.61\",\n                    \"chain\": \"XLM\",\n                    \"updateDate\": \"2024-01-12T20:40:07.272909Z\"\n                }\n            ],\n            \"totalAmount\": \"13192380041613.517076\"\n        }\n    ]\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Retrieve stablecoins and their respective names, symbols, circulating total and per-chain amounts."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "<your-api-key-here>",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api-sandbox.circle.com"
+    }
+  ]
+}

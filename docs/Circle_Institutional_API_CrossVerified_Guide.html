@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circle Institutional API — Cross-Verified Integration Guide</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --c-blue-50:#E6F1FB;--c-blue-200:#85B7EB;--c-blue-600:#185FA5;--c-blue-800:#0C447A;--c-blue-900:#042C53;
+    --c-teal-50:#E1F5EE;--c-teal-600:#0F6E56;
+    --c-amber-50:#FAEEDA;--c-amber-200:#EF9F27;--c-amber-600:#854F0B;--c-amber-800:#633806;
+    --c-red-50:#FCEBEB;--c-red-200:#F09595;--c-red-600:#A32D2D;--c-red-800:#7A1F1F;
+    --c-green-50:#EAF3DE;--c-green-600:#3B6D11;--c-green-800:#27500A;
+    --c-gray-50:#F4F3F0;--c-gray-100:#E8E6E1;--c-gray-300:#B4B2A9;--c-gray-600:#5F5E5A;--c-gray-900:#2C2C2A;
+    --c-purple-50:#EEEDFE;--c-purple-600:#534AB7;
+    --bg:#F7F6F3;--surface:#FFFFFF;--surface-2:#F4F3F0;
+    --text-primary:#1A1A18;--text-secondary:#5F5E5A;--text-muted:#888780;
+    --border:rgba(0,0,0,0.10);--border-strong:rgba(0,0,0,0.18);
+    --radius:10px;--mono:'SF Mono','Fira Code','Cascadia Code',Consolas,monospace;
+  }
+  body{background:var(--bg);color:var(--text-primary);font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.65;}
+  .layout{display:flex;min-height:100vh;}
+  .sidebar{width:270px;min-width:270px;background:var(--surface);border-right:0.5px solid var(--border-strong);position:sticky;top:0;height:100vh;overflow-y:auto;padding:0 0 2rem;flex-shrink:0;}
+  .sidebar-logo{padding:1.5rem 1.25rem 1rem;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .logo-mark{width:34px;height:34px;background:linear-gradient(135deg,#1D9E75,#185FA5);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0;}
+  .sidebar-logo-text{font-size:13px;font-weight:600;color:var(--text-primary);line-height:1.25;}
+  .sidebar-logo-sub{font-size:11px;color:var(--text-muted);}
+  .nav-section{padding:1rem 1.25rem 0.25rem;}
+  .nav-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.5rem;}
+  .nav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:13px;color:var(--text-secondary);text-decoration:none;cursor:pointer;margin-bottom:1px;}
+  .nav-item:hover{background:var(--surface-2);color:var(--text-primary);}
+  .main{flex:1;padding:2.5rem 3.25rem 6rem;max-width:920px;}
+  h1.doc-title{font-size:29px;font-weight:700;color:var(--c-blue-900);line-height:1.25;}
+  .doc-sub{font-size:15px;color:var(--text-secondary);margin-top:.6rem;}
+  .doc-meta{font-size:12.5px;color:var(--text-muted);margin-top:1rem;display:flex;gap:1.25rem;flex-wrap:wrap;}
+  section{margin-top:2.75rem;scroll-margin-top:2rem;}
+  h2{font-size:21px;font-weight:700;color:var(--c-blue-900);border-bottom:0.5px solid var(--border-strong);padding-bottom:.6rem;margin-bottom:1.1rem;}
+  h3{font-size:16.5px;font-weight:700;color:var(--text-primary);margin:1.4rem 0 .6rem;}
+  p{margin-bottom:.9rem;color:var(--text-primary);}
+  ul,ol{margin:.4rem 0 1rem 1.4rem;}
+  li{margin-bottom:.5rem;}
+  .card{background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius);padding:1.25rem 1.4rem;margin-bottom:1.25rem;}
+  .callout{border-radius:var(--radius);padding:.9rem 1.1rem;margin:1rem 0;display:flex;gap:.7rem;align-items:flex-start;}
+  .callout p{margin:0;font-size:13.5px;line-height:1.55;}
+  .callout-verified{background:var(--c-green-50);border:0.5px solid #B9D68A;}
+  .callout-verified .callout-title{color:var(--c-green-800);}
+  .callout-correction{background:var(--c-red-50);border:0.5px solid var(--c-red-200);}
+  .callout-correction .callout-title{color:var(--c-red-800);}
+  .callout-note{background:var(--c-amber-50);border:0.5px solid var(--c-amber-200);}
+  .callout-note .callout-title{color:var(--c-amber-800);}
+  .callout-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+  .callout-title{font-weight:700;font-size:13px;margin-bottom:.15rem;display:block;}
+  table{width:100%;border-collapse:collapse;margin:1rem 0 1.5rem;font-size:13.5px;}
+  th{background:var(--c-blue-50);color:var(--c-blue-800);text-align:left;padding:.55rem .75rem;font-weight:700;border:0.5px solid var(--border-strong);}
+  td{padding:.55rem .75rem;border:0.5px solid var(--border);vertical-align:top;}
+  tr:nth-child(even) td{background:var(--surface-2);}
+  code, .code-inline{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:0.5px solid var(--border);border-radius:4px;padding:1px 6px;}
+  pre{background:#1E1E1C;color:#E8E6E1;border-radius:8px;padding:1rem 1.15rem;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;margin:.75rem 0 1.25rem;}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;}
+  .tag-get{background:var(--c-blue-50);color:var(--c-blue-600);}
+  .tag-post{background:var(--c-green-50);color:var(--c-green-600);}
+  .tag-delete{background:var(--c-red-50);color:var(--c-red-600);}
+  .tag-webhook{background:var(--c-purple-50);color:var(--c-purple-600);}
+  .badge-a{background:var(--c-blue-50);color:var(--c-blue-800);border:0.5px solid var(--c-blue-200);border-radius:5px;padding:1px 8px;font-size:11px;font-weight:700;}
+  .badge-b{background:var(--c-teal-50);color:var(--c-teal-600);border:0.5px solid #5DCAA5;border-radius:5px;padge:1px 8px;padding:1px 8px;font-size:11px;font-weight:700;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  .src-item{display:block;font-size:13px;padding:.35rem 0;color:var(--c-blue-600);text-decoration:none;border-bottom:0.5px dotted var(--border);}
+  .src-item span{color:var(--text-muted);font-size:11.5px;display:block;}
+  .toc-link{color:var(--c-blue-600);text-decoration:none;}
+  a{color:var(--c-blue-600);}
+  @media print{.sidebar{display:none;}.main{max-width:100%;}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">C</div>
+      <div>
+        <div class="sidebar-logo-text">Circle Institutional API</div>
+        <div class="sidebar-logo-sub">Cross-verified guide</div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Contents</div>
+      <a class="nav-item" href="#summary">Cross-verification summary</a>
+      <a class="nav-item" href="#products">1. Two valid product paths</a>
+      <a class="nav-item" href="#verified">2. Verified against existing guide</a>
+      <a class="nav-item" href="#correction">3. Correction: the sweep mechanism</a>
+      <a class="nav-item" href="#onboarding">4. Onboarding &amp; entity lifecycle</a>
+      <a class="nav-item" href="#fiat">5. FIAT — USD &amp; EUR</a>
+      <a class="nav-item" href="#onchain">6. On-chain — USDC &amp; EURC</a>
+      <a class="nav-item" href="#settlement">7. Settlement to FundAccounts</a>
+      <a class="nav-item" href="#webhooks">8. Webhooks</a>
+      <a class="nav-item" href="#scenarios">9. Business scenarios</a>
+      <a class="nav-item" href="#endpoints">10. Endpoint reference</a>
+      <a class="nav-item" href="#sources">11. Sources</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <h1 class="doc-title">Circle Institutional API Integration — Cross-Verified Guide</h1>
+    <p class="doc-sub">Reconciling <code>circle-institutional-api-guide.html</code> (existing project doc, External Entities model) against fresh research on <code>developers.circle.com</code>, including the official OpenAPI reference schemas, so both documents agree and every claim is traceable to an official source.</p>
+    <div class="doc-meta">
+      <span>Document date: July 15, 2026</span>
+      <span>Source: developers.circle.com (official)</span>
+      <span>Format: HTML</span>
+    </div>
+
+    <section id="summary">
+      <h2>Cross-Verification Summary</h2>
+      <div class="callout callout-verified">
+        <span class="callout-icon">✅</span>
+        <div>
+          <span class="callout-title">Your existing guide's core model checks out</span>
+          <p>Every endpoint your <code>circle-institutional-api-guide.html</code> uses — <code>/v1/externalEntities</code>, <code>/v1/businessAccount/banks/wires</code>, <code>/v1/businessAccount/wallets/addresses/deposit</code>, <code>/v1/businessAccount/wallets/addresses/recipient</code>, <code>/v1/businessAccount/transfers</code>, <code>/v1/businessAccount/payouts</code>, <code>/v1/notifications/subscriptions</code> — is confirmed live in Circle's current official API reference, under a category Circle itself labels <strong>"Core API for Institutions → External Entities."</strong> This is not a deprecated or legacy path; it is a real, currently-documented product, gated the same way as everything else institutional ("contact your Circle account representative").</p>
+        </div>
+      </div>
+      <div class="callout callout-correction">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          <span class="callout-title">One real correction found: there is no same-account wallet-to-wallet transfer endpoint</span>
+          <p>My earlier draft (and an implicit assumption in your architecture) treated "sweep client wallet balance to the Main/Distributor wallet" as a simple internal transfer call. The <strong>official OpenAPI schema for <code>POST /v1/businessAccount/transfers</code></strong> only accepts <code>destination.type</code> of <code>verified_blockchain</code> or <code>cross_entity_master_wallet</code> (a <em>sibling</em> Circle Mint Account, i.e. a different legal entity's account — not a plain wallet inside your own account). There is no documented request shape that moves value directly from an External Entity wallet to your own Distributor/master wallet as an off-chain ledger entry. See Section 3 for what to do instead.</p>
+        </div>
+      </div>
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div>
+          <span class="callout-title">A second, newer Circle product also matches your requirement</span>
+          <p>Circle now also offers <strong>Digital Asset Accounts (DAA)</strong> — a distributor product with a formal Program → Account → Sub-account hierarchy and instant, fee-free internal transfers between sub-accounts (this is the capability your architecture actually wants for the sweep step). It is a separate, newer, equally-permissioned product from External Entities, not a replacement for it. See Section 1 for the comparison and why staying on External Entities is still the pragmatic choice given your existing build.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="products">
+      <h2>1. Two Valid Product Paths (and why you're on the right one)</h2>
+      <p>Circle documents two separate ways to give your institutional clients their own segregated stablecoin sub-account. Both are real and current; they are not the same product wearing different names.</p>
+      <table>
+        <tr><th>Path</th><th>Core API for Institutions (External Entities)</th><th>Digital Asset Accounts (DAA)</th></tr>
+        <tr><td><strong>What it is</strong></td><td>A feature of your own Circle Mint Account: you act as <strong>Distributor</strong>, each client is an <strong>External Entity</strong> with its own <code>walletId</code>.</td><td>A separate product: a <strong>Program</strong> containing <strong>Accounts</strong> (one per KYB'd client), each with currency <strong>sub-accounts</strong> under an <code>accountId</code>.</td></tr>
+        <tr><td><strong>Client onboarding</strong></td><td><code>POST /v1/externalEntities</code> — a single call with business name, tax ID, country. Async sanctions screening → <code>complianceState</code>.</td><td>Multi-section KYB via the <strong>End User Onboarding API</strong> (9 sections + 6 documents) → formal application review.</td></tr>
+        <tr><td><strong>Currencies</strong></td><td>USD/USDC and EUR/EURC (confirmed: <code>Money.currency</code> enum includes <code>USD</code>, <code>EUR</code> across transfers/payouts).</td><td>USD/USDC and EUR/EURC (explicitly documented).</td></tr>
+        <tr><td><strong>Internal sweep between sub-accounts</strong></td><td><strong>Not available</strong> as a same-account wallet-to-wallet transfer (Section 3).</td><td><strong>Available</strong> — instant, fee-free account-to-account transfer within the same Program.</td></tr>
+        <tr><td><strong>Matches your existing build?</strong></td><td>Yes — this is exactly the model your PRD, HTTP client design, and <code>circle-institutional-api-guide.html</code> are already built around.</td><td>Would require re-onboarding every client under a new KYB flow and a new account model.</td></tr>
+      </table>
+      <p><strong>Recommendation:</strong> stay on External Entities — it is current, correct, and your implementation is already built on it. Treat DAA as a noted alternative, not a migration target, unless the missing internal-sweep primitive (Section 3) turns out to be a hard blocker after talking to your Circle account team.</p>
+    </section>
+
+    <section id="verified">
+      <h2>2. Verified Against Your Existing Guide</h2>
+      <p>Items in <code>circle-institutional-api-guide.html</code> checked directly against Circle's official OpenAPI reference and confirmed accurate:</p>
+      <table>
+        <tr><th>Claim in your guide</th><th>Verification</th></tr>
+        <tr><td>Entity creation is <code>POST /v1/externalEntities</code>, returns <code>walletId</code> synchronously, compliance decision (<code>ACCEPTED</code>/<code>REJECTED</code>) arrives async on the <code>externalEntities</code> webhook topic.</td><td>Confirmed — matches <code>get-all-external-entities</code> / <code>create-external-entity</code> reference pages exactly, including the example payload shape (<code>walletId</code>, <code>businessName</code>, <code>businessUniqueIdentifier</code>, <code>identifierIssuingCountryCode</code>, <code>complianceState</code>).</td></tr>
+        <tr><td>Duplicate entity → <code>409 Conflict</code>; recover via <code>GET /v1/externalEntities?businessUniqueIdentifier=…&amp;identifierIssuingCountryCode=…</code> (both params required together).</td><td>Confirmed — the reference page states explicitly: "Only providing one will result in an error."</td></tr>
+        <tr><td>Entity-scoped wire instructions via <code>?walletId=</code> query param on the wire-instructions endpoint; deposits auto-mint the matching stablecoin.</td><td>Confirmed against <code>/circle-mint/howtos/deposit-fiat</code> and the wires API reference.</td></tr>
+        <tr><td>One deposit address per chain per entity; currency <code>"USD"</code> = USDC, <code>"EUR"</code> = EURC.</td><td>Confirmed against <code>/circle-mint/references/supported-chains-and-currencies</code> and the addresses API reference.</td></tr>
+        <tr><td>Outbound transfers require a pre-approved recipient address (Mint Console human approval) before <code>POST /v1/businessAccount/transfers</code> will send to it.</td><td>Confirmed against <code>/circle-mint/howtos/transfer-on-chain</code>.</td></tr>
+        <tr><td>Redemption (<code>POST /v1/businessAccount/payouts</code>) deducts a fee; <code>toAmount</code> is the net amount actually wired.</td><td>Confirmed against the OpenAPI schema — response includes separate <code>amount</code>, <code>fees</code>, and <code>toAmount</code> fields, plus a <code>return</code> object for bank-returned payouts.</td></tr>
+        <tr><td>Webhooks use the v1 (Amazon SNS) scheme with a subscription-confirmation handshake, not the v2 <code>X-Circle-Signature</code> scheme.</td><td>Confirmed against <code>/api-reference/webhook-endpoints</code> — Circle Mint is explicitly listed under "v1 notifications" alongside Digital Asset Accounts and CPN Managed Payments.</td></tr>
+        <tr><td>EUR is a first-class currency across transfers, payouts, and deposits, not a USD-only product.</td><td>Confirmed — the official <code>Money</code> and <code>FiatCurrency</code> schemas list <code>EUR</code> alongside <code>USD</code>; payout destinations additionally support <code>sepa</code> and <code>sepa_instant</code> types.</td></tr>
+      </table>
+      <div class="callout callout-note">
+        <span class="callout-icon">ℹ️</span>
+        <div>
+          <span class="callout-title">One claim I could not independently confirm</span>
+          <p>Your guide states a payout's bank destination "must be a bank account in your institution's name, not the external entity's name." This is a sound and plausible operational rule (it matches how the flow is designed to work), but it is not asserted in the public OpenAPI schema itself — it may come from Circle's business-account terms or account-manager guidance that isn't in the machine-readable spec. Treat it as correct but confirm it explicitly with your Circle account representative before relying on it as a hard technical constraint.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="correction">
+      <h2>3. Correction: The Client-Wallet-to-Main-Wallet Sweep</h2>
+      <p>This is the one place fresh verification changes the design, so it gets its own section.</p>
+      <h3>What was assumed</h3>
+      <p>That moving settled stablecoin value from a client's External Entity wallet into your own Distributor/master wallet could be done with a simple internal transfer call — mirroring how Digital Asset Accounts' account-to-account transfer works.</p>
+      <h3>What the official schema actually allows</h3>
+      <p>The OpenAPI spec for <code>POST /v1/businessAccount/transfers</code> restricts <code>destination</code> to exactly two shapes:</p>
+      <pre>destination: oneOf
+  - { type: "verified_blockchain", addressId: "&lt;pre-approved recipient address&gt;" }
+  - { type: "cross_entity_master_wallet", entityId: "&lt;sibling Circle Mint Account's entity id&gt;" }</pre>
+      <p>Neither shape is "move to a wallet inside my own account." <code>cross_entity_master_wallet</code> is for transferring between two <em>separate, sibling</em> Circle Mint Accounts (e.g. if your organization holds more than one CMA) — it does not apply to moving value from one of your own External Entities to your own primary/master wallet.</p>
+      <h3>What is actually documented and available</h3>
+      <table>
+        <tr><th>Option</th><th>Mechanism</th><th>Trade-off</th></tr>
+        <tr><td><strong>A — Redeem to your own bank account</strong></td><td><code>POST /v1/businessAccount/payouts</code> with <code>source.id</code> = the client's <code>walletId</code>, <code>destination</code> = your own linked wire/SEPA bank account (per your guide's existing pattern).</td><td>Exits Circle as fiat — this is a genuine redemption, not a stablecoin-to-stablecoin move. Matches the literal words "deduct... into our account" if your Main position is meant to be fiat, not a Circle wallet balance. Fee is deducted (Section 2).</td></tr>
+        <tr><td><strong>B — On-chain transfer to your own address</strong></td><td>Register your own Main wallet's receiving address as a <em>recipient</em> (<code>POST /v1/businessAccount/wallets/addresses/recipient</code>), get it approved in Mint Console, then <code>POST /v1/businessAccount/transfers</code> with <code>destination.type: verified_blockchain</code> pointing at that address.</td><td>Stays in stablecoin form, but is a real blockchain transaction: network fee, confirmation delay, and (above the Travel Rule threshold) originator identity requirements, exactly as for any external payout.</td></tr>
+        <tr><td><strong>C — Confirm with Circle directly</strong></td><td>Ask your Circle account representative whether an off-chain, ledger-level entity-to-master movement exists outside the public API (e.g. via Mint Console or an account-manager-mediated operation).</td><td>Not documented publicly; cannot be assumed. Worth a direct question given how central this step is to your flow.</td></tr>
+      </table>
+      <div class="callout callout-correction">
+        <span class="callout-icon">⚠️</span>
+        <div>
+          <span class="callout-title">Action item</span>
+          <p>Decide, with your Circle account team, whether Option A (redeem-to-fiat, which is what your existing guide's payout step already documents) is in fact your intended "Main wallet" position — or whether you genuinely need to hold swept value as stablecoin at the Distributor level, in which case Option B (on-chain, fee-bearing) is the only documented path today, and Digital Asset Accounts (Section 1) is the only Circle product with a free instant sweep.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="onboarding">
+      <h2>4. Onboarding &amp; Entity Lifecycle (External Entities)</h2>
+      <table>
+        <tr><th>Step</th><th>Call</th><th>Detail</th></tr>
+        <tr><td>1</td><td><span class="tag tag-post">POST</span> <code>/v1/externalEntities</code></td><td>Body: <code>businessName</code>, <code>businessUniqueIdentifier</code> (tax ID / registration number), <code>identifierIssuingCountryCode</code> (ISO 3166-1 alpha-2). Returns <code>walletId</code> immediately, <code>complianceState: PENDING</code>.</td></tr>
+        <tr><td>2</td><td><span class="tag tag-webhook">Webhook</span> <code>externalEntities</code></td><td>Async decision: <code>ACCEPTED</code> (wallet usable) or <code>REJECTED</code> (permanent — resubmit as a new entity; there is no edit/delete).</td></tr>
+        <tr><td>3</td><td><span class="tag tag-get">GET</span> <code>/v1/externalEntities/{walletId}</code></td><td>Fallback poll if the webhook is delayed or missed.</td></tr>
+        <tr><td>4</td><td><span class="tag tag-get">GET</span> <code>/v1/externalEntities?businessUniqueIdentifier=…&amp;identifierIssuingCountryCode=…</code></td><td>409-recovery lookup; both params required together.</td></tr>
+      </table>
+      <p>Persist <code>walletId</code> as the entity-scoped primary key in your database against your internal <code>ClientCompanyId</code>. Every subsequent call — wires, deposit addresses, transfers, payouts, balances — is scoped by this <code>walletId</code>.</p>
+    </section>
+
+    <section id="fiat">
+      <h2>5. FIAT Transactions — USD &amp; EUR</h2>
+      <h3>5.1 Linking &amp; wire instructions</h3>
+      <pre>POST /v1/businessAccount/banks/wires
+{ idempotencyKey, accountNumber, routingNumber, billingDetails{...}, bankAddress{...} }
+→ { id, trackingRef, status }
+
+GET /v1/businessAccount/banks/wires/{id}/instructions?walletId={entity walletId}
+→ { trackingRef, beneficiary{...}, beneficiaryBank{ name, routingNumber, accountNumber, currency, country } }</pre>
+      <p>The <code>trackingRef</code> returned when <code>walletId</code> is supplied is scoped to that entity — a wire quoting it is routed by Circle directly to the entity's wallet, not your Distributor's primary wallet.</p>
+      <h3>5.2 Deposit (funding)</h3>
+      <p>Client's bank sends USD wire or EUR wire/SEPA quoting the <code>trackingRef</code>. Circle settles and auto-mints USDC (USD) or EURC (EUR) into the entity wallet. A <code>deposits</code> webhook fires with <code>destination.id = walletId</code> and <code>status: complete</code>.</p>
+      <h3>5.3 Withdrawal / redemption</h3>
+      <pre>POST /v1/businessAccount/payouts
+{ idempotencyKey, source:{type:"wallet", id: walletId}, destination:{type:"wire"|"sepa"|"sepa_instant", id: bankAccountId}, amount:{amount, currency} }
+→ { id, sourceWalletId, destination, amount, toAmount, fees, status, trackingRef, riskEvaluation, return }</pre>
+      <p><code>toAmount</code> is the net amount actually wired after Circle's fee; a later bank-side return populates the <code>return</code> object and re-credits the source wallet — monitor the <code>payouts</code> webhook for this after the initial <code>complete</code> status, not just once.</p>
+    </section>
+
+    <section id="onchain">
+      <h2>6. On-Chain Transactions — USDC &amp; EURC</h2>
+      <table>
+        <tr><th>Currency</th><th>API code</th><th>Chains (subset)</th></tr>
+        <tr><td>USDC</td><td><code>USD</code></td><td>Ethereum, Base, Arbitrum, Avalanche, Polygon PoS, Solana, Stellar, Algorand, Aptos, Sui, XRPL, Noble, Hedera, OP Mainnet, World Chain, and more</td></tr>
+        <tr><td>EURC</td><td><code>EUR</code></td><td>Ethereum, Base, Avalanche, Solana, Stellar — a materially narrower set than USDC</td></tr>
+      </table>
+      <p><strong>Receiving:</strong> <code>POST /v1/businessAccount/wallets/addresses/deposit</code> (body: <code>walletId</code>, <code>currency</code>, <code>chain</code>) — one address per (entity, chain); reuse it for every future deposit. Verify settlement via <code>GET /v1/businessAccount/transfers?walletId=…</code>, which reaches <code>complete</code> after the chain's required confirmation count.</p>
+      <p><strong>Sending:</strong> two-stage — <code>POST /v1/businessAccount/wallets/addresses/recipient</code> registers the destination (pending Mint Console admin approval), then <code>POST /v1/businessAccount/transfers</code> with <code>source.id = walletId</code> and <code>destination:{type:"verified_blockchain", addressId}</code>. <strong>Always set <code>source</code> explicitly</strong> — omitting it defaults to your master/main wallet, not the entity's.</p>
+      <p><strong>Travel Rule:</strong> transfers ≥ USD 3,000 on in-scope chains require originator identity. Business-account transfers use your on-file company identity automatically; third-party crypto payouts via <code>POST /v1/payouts</code> require explicit <code>source.identities[]</code>.</p>
+    </section>
+
+    <section id="settlement">
+      <h2>7. End-to-End Settlement to Legacy FundAccounts</h2>
+      <table>
+        <tr><th>#</th><th>Event</th><th>Detail</th></tr>
+        <tr><td>1</td><td>Client sends funds</td><td>USD/EUR wire quoting <code>trackingRef</code>, or USDC/EURC to the entity's chain-specific deposit address.</td></tr>
+        <tr><td>2</td><td>Circle settles</td><td>Fiat auto-mints the stablecoin; on-chain confirms after required blocks. Entity <code>walletId</code> balance increases.</td></tr>
+        <tr><td>3</td><td>Webhook</td><td><code>deposits</code> / <code>transfers</code> topic (v1 SNS) — verify signature, dedup by SNS <code>MessageId</code>.</td></tr>
+        <tr><td>4</td><td>Verify</td><td>Cross-check amount/currency/<code>trackingRef</code> (fiat) or <code>transactionHash</code>/chain (on-chain) against the expected client.</td></tr>
+        <tr><td>5</td><td>Load FundAccount</td><td>Legacy .NET app credits the client's FundAccount for the verified, settled amount.</td></tr>
+        <tr><td>6</td><td>Move value to Main</td><td>Per the Section 3 correction: redeem to your own bank (fiat exit) <em>or</em> on-chain transfer to your own verified address (stablecoin, fee-bearing) — there is no free off-chain sweep for this product.</td></tr>
+        <tr><td>7</td><td>Reconcile</td><td>Daily job cross-checks Circle's deposit/transfer/payout lists per <code>walletId</code> against FundAccount credits; self-heal and alert on drift; CAMT.053 statements as an independent source.</td></tr>
+      </table>
+    </section>
+
+    <section id="webhooks">
+      <h2>8. Webhooks</h2>
+      <p>v1 (Amazon SNS) scheme — subscribe via <code>POST /v1/notifications/subscriptions</code>, complete the SNS <code>SubscriptionConfirmation</code> handshake, then verify every delivery by SNS signature (not IP allow-listing, since v1 traffic originates from AWS SNS IP ranges). Topics relevant here: <code>externalEntities</code> (compliance decisions), <code>deposits</code> (fiat + on-chain funding), <code>transfers</code> (outbound/on-chain status), <code>payouts</code> (redemption + returns), <code>addressBookRecipients</code> (recipient approval). Sandbox allows up to 3 active subscriptions; production allows 1. The <code>customAttributes</code> field is output-only — Circle sets <code>{"clientId": "…"}</code> on every notification; it is never a request parameter.</p>
+    </section>
+
+    <section id="scenarios">
+      <h2>9. Business Scenarios</h2>
+      <div class="card"><h3>A. New client onboarding</h3><p>Create the external entity, wait for (or poll for) <code>ACCEPTED</code>, persist <code>walletId</code> against the client's internal record. A <code>REJECTED</code> entity is permanent; the remedy is a fresh <code>POST /v1/externalEntities</code> with corrected details.</p></div>
+      <div class="card"><h3>B. USD wire funding</h3><p>Link bank → get entity-scoped instructions and <code>trackingRef</code> → client wires → Circle mints USDC → <code>deposits</code> webhook → verify → credit FundAccount → move value to Main (Section 3).</p></div>
+      <div class="card"><h3>C. EUR / SEPA funding</h3><p>Identical mechanics using the EUR currency code; Circle routes over SEPA or another regional rail where supported; credited stablecoin is EURC. Track USD and EUR as separate ledgers per client, matching Circle's per-currency wallet model.</p></div>
+      <div class="card"><h3>D. On-chain USDC deposit</h3><p>Share the entity's chain-specific deposit address; client sends USDC on that exact chain; settles after required confirmations; same verify → credit → move-to-Main sequence. Warn clients explicitly: wrong-chain or unsupported-token sends are unrecoverable.</p></div>
+      <div class="card"><h3>E. On-chain EURC deposit</h3><p>Same as D, constrained to EURC's five supported chains. Outside that list, redirect the client to a EUR wire deposit instead.</p></div>
+      <div class="card"><h3>F. Client withdraws on-chain</h3><p>Register + get Mint-Console approval for the destination address, then transfer with explicit <code>source.id = walletId</code>. Apply Travel Rule identity fields for third-party payouts ≥ USD 3,000.</p></div>
+      <div class="card"><h3>G. Client withdraws to fiat</h3><p>Check available balance, then <code>POST /v1/businessAccount/payouts</code>. Continue monitoring after <code>complete</code> — bank-side returns re-credit the wallet via the <code>return</code> object and must be re-reconciled against the FundAccount.</p></div>
+      <div class="card"><h3>H. Settlement / Main-position accounting</h3><p>Per the corrected mechanism (Section 3), every verified inbound settlement triggers either a redemption-to-own-bank or an on-chain sweep to a company-controlled address — never an assumed free internal transfer.</p></div>
+      <div class="card"><h3>I. Missed webhook</h3><p>Reconciliation job lists recent deposits per <code>walletId</code>, finds a settled item with no FundAccount credit, self-heals and flags for audit.</p></div>
+      <div class="card"><h3>J. KYB rejection</h3><p><code>complianceState: REJECTED</code> is permanent for that entity; submit a new <code>POST /v1/externalEntities</code> with corrected data under the same client relationship.</p></div>
+    </section>
+
+    <section id="endpoints">
+      <h2>10. Endpoint Reference (Confirmed Live)</h2>
+      <table>
+        <tr><th>Operation</th><th>Method &amp; path</th></tr>
+        <tr><td>Create external entity</td><td><span class="tag tag-post">POST</span> /v1/externalEntities</td></tr>
+        <tr><td>Get / list external entities</td><td><span class="tag tag-get">GET</span> /v1/externalEntities[/{walletId}]</td></tr>
+        <tr><td>Link wire bank account</td><td><span class="tag tag-post">POST</span> /v1/businessAccount/banks/wires</td></tr>
+        <tr><td>Get wire instructions</td><td><span class="tag tag-get">GET</span> /v1/businessAccount/banks/wires/{id}/instructions?walletId=…</td></tr>
+        <tr><td>List deposits</td><td><span class="tag tag-get">GET</span> /v1/businessAccount/deposits?walletId=…</td></tr>
+        <tr><td>Create / get deposit address</td><td><span class="tag tag-post">POST</span> / <span class="tag tag-get">GET</span> /v1/businessAccount/wallets/addresses/deposit</td></tr>
+        <tr><td>Register recipient address</td><td><span class="tag tag-post">POST</span> /v1/businessAccount/wallets/addresses/recipient</td></tr>
+        <tr><td>Create transfer</td><td><span class="tag tag-post">POST</span> /v1/businessAccount/transfers</td></tr>
+        <tr><td>List / get transfers</td><td><span class="tag tag-get">GET</span> /v1/businessAccount/transfers[/{id}]?walletId=…</td></tr>
+        <tr><td>Create payout (redemption)</td><td><span class="tag tag-post">POST</span> /v1/businessAccount/payouts</td></tr>
+        <tr><td>List / get payouts</td><td><span class="tag tag-get">GET</span> /v1/businessAccount/payouts[/{id}]?sourceWalletId=…</td></tr>
+        <tr><td>Balances</td><td><span class="tag tag-get">GET</span> /v1/businessAccount/balances?walletId=…</td></tr>
+        <tr><td>Third-party crypto payout (Travel Rule)</td><td><span class="tag tag-post">POST</span> /v1/payouts</td></tr>
+        <tr><td>Webhook subscription (v1 / SNS)</td><td><span class="tag tag-post">POST</span> /v1/notifications/subscriptions</td></tr>
+      </table>
+    </section>
+
+    <section id="sources">
+      <h2>11. Sources</h2>
+      <a class="src-item" href="https://developers.circle.com/api-reference/circle-mint/institutional/get-all-external-entities">Get all external entities <span>developers.circle.com/api-reference/circle-mint/institutional/get-all-external-entities</span></a>
+      <a class="src-item" href="https://developers.circle.com/api-reference/circle-mint/account/create-business-transfer">Create a transfer — OpenAPI schema <span>developers.circle.com/api-reference/circle-mint/account/create-business-transfer</span></a>
+      <a class="src-item" href="https://developers.circle.com/api-reference/circle-mint/account/create-business-payout">Create a payout — OpenAPI schema <span>developers.circle.com/api-reference/circle-mint/account/create-business-payout</span></a>
+      <a class="src-item" href="https://developers.circle.com/api-reference/circle-mint/account/list-business-balances">List all balances <span>developers.circle.com/api-reference/circle-mint/account/list-business-balances</span></a>
+      <a class="src-item" href="https://developers.circle.com/api-reference/webhook-endpoints">Webhook endpoints setup (v1 / v2) <span>developers.circle.com/api-reference/webhook-endpoints</span></a>
+      <a class="src-item" href="https://developers.circle.com/circle-mint/howtos/deposit-fiat">How-to: Deposit fiat <span>developers.circle.com/circle-mint/howtos/deposit-fiat</span></a>
+      <a class="src-item" href="https://developers.circle.com/circle-mint/howtos/withdraw-fiat">How-to: Withdraw fiat <span>developers.circle.com/circle-mint/howtos/withdraw-fiat</span></a>
+      <a class="src-item" href="https://developers.circle.com/circle-mint/howtos/transfer-on-chain">How-to: Transfer USDC/EURC onchain <span>developers.circle.com/circle-mint/howtos/transfer-on-chain</span></a>
+      <a class="src-item" href="https://developers.circle.com/circle-mint/references/supported-chains-and-currencies">Supported chains and currencies <span>developers.circle.com/circle-mint/references/supported-chains-and-currencies</span></a>
+      <a class="src-item" href="https://developers.circle.com/digital-asset-accounts">Digital Asset Accounts overview <span>developers.circle.com/digital-asset-accounts</span></a>
+      <a class="src-item" href="https://developers.circle.com/digital-asset-accounts/concepts/account-structure">DAA — Account structure <span>developers.circle.com/digital-asset-accounts/concepts/account-structure</span></a>
+      <a class="src-item" href="https://developers.circle.com/api-reference">API Reference overview <span>developers.circle.com/api-reference</span></a>
+      <a class="src-item" href="https://developers.circle.com/llms.txt">Circle documentation index <span>developers.circle.com/llms.txt</span></a>
+      <div class="callout callout-note" style="margin-top:1.5rem;">
+        <span class="callout-icon">ℹ️</span>
+        <div><p>Numeric transaction limits, exact fee schedules, and the "payout must be to your own bank" rule are commercial/program-specific or undocumented in the public schema — confirm directly with your Circle account team before go-live.</p></div>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

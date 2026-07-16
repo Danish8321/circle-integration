@@ -1,0 +1,1068 @@
+{
+  "info": {
+    "_postman_id": "5ce03e5e-6dba-4573-b5f3-c24ab757c6a2",
+    "name": "Accounts API",
+    "description": "The Accounts API allows you to easily create and host digital wallets for your customers, and manage transfers of funds across accounts within the Circle platform.\n\n[Accounts API](https://developers.circle.com/circle-mint/docs/getting-started-with-the-circle-digital-dollar-accounts-api)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38686296"
+  },
+  "item": [
+    {
+      "name": "Wallets",
+      "item": [
+        {
+          "name": "Create a wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"description\": \"Treasury Wallet\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/wallets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wallets"
+              ]
+            },
+            "description": "Creates an end user wallet.\n\n#### Body Params\n\n**idempotencyKey** _string_ (REQUIRED)  \nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**description** _string_  \nA human-friendly, non-unique identifier for a wallet."
+          },
+          "response": [
+            {
+              "name": "Create a wallet",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"description\": \"Treasury Wallet\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/wallets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "wallets"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:34:07 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "155"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v6/wallets/1016945744"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "17c8ff6ed6db31335d0b03d568269e19"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "17c8ff6ed6db31335d0b03d568269e19"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847058dea80c07dd-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"walletId\": \"1016945744\",\n        \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n        \"type\": \"end_user_wallet\",\n        \"description\": \"Treasury Wallet\",\n        \"balances\": []\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all wallets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/wallets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wallets"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "esse sit",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "esse sit",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieves a list of a user's wallets."
+          },
+          "response": [
+            {
+              "name": "List all wallets",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/wallets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "wallets"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "esse sit",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "esse sit",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "5",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:33:29 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "322"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/wallets?pageSize=50&to=2024-01-17T17%3A33%3A28.993408424Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/wallets?pageSize=50&to=2024-01-17T17%3A33%3A28.993408424Z>; rel=\"self\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a9d1f2aded0cfd2d3afa9df38d907c79"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a9d1f2aded0cfd2d3afa9df38d907c79"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847057ef1df807dd-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"walletId\": \"1016884075\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"end_user_wallet\",\n            \"description\": \"Test wallet\",\n            \"balances\": [\n                {\n                    \"amount\": \"4.00\",\n                    \"currency\": \"USD\"\n                }\n            ]\n        },\n        {\n            \"walletId\": \"1010400470\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"end_user_wallet\",\n            \"description\": \"Test Wallet for Xapo\",\n            \"balances\": [\n                {\n                    \"amount\": \"1000.00\",\n                    \"currency\": \"USD\"\n                }\n            ]\n        },\n        {\n            \"walletId\": \"1001429912\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"end_user_wallet\",\n            \"description\": \"Min's\",\n            \"balances\": []\n        },\n        {\n            \"walletId\": \"1001429908\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"end_user_wallet\",\n            \"description\": \"Your payments end_user_wallet account\",\n            \"balances\": []\n        },\n        {\n            \"walletId\": \"1000927099\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"end_user_wallet\",\n            \"description\": \"Wallet for postman\",\n            \"balances\": []\n        },\n        {\n            \"walletId\": \"1000789094\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"end_user_wallet\",\n            \"description\": \"Your payments end_user_wallet account\",\n            \"balances\": []\n        },\n        {\n            \"walletId\": \"1000594146\",\n            \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n            \"type\": \"merchant\",\n            \"balances\": [\n                {\n                    \"amount\": \"0.123330811621508032\",\n                    \"currency\": \"ETH\"\n                },\n                {\n                    \"amount\": \"4824522942.77\",\n                    \"currency\": \"USD\"\n                }\n            ]\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/wallets/:walletId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "wallets",
+                ":walletId"
+              ],
+              "variable": [
+                {
+                  "key": "walletId",
+                  "value": "0123456789",
+                  "description": "(Required) Identifier for the wallet."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a wallet",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/wallets/1001429912",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "wallets",
+                    "1001429912"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:34:52 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "74587b34819a0a90449a36f626490263"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "74587b34819a0a90449a36f626490263"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847059fc3ef707dd-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"walletId\": \"1001429912\",\n        \"entityId\": \"dfee2397-f3d6-4676-8405-4dda7e1b5b0d\",\n        \"type\": \"end_user_wallet\",\n        \"description\": \"Min's\",\n        \"balances\": []\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create digital wallets (sub-accounts) and get information on their activity."
+    },
+    {
+      "name": "Transfers",
+      "item": [
+        {
+          "name": "Create a transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"source\": {\n    \"type\": \"wallet\",\n    \"id\": \"12345\"\n  },\n  \"destination\": {\n    \"type\": \"wallet\",\n    \"address\": \"54321\"\n  },\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "transfers"
+              ]
+            },
+            "description": "A transfer can be made from an existing funded wallet to another wallet. This transfer is internal-only, this call cannot be used for on-chain transfers.\n\n#### Body Params\n\n**idempotencyKey** _string_ (REQUIRED)  \nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**source** _object_ (REQUIRED)\n\n- **type** _string_ (REQUIRED)\n- **id** _string_ (REQUIRED)  \n    The id of the wallet.\n- **identities** _array_\n    \n\n**destination** (REQUIRED)  \nOption 1\n\n- **type** _string_ (REQUIRED)\n- **address** _string_ (REQUIRED)  \n    The blockchain address.\n- **addressTag** _string_  \n    The secondary identifier for a blockchain address. An example of this is the memo field on the Stellar network, which can be text, id, or hash format.\n- **chain** _string_ (REQUIRED)  \n    A blockchain that a given currency is available on.\n    \n\nOption 2\n\n- **type** _string_ (REQUIRED)\n- **id** _string_ (REQUIRED)  \n    The id of the wallet.\n    \n\n**amount** _object_ (REQUIRED)\n\n- **amount** _string_ (REQUIRED)  \n    Magnitude of the amount, in units of the currency, with a `.`.\n- **currency** _string_ (REQUIRED)  \n    Currency code for the amount."
+          },
+          "response": [
+            {
+              "name": "Create a transfer",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"source\": {\n    \"type\": \"wallet\",\n    \"id\": \"1000594146\"\n  },\n  \"destination\": {\n    \"type\": \"wallet\",\n    \"id\": \"1001429912\"\n  },\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "transfers"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:52:22 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "252"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v6/transfers/06e24b32-e23a-4572-85c5-a275887fce60"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "1d6e534e50e7f33a7fc5e698e50fedc5"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "1d6e534e50e7f33a7fc5e698e50fedc5"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84707399daac2d1e-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"06e24b32-e23a-4572-85c5-a275887fce60\",\n        \"source\": {\n            \"type\": \"wallet\",\n            \"id\": \"1000594146\"\n        },\n        \"destination\": {\n            \"type\": \"wallet\",\n            \"id\": \"1001429912\"\n        },\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"status\": \"pending\",\n        \"createDate\": \"2024-01-17T17:52:22.185Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/transfers?pageSize=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "walletId",
+                  "value": "12345",
+                  "description": "Unique identifier for the source or destination wallet of transfers, if any. May not be used in conjunction with destinationWalletId or sourceWalletId. Useful for fetching all transfers related to a wallet.",
+                  "disabled": true
+                },
+                {
+                  "key": "sourceWalletId",
+                  "value": "12345",
+                  "description": "Unique identifier for the source wallet of transfers, if any.",
+                  "disabled": true
+                },
+                {
+                  "key": "destinationWalletId",
+                  "value": "12345",
+                  "description": "Unique identifier for the destination wallet of transfers, if any.",
+                  "disabled": true
+                },
+                {
+                  "key": "returnIdentities",
+                  "value": "false",
+                  "description": "Specify if you would like to see identities in the response. Restricts maximum returned items to 5. By default returnIdentities is false, resulting in the response not returning `data.source.identities`.",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "esse sit",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "esse sit",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "2",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n"
+                }
+              ]
+            },
+            "description": "Searches for transfers involving the provided wallets. If no wallet ids are provided, searches all wallets associated with your Circle API account. If the date parameters are omitted, returns the most recent transfers. This endpoint returns up to 50 transfers in descending chronological order or pageSize, if provided."
+          },
+          "response": [
+            {
+              "name": "List all transfers",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/transfers?pageSize=2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "transfers"
+                  ],
+                  "query": [
+                    {
+                      "key": "walletId",
+                      "value": "12345",
+                      "description": "Unique identifier for the source or destination wallet of transfers, if any. May not be used in conjunction with destinationWalletId or sourceWalletId. Useful for fetching all transfers related to a wallet.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sourceWalletId",
+                      "value": "12345",
+                      "description": "Unique identifier for the source wallet of transfers, if any.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "destinationWalletId",
+                      "value": "12345",
+                      "description": "Unique identifier for the destination wallet of transfers, if any.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "returnIdentities",
+                      "value": "false",
+                      "description": "Specify if you would like to see identities in the response. Restricts maximum returned items to 5. By default returnIdentities is false, resulting in the response not returning `data.source.identities`.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "esse sit",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "esse sit",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "2",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:53:04 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "358"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/transfers?pageSize=2&to=2024-01-17T17%3A53%3A04.682409406Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/transfers?pageSize=2&to=2024-01-17T17%3A53%3A04.682409406Z>; rel=\"self\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/transfers?pageSize=2&to=2024-01-17T17%3A53%3A04.682409406Z&pageAfter=bb4bc9a5-d01c-4539-97cf-d58009d8e576>; rel=\"next\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "60c1c1a17791201c851d5a331f1542f1"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "60c1c1a17791201c851d5a331f1542f1"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847074a419b82d1e-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"06e24b32-e23a-4572-85c5-a275887fce60\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1000594146\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1001429912\"\n            },\n            \"amount\": {\n                \"amount\": \"3.14\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2024-01-17T17:52:22.185Z\"\n        },\n        {\n            \"id\": \"bb4bc9a5-d01c-4539-97cf-d58009d8e576\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1000594146\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x35ced7a9a8d31d68ad149049ccda3a6d832a2ef8\",\n                \"chain\": \"ARB\"\n            },\n            \"amount\": {\n                \"amount\": \"100.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x75ed43d91ad693a79e8d18105f491391e92418d45ad3bb8c0ea08e2783906a81\",\n            \"status\": \"complete\",\n            \"createDate\": \"2024-01-11T19:10:53.002Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/transfers/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "transfers",
+                ":id"
+              ],
+              "query": [
+                {
+                  "key": "returnIdentities",
+                  "value": "false",
+                  "description": "Specify if you would like to see identities in the response. Restricts maximum returned items to 5. By default returnIdentities is false, resulting in the response not returning `data.source.identities`.",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "06e24b32-e23a-4572-85c5-a275887fce60",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a transfer",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/transfers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "transfers",
+                    ":id"
+                  ],
+                  "query": [
+                    {
+                      "key": "returnIdentities",
+                      "value": "false",
+                      "description": "Specify if you would like to see identities in the response. Restricts maximum returned items to 5. By default returnIdentities is false, resulting in the response not returning `data.source.identities`.",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "06e24b32-e23a-4572-85c5-a275887fce60",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 17:53:49 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ce1e735f75c2b1b1ccca3a982b31889f"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ce1e735f75c2b1b1ccca3a982b31889f"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "847075be9a972d1e-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"06e24b32-e23a-4572-85c5-a275887fce60\",\n        \"source\": {\n            \"type\": \"wallet\",\n            \"id\": \"1000594146\"\n        },\n        \"destination\": {\n            \"type\": \"wallet\",\n            \"id\": \"1001429912\"\n        },\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"status\": \"complete\",\n        \"createDate\": \"2024-01-17T17:52:22.185Z\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create transfers to another wallet (sub-account), and get information on those transfers."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "<your-api-key-here>",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api-sandbox.circle.com"
+    }
+  ]
+}

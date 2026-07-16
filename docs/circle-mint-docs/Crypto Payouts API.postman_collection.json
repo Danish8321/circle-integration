@@ -1,0 +1,1679 @@
+{
+  "info": {
+    "_postman_id": "53206224-cf33-4bbd-8e8a-09d5a780795a",
+    "name": "Crypto Payouts API",
+    "description": "The Circle Crypto Payouts API allows you to programmatically make fast, global payouts to your customers, vendors, and suppliers. Make payouts on supported blockchains.\n\n[Crypto Payouts API](https://developers.circle.com/circle-mint/docs/crypto-payouts)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38686296"
+  },
+  "item": [
+    {
+      "name": "Payouts",
+      "item": [
+        {
+          "name": "Create a payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"type\": \"address_book\",\n    \"id\": \"b8627ae8-732b-4d25-b947-1df8f4007a29\"\n  },\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"BTC\"\n  },\n  \"source\": {\n    \"type\": \"wallet\",\n    \"id\": \"12345\",\n    \"identities\": [\n      {\n        \"type\": \"business\",\n        \"name\": \"Satoshi Nakamoto\",\n        \"addresses\": [\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          },\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          }\n        ]\n      },\n      {\n        \"type\": \"individual\",\n        \"name\": \"Satoshi Nakamoto\",\n        \"addresses\": [\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          },\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          }\n        ]\n      }\n    ]\n  },\n  \"toAmount\": {\n    \"currency\": \"ETH\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payouts"
+              ]
+            },
+            "description": "\nCreate a crypto payout.  \n\nThe following table includes the supported pairs of amount.currency and toAmount.currency for address book payouts:\n\n| amount.currency  | toAmount.currency |\n| ---------------- | ------------      |\n| USD              | USD               |\n| USD              | BTC               |\n| USD              | ETH               |\n| USD              | MTC               |\n| EUR              | EUR               |\n| BTC              | USD               |\n| BTC              | BTC               |\n| ETH              | USD               |\n| ETH              | ETH               |\n\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**source** *object*\nA source wallet location.\n\n  * **type** *string* (REQUIRED)\n\n  * **id** *string* (REQUIRED)\n  The id of the wallet.\n\n  * **identities** *array*\n\n**destination** *object* (REQUIRED)\nThe destination.\n\n  * **type** *string* (REQUIRED)\n  The destination type.\n\n  * **id** *string* (REQUIRED)\n  Unique system generated identifier for the entity.\n\n**amount** *object* (REQUIRED)\n\n  * **amount** *string* (REQUIRED)\n  Magnitude of the amount, in units of the currency, with a `.`.\n\n  * **currency** *string* (REQUIRED)\n  Currency code for the amount.\n\n**toAmount** *object*\n\n  * **currency** *string* (REQUIRED)\n  Currency code for the amount.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a payout",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"type\": \"address_book\",\n    \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n  },\n  \"amount\": {\n    \"amount\": \"2\",\n    \"currency\": \"USD\"\n  },\n  \"source\": {\n    \"type\": \"wallet\",\n    \"id\": \"1000594146\"\n  },\n  \"toAmount\": {\n    \"currency\": \"ETH\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/payouts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "payouts"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:40:41 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "345"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v1/payouts/6e2e451e-a3f9-4856-a8e0-d60a990c754e"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "0ee08a139e8f0dcd279e0b6e5b05c799"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471c20e9a3a9c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"6e2e451e-a3f9-4856-a8e0-d60a990c754e\",\n        \"destination\": {\n            \"type\": \"address_book\",\n            \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n        },\n        \"amount\": {\n            \"amount\": \"2.00\",\n            \"currency\": \"USD\"\n        },\n        \"toAmount\": {\n            \"currency\": \"ETH\"\n        },\n        \"createDate\": \"2024-01-17T21:40:41.425184Z\",\n        \"updateDate\": \"2024-01-17T21:40:41.425184Z\",\n        \"sourceWalletId\": \"1000594146\",\n        \"status\": \"pending\"\n    }\n}"
+            },
+            {
+              "name": "Create a payout with identities obj",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"type\": \"address_book\",\n    \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n  },\n  \"amount\": {\n    \"amount\": \"3001\",\n    \"currency\": \"USD\"\n  },\n  \"source\": {\n    \"type\": \"wallet\",\n    \"id\": \"1000594146\",\n    \"identities\": [\n      {\n        \"type\": \"business\",\n        \"name\": \"Satoshi Nakamoto\",\n        \"addresses\": [\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          },\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          }\n        ]\n      },\n      {\n        \"type\": \"individual\",\n        \"name\": \"Satoshi Nakamoto\",\n        \"addresses\": [\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          },\n          {\n            \"line1\": \"100 Money Street\",\n            \"city\": \"Boston\",\n            \"district\": \"MA\",\n            \"postalCode\": \"01234\",\n            \"country\": \"US\",\n            \"line2\": \"Suite 1\"\n          }\n        ]\n      }\n    ]\n  },\n  \"toAmount\": {\n    \"currency\": \"ETH\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/payouts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "payouts"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:39:51 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "348"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v1/payouts/154e9724-2f07-42d7-87a6-7afbac92d06e"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "12d85b5ffae961abcdafa9e486b43386"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471c0d62ddc9c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"154e9724-2f07-42d7-87a6-7afbac92d06e\",\n        \"destination\": {\n            \"type\": \"address_book\",\n            \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n        },\n        \"amount\": {\n            \"amount\": \"3001.00\",\n            \"currency\": \"USD\"\n        },\n        \"toAmount\": {\n            \"currency\": \"ETH\"\n        },\n        \"createDate\": \"2024-01-17T21:39:51.687286Z\",\n        \"updateDate\": \"2024-01-17T21:39:51.687286Z\",\n        \"sourceWalletId\": \"1000594146\",\n        \"status\": \"pending\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payouts"
+              ],
+              "query": [
+                {
+                  "key": "source",
+                  "value": "1000565227",
+                  "description": "Identifier for the source wallet. Filters the fetched payout results to only be from a specific source wallet. If not provided, payouts from all wallets will be returned.",
+                  "disabled": true
+                },
+                {
+                  "key": "destination",
+                  "value": "54c1cbab-c419-450f-ad23-906fa03af7f0",
+                  "description": "Universally unique identifier (UUID v4) for the destination. Filters the fetched payout results made to a specific destination. If not provided, payouts to all destinations will be returned.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "address_book",
+                  "description": "Destination type. Filters the results to fetch all payouts made to a specified destination type. This query parameter can be passed multiple times to fetch results matching multiple destination types. The address_book destination type cannot be combined with other types.",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "failed",
+                  "description": "Queries items with the specified status. Matches any status if unspecified.",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "complete",
+                  "description": "Queries items with the specified status. Matches any status if unspecified.",
+                  "disabled": true
+                },
+                {
+                  "key": "sourceCurrency",
+                  "value": "USD",
+                  "description": "Queries items with the specified source currency `amount.currency`. Matches any source currency if unspecified.",
+                  "disabled": true
+                },
+                {
+                  "key": "destinationCurrency",
+                  "value": "USD",
+                  "description": "Queries items with the specified destination currency `toAmount.currency`. Matches any destination currency if unspecified.",
+                  "disabled": true
+                },
+                {
+                  "key": "chain",
+                  "value": "ARB",
+                  "description": "Queries items with the specified chain. Matches any chain if unspecified",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "cupidatat sint",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "cupidatat sint",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all payouts",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/payouts?type=address_book&pageSize=2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "payouts"
+                  ],
+                  "query": [
+                    {
+                      "key": "source",
+                      "value": "1000565227",
+                      "description": "Identifier for the source wallet. Filters the fetched payout results to only be from a specific source wallet. If not provided, payouts from all wallets will be returned.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "destination",
+                      "value": "54c1cbab-c419-450f-ad23-906fa03af7f0",
+                      "description": "Universally unique identifier (UUID v4) for the destination. Filters the fetched payout results made to a specific destination. If not provided, payouts to all destinations will be returned.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "address_book",
+                      "description": "Destination type. Filters the results to fetch all payouts made to a specified destination type. This query parameter can be passed multiple times to fetch results matching multiple destination types. The address_book destination type cannot be combined with other types."
+                    },
+                    {
+                      "key": "status",
+                      "value": "failed",
+                      "description": "Queries items with the specified status. Matches any status if unspecified.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "complete",
+                      "description": "Queries items with the specified status. Matches any status if unspecified.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sourceCurrency",
+                      "value": "USD",
+                      "description": "Queries items with the specified source currency `amount.currency`. Matches any source currency if unspecified.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "destinationCurrency",
+                      "value": "USD",
+                      "description": "Queries items with the specified destination currency `toAmount.currency`. Matches any destination currency if unspecified.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "chain",
+                      "value": "ARB",
+                      "description": "Queries items with the specified chain. Matches any chain if unspecified",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "cupidatat sint",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "cupidatat sint",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "2",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:46:17 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/payouts?type=address_book&to=2024-01-17T21:46:17.300699105Z&pageSize=2>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/payouts?type=address_book&to=2024-01-17T21:46:17.300699105Z&pageSize=2>; rel=\"self\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/payouts?type=address_book&to=2024-01-17T21:46:17.300699105Z&pageSize=2&pageAfter=154e9724-2f07-42d7-87a6-7afbac92d06e>; rel=\"next\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "fc008504959ce6f24957f14abefd4f7e"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471ca41dc8f9c7f-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"6e2e451e-a3f9-4856-a8e0-d60a990c754e\",\n            \"destination\": {\n                \"type\": \"address_book\",\n                \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n            },\n            \"amount\": {\n                \"amount\": \"2.00\",\n                \"currency\": \"USD\"\n            },\n            \"toAmount\": {\n                \"amount\": \"0.001072542798315455\",\n                \"currency\": \"ETH\"\n            },\n            \"createDate\": \"2024-01-17T21:40:41.425184Z\",\n            \"updateDate\": \"2024-01-17T21:43:54.407079Z\",\n            \"sourceWalletId\": \"1000594146\",\n            \"fees\": {\n                \"amount\": \"0.01\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\"\n        },\n        {\n            \"id\": \"154e9724-2f07-42d7-87a6-7afbac92d06e\",\n            \"destination\": {\n                \"type\": \"address_book\",\n                \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n            },\n            \"amount\": {\n                \"amount\": \"3001.00\",\n                \"currency\": \"USD\"\n            },\n            \"toAmount\": {\n                \"currency\": \"ETH\"\n            },\n            \"createDate\": \"2024-01-17T21:39:51.687286Z\",\n            \"updateDate\": \"2024-01-17T21:39:57.178871Z\",\n            \"sourceWalletId\": \"1000594146\",\n            \"status\": \"pending\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a payout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payouts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "payouts",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a payout",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/payouts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "payouts",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "6e2e451e-a3f9-4856-a8e0-d60a990c754e",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:41:43 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "25f806b063fed716734c823d3bff4a40"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471c3935e989c7f-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"6e2e451e-a3f9-4856-a8e0-d60a990c754e\",\n        \"destination\": {\n            \"type\": \"address_book\",\n            \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\"\n        },\n        \"amount\": {\n            \"amount\": \"2.00\",\n            \"currency\": \"USD\"\n        },\n        \"toAmount\": {\n            \"amount\": \"0.001072542798315455\",\n            \"currency\": \"ETH\"\n        },\n        \"createDate\": \"2024-01-17T21:40:41.425184Z\",\n        \"updateDate\": \"2024-01-17T21:40:43.903187Z\",\n        \"sourceWalletId\": \"1000594146\",\n        \"status\": \"pending\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create and get information on address book payouts."
+    },
+    {
+      "name": "Crypto Address Book",
+      "item": [
+        {
+          "name": "Create a recipient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"chain\": \"ETH\",\n  \"address\": \"0x8381470ED67C3802402dbbFa0058E8871F017A6F\",\n  \"metadata\": {\n    \"nickname\": \"sample nickname\",\n    \"email\": \"satoshi@circle.com\",\n    \"bns\": \"sample.circle\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/addressBook/recipients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "addressBook",
+                "recipients"
+              ]
+            },
+            "description": "\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**chain** *string* (REQUIRED)\nA blockchain that a given currency is available on.\n\n**address** *string* (REQUIRED)\nAn alphanumeric string representing a blockchain address. Will be in different formats for different chains. It is important to preserve the exact formatting and capitalization of the address.\n\n**addressTag** *string*\nThe secondary identifier for a blockchain address. An example of this is the memo field on the Stellar network, which can be text, id, or hash format.\n\n**metadata** *object* (REQUIRED)\n\n  * **nickname** *string*\n  Nickname related to the address.\n\n  * **email** *string*\n  Email of the user.\n\n  * **bns** *string*\n  Blockchain Name Service (e.g. ENS) domain for the address.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a recipient",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"chain\": \"ETH\",\n  \"address\": \"0x8381470ED67C3802402dbbFa0058E8871F017A6F\",\n  \"metadata\": {\n    \"nickname\": \"sample nickname\",\n    \"email\": \"satoshi@circle.com\",\n    \"bns\": \"sample.circle\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/addressBook/recipients",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "addressBook",
+                    "recipients"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:47:19 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "321"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v6/addressBook/recipients"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "01063835b99e2d8c138846c354189e6e"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "01063835b99e2d8c138846c354189e6e"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471cbc7eb669c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"a2e34bed-5490-5388-8d4c-5388c7674815\",\n        \"chain\": \"ETH\",\n        \"address\": \"0x8381470ed67c3802402dbbfa0058e8871f017a6f\",\n        \"metadata\": {\n            \"nickname\": \"sample nickname\",\n            \"email\": \"satoshi@circle.com\",\n            \"bns\": \"sample.circle\"\n        },\n        \"status\": \"pending\",\n        \"createDate\": \"2024-01-17T21:47:19.805349Z\",\n        \"updateDate\": \"2024-01-17T21:47:19.805349Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all recipients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/addressBook/recipients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "addressBook",
+                "recipients"
+              ],
+              "query": [
+                {
+                  "key": "address",
+                  "value": "cupidatat sint",
+                  "description": "Filters results to fetch only address book recipients with the provided address.",
+                  "disabled": true
+                },
+                {
+                  "key": "chain",
+                  "value": "cupidatat sint",
+                  "description": "Filters results to fetch only address book recipients with the provided chain.",
+                  "disabled": true
+                },
+                {
+                  "key": "email",
+                  "value": "cupidatat sint",
+                  "description": "Filters results to fetch only address book recipients that have the provided email in their metadata.",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "Filters results to fetch only address book recipients that have the provided status.",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "cupidatat sint",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "cupidatat sint",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all recipients",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/addressBook/recipients?pageSize=1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "addressBook",
+                    "recipients"
+                  ],
+                  "query": [
+                    {
+                      "key": "address",
+                      "value": "cupidatat sint",
+                      "description": "Filters results to fetch only address book recipients with the provided address.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "chain",
+                      "value": "cupidatat sint",
+                      "description": "Filters results to fetch only address book recipients with the provided chain.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "email",
+                      "value": "cupidatat sint",
+                      "description": "Filters results to fetch only address book recipients that have the provided email in their metadata.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "pending",
+                      "description": "Filters results to fetch only address book recipients that have the provided status.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "cupidatat sint",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "cupidatat sint",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "1",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:38:57 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "207"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/addressBook/recipients?pageSize=1&to=2024-01-17T21%3A38%3A57.604508768Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/addressBook/recipients?pageSize=1&to=2024-01-17T21%3A38%3A57.604508768Z>; rel=\"self\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/addressBook/recipients?pageSize=1&to=2024-01-17T21%3A38%3A57.604508768Z&pageAfter=2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259>; rel=\"next\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "dcf8945654dafa50cb3eef083260116f"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "dcf8945654dafa50cb3eef083260116f"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471bf85b8a99c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\",\n            \"chain\": \"ETH\",\n            \"address\": \"0x8381470ed67c3802402dbbfa0058e8871f017a6f\",\n            \"metadata\": {\n                \"nickname\": \"Min's Test\"\n            },\n            \"status\": \"active\",\n            \"createDate\": \"2023-08-17T13:00:14.579175Z\",\n            \"updateDate\": \"2023-08-17T13:00:14.579175Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a recipient",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/addressBook/recipients/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "addressBook",
+                "recipients",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a recipient",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/addressBook/recipients/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "addressBook",
+                    "recipients",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:47:38 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "208"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "67b91f66431cd8f5d800724d54713f6d"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "67b91f66431cd8f5d800724d54713f6d"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471cc3fb98e9c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\",\n        \"chain\": \"ETH\",\n        \"address\": \"0x8381470ed67c3802402dbbfa0058e8871f017a6f\",\n        \"metadata\": {\n            \"nickname\": \"Min's Test\"\n        },\n        \"status\": \"active\",\n        \"createDate\": \"2023-08-17T13:00:14.579175Z\",\n        \"updateDate\": \"2023-08-17T13:00:15.704097Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Modify a recipient",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metadata\": {\n    \"nickname\": \"sample nickname\",\n    \"email\": \"satoshi@circle.com\",\n    \"bns\": \"sample.circle\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/addressBook/recipients/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "addressBook",
+                "recipients",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            },
+            "description": "\n#### Body Params\n\n**metadata** *object*\n\n  * **nickname** *string*\n  Nickname related to the address.\n\n  * **email** *string*\n  Email of the user.\n\n  * **bns** *string*\n  Blockchain Name Service (e.g. ENS) domain for the address.\n\n"
+          },
+          "response": [
+            {
+              "name": "Modify a recipient",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"metadata\": {\n    \"nickname\": \"sample nickname test\",\n    \"email\": \"satoshi@circle.com\",\n    \"bns\": \"sample.circle\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/addressBook/recipients/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "addressBook",
+                    "recipients",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:48:06 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "6c9d567d4fcc1c9b77dc8eca8a3701da"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "6c9d567d4fcc1c9b77dc8eca8a3701da"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471ccea79679c7f-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259\",\n        \"chain\": \"ETH\",\n        \"address\": \"0x8381470ed67c3802402dbbfa0058e8871f017a6f\",\n        \"metadata\": {\n            \"nickname\": \"sample nickname test\",\n            \"email\": \"satoshi@circle.com\",\n            \"bns\": \"sample.circle\"\n        },\n        \"status\": \"pending\",\n        \"createDate\": \"2023-08-17T13:00:14.579175Z\",\n        \"updateDate\": \"2024-01-17T21:48:06.206438Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete a recipient",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/addressBook/recipients/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "addressBook",
+                "recipients",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "b3d9d2d5-4c12-4946-a09d-953e82fae2b0",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Delete a recipient",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/addressBook/recipients/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "addressBook",
+                    "recipients",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "2b9f9ed9-ac9d-5f6e-954b-a29e03ee3259",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "plain",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:48:20 GMT"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "0"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "183a5ed1ee767ddc5012694a0adfd902"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "183a5ed1ee767ddc5012694a0adfd902"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471cd421ec89c7f-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": null
+            }
+          ]
+        }
+      ],
+      "description": "Manage blockchain addresses with metadata."
+    },
+    {
+      "name": "Crypto Exchange Rates",
+      "item": [
+        {
+          "name": "Get a exchange rate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/exchange/rates/:trading-pair",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "exchange",
+                "rates",
+                ":trading-pair"
+              ],
+              "variable": [
+                {
+                  "key": "trading-pair",
+                  "value": "BTC-USD",
+                  "description": "(Required) "
+                }
+              ]
+            },
+            "description": "Fetch the current rates for the specified trading pair. The trading pair is defined by a base currency followed by a quote currency. The response contains buy and sell rates denominated in the quote currency. **Exchange rate is an estimate only and is subject to change by the time you submit the actual request.**"
+          },
+          "response": [
+            {
+              "name": "Get a exchange rate",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/exchange/rates/:trading-pair",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "exchange",
+                    "rates",
+                    ":trading-pair"
+                  ],
+                  "variable": [
+                    {
+                      "key": "trading-pair",
+                      "value": "BTC-USD",
+                      "description": "(Required) "
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Wed, 17 Jan 2024 21:47:46 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "500bb805f41fb6afa8acce775e92b01a"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "500bb805f41fb6afa8acce775e92b01a"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8471cc70ee069c7f-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"buy\": \"29802.80030000000000000000000000000\",\n        \"sell\": \"29491.7372750000000000000000000000000000000000000000000000000000000000000000000000000000\",\n        \"createDate\": \"2024-01-17T21:47:46.803436259Z\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Pull estimated exchange rate for crypto currencies."
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "<your-api-key-here>",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api-sandbox.circle.com"
+    }
+  ]
+}

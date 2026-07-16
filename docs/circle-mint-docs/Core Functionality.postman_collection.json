@@ -1,0 +1,3534 @@
+{
+  "info": {
+    "_postman_id": "3e1635b1-7620-4001-998d-3b3aebbfc44f",
+    "name": "Core Functionality",
+    "description": "All of Circle's APIs share a common set of core functionality that lets you manage your Circle Account in a programmatic way.\n\nWith a Circle Account your business can deposit traditional money from 80+ countries and seamlessly convert them into \"digital currency dollars\": USDC. You can then use USDC for everyday payments and treasury flows.\n\n[Core Functionality API](https://developers.circle.com/circle-mint/docs/getting-started-with-the-circle-core-api)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "38686296"
+  },
+  "item": [
+    {
+      "name": "Balances",
+      "item": [
+        {
+          "name": "List all balances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/balances",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "balances"
+              ]
+            },
+            "description": "Retrieves the balance of funds that are available for use."
+          },
+          "response": [
+            {
+              "name": "List all balances",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/balances",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "balances"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 19:44:32 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "deec750704926a8b22244abe2c36876e"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8468da87cd798262-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"available\": [\n            {\n                \"amount\": \"0.01540290\",\n                \"currency\": \"BTC\"\n            },\n            {\n                \"amount\": \"0.030000000000000000\",\n                \"currency\": \"ETH\"\n            },\n            {\n                \"amount\": \"221158440.75\",\n                \"currency\": \"USD\"\n            }\n        ],\n        \"unsettled\": []\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Get information on settled and unsettled balances."
+    },
+    {
+      "name": "Payouts",
+      "item": [
+        {
+          "name": "Create a payout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"destination\": {\n        \"type\": \"wire\",\n        \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\"\n    },\n    \"amount\": {\n        \"amount\": \"3.14\",\n        \"currency\": \"USD\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "payouts"
+              ]
+            },
+            "description": "\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**destination** *object* (REQUIRED)\nThe destination bank account.\n\n  * **type** *string* (REQUIRED)\n\n  * **id** *string* (REQUIRED)\n  Unique system generated identifier for the entity.\n\n**amount** *object* (REQUIRED)\n\n  * **amount** *string* (REQUIRED)\n  Magnitude of the amount, in units of the currency, with a `.`.\n\n  * **currency** *string* (REQUIRED)\n  Currency code.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a payout",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"destination\": {\n        \"type\": \"wire\",\n        \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\"\n    },\n    \"amount\": {\n        \"amount\": \"3.14\",\n        \"currency\": \"USD\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/payouts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "payouts"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 21:55:02 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "345"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v6/businessAccount/payouts/a1cbd881-ee22-43ec-91cf-dfecabaea3eb"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d7ff2af4364736db79c513c2022d9ee4"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d7ff2af4364736db79c513c2022d9ee4"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "846999b1fbf01ff1-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"a1cbd881-ee22-43ec-91cf-dfecabaea3eb\",\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"status\": \"pending\",\n        \"sourceWalletId\": \"1002753955\",\n        \"destination\": {\n            \"type\": \"wire\",\n            \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\",\n            \"name\": \"Banco Nacional de México ****7771\"\n        },\n        \"createDate\": \"2024-01-16T21:55:02.452Z\",\n        \"updateDate\": \"2024-01-16T21:55:02.452Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/payouts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "payouts"
+              ],
+              "query": [
+                {
+                  "key": "destination",
+                  "value": "e3d0a838-d732-49d0-bf44-73a668e38973",
+                  "description": "Universally unique identifier (UUID v4) for the destination bank account. Filters the results to fetch all payouts made to a destination bank account.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "cbit",
+                  "description": "Destination bank account type. Filters the results to fetch all payouts made to a specified destination bank account type. This query parameter can be passed multiple times to fetch results matching multiple destination bank account types.",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "failed",
+                  "description": "Queries items with the specified status. Matches any status if unspecified.",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "complete",
+                  "description": "Queries items with the specified status. Matches any status if unspecified.",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all payouts",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/payouts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "payouts"
+                  ],
+                  "query": [
+                    {
+                      "key": "destination",
+                      "value": "e3d0a838-d732-49d0-bf44-73a668e38973",
+                      "description": "Universally unique identifier (UUID v4) for the destination bank account. Filters the results to fetch all payouts made to a destination bank account.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "cbit",
+                      "description": "Destination bank account type. Filters the results to fetch all payouts made to a specified destination bank account type. This query parameter can be passed multiple times to fetch results matching multiple destination bank account types.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "failed",
+                      "description": "Queries items with the specified status. Matches any status if unspecified.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "complete",
+                      "description": "Queries items with the specified status. Matches any status if unspecified.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "5",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:21:22 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "271"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/payouts?pageSize=50&to=2024-01-16T22%3A21%3A22.474899754Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/payouts?pageSize=50&to=2024-01-16T22%3A21%3A22.474899754Z>; rel=\"self\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a57a47fcc6988c87265e4c31bf85a7fc"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a57a47fcc6988c87265e4c31bf85a7fc"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c046baaf0630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"a1cbd881-ee22-43ec-91cf-dfecabaea3eb\",\n            \"amount\": {\n                \"amount\": \"3.14\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"sourceWalletId\": \"1002753955\",\n            \"destination\": {\n                \"type\": \"wire\",\n                \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\",\n                \"name\": \"Banco Nacional de México ****7771\"\n            },\n            \"createDate\": \"2024-01-16T21:55:02.452Z\",\n            \"updateDate\": \"2024-01-16T22:00:01.598Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a payout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/payouts/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "payouts",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a payout",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/payouts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "payouts",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "a1cbd881-ee22-43ec-91cf-dfecabaea3eb",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:21:42 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "306"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d87a6593a6d003d655e623c8ef5a430d"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d87a6593a6d003d655e623c8ef5a430d"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c0c53d340630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"a1cbd881-ee22-43ec-91cf-dfecabaea3eb\",\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"status\": \"complete\",\n        \"sourceWalletId\": \"1002753955\",\n        \"destination\": {\n            \"type\": \"wire\",\n            \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\",\n            \"name\": \"Banco Nacional de México ****7771\"\n        },\n        \"trackingRef\": \"CIRAUWWI4I\",\n        \"createDate\": \"2024-01-16T21:55:02.452Z\",\n        \"updateDate\": \"2024-01-16T22:00:01.598Z\",\n        \"externalRef\": \"2024-01-161574507880\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create and get information on 1st party payouts."
+    },
+    {
+      "name": "Wires",
+      "item": [
+        {
+          "name": "Create a Wire bank account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"accountNumber\": \"12340010\",\n    \"routingNumber\": \"121000248\",\n    \"billingDetails\": {\n        \"name\": \"Satoshi Nakamoto\",\n        \"city\": \"Boston\",\n        \"country\": \"US\",\n        \"line1\": \"100 Money Street\",\n        \"postalCode\": \"01234\",\n        \"line2\": \"Suite 1\",\n        \"district\": \"MA\"\n    },\n    \"bankAddress\": {\n        \"country\": \"US\",\n        \"bankName\": \"SAN FRANCISCO\",\n        \"city\": \"SAN FRANCISCO\",\n        \"line1\": \"100 Money Street\",\n        \"line2\": \"Suite 1\",\n        \"district\": \"CA\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/wires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "wires"
+              ]
+            },
+            "description": "\n#### Body Params\n\nOption 1\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**accountNumber** *string* (REQUIRED)\nAccount number that identifies the bank account.\n\n**routingNumber** *string* (REQUIRED)\nABA routing number for the bank account. Note this has to be specific for bank wire transfers.\n\n**billingDetails** *object* (REQUIRED)\n\n  * **name** *string* (REQUIRED)\n  Full name of the card or bank account holder.\n\n  * **city** *string* (REQUIRED)\n  City portion of the address.\n\n  * **country** *string* (REQUIRED)\n  Country portion of the address. Formatted as a two-letter country code specified in ISO 3166-1 alpha-2.\n\n  * **line1** *string* (REQUIRED)\n  Line one of the street address.\n\n  * **line2** *string*\n  Line two of the street address.\n\n  * **district** *string*\n  State / County / Province / Region portion of the address. If the country is US or Canada, then district is required and should use the two-letter code for the subdivision.\n\n  * **postalCode** *string* (REQUIRED)\n  Postal / ZIP code of the address.\n\n**bankAddress** *object* (REQUIRED)\nThe address details for the bank, as provided during bank account creation.\n\n  * **bankName** *string*\n  Name of the bank. This property is required for bank accounts outside of the US that do not support IBAN'\n\n  * **city** *string*\n  City portion of the address. This property is required for bank accounts outside of the US.\n\n  * **country** *string* (REQUIRED)\n  Country portion of the address. Formatted as a two-letter country code specified in ISO 3166-1 alpha-2.\n\n  * **line1** *string*\n  Line one of the street address.\n\n  * **line2** *string*\n  Line two of the street address.\n\n  * **district** *string*\n  State / County / Province / Region portion of the address. US and Canada use the two-letter code for the subdivision.\n\n\nOption 2\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**iban** *string* (REQUIRED)\nInternational Bank Account Number (IBAN) for the bank account.\n\n**billingDetails** *object* (REQUIRED)\n\n  * **name** *string* (REQUIRED)\n  Full name of the card or bank account holder.\n\n  * **city** *string* (REQUIRED)\n  City portion of the address.\n\n  * **country** *string* (REQUIRED)\n  Country portion of the address. Formatted as a two-letter country code specified in ISO 3166-1 alpha-2.\n\n  * **line1** *string* (REQUIRED)\n  Line one of the street address.\n\n  * **line2** *string*\n  Line two of the street address.\n\n  * **district** *string*\n  State / County / Province / Region portion of the address. If the country is US or Canada, then district is required and should use the two-letter code for the subdivision.\n\n  * **postalCode** *string* (REQUIRED)\n  Postal / ZIP code of the address.\n\n**bankAddress** *object* (REQUIRED)\nThe address of the bank. City and country fields are required.\n\n  * **bankName** *string*\n  Name of the bank. This property is required for bank accounts outside of the US that do not support IBAN'\n\n  * **city** *string* (REQUIRED)\n  City portion of the address. This property is required for bank accounts outside of the US.\n\n  * **country** *string* (REQUIRED)\n  Country portion of the address. Formatted as a two-letter country code specified in ISO 3166-1 alpha-2.\n\n  * **line1** *string*\n  Line one of the street address.\n\n  * **line2** *string*\n  Line two of the street address.\n\n  * **district** *string*\n  State / County / Province / Region portion of the address. US and Canada use the two-letter code for the subdivision.\n\n\nOption 3\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**accountNumber** *string* (REQUIRED)\nAccount number that identifies the bank account.\n\n**routingNumber** *string* (REQUIRED)\nThe bank's SWIFT / BIC code.\n\n**billingDetails** *object* (REQUIRED)\n\n  * **name** *string* (REQUIRED)\n  Full name of the card or bank account holder.\n\n  * **city** *string* (REQUIRED)\n  City portion of the address.\n\n  * **country** *string* (REQUIRED)\n  Country portion of the address. Formatted as a two-letter country code specified in ISO 3166-1 alpha-2.\n\n  * **line1** *string* (REQUIRED)\n  Line one of the street address.\n\n  * **line2** *string*\n  Line two of the street address.\n\n  * **district** *string*\n  State / County / Province / Region portion of the address. If the country is US or Canada, then district is required and should use the two-letter code for the subdivision.\n\n  * **postalCode** *string* (REQUIRED)\n  Postal / ZIP code of the address.\n\n**bankAddress** *object* (REQUIRED)\nThe address of the bank. BankName, City and Country fields are required.\n\n  * **bankName** *string* (REQUIRED)\n  Name of the bank. This property is required for bank accounts outside of the US that do not support IBAN'\n\n  * **city** *string* (REQUIRED)\n  City portion of the address. This property is required for bank accounts outside of the US.\n\n  * **country** *string* (REQUIRED)\n  Country portion of the address. Formatted as a two-letter country code specified in ISO 3166-1 alpha-2.\n\n  * **line1** *string*\n  Line one of the street address.\n\n  * **line2** *string*\n  Line two of the street address.\n\n  * **district** *string*\n  State / County / Province / Region portion of the address. US and Canada use the two-letter code for the subdivision.\n\n\n"
+          },
+          "response": [
+            {
+              "name": "U.S.",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n     \"idempotencyKey\": \"{{$guid}}\",\n     \"accountNumber\": \"12340010\",\n     \"routingNumber\": \"121000248\",\n     \"billingDetails\": {\n          \"name\": \"Satoshi Nakamoto\",\n          \"city\": \"Boston\",\n          \"country\": \"US\",\n          \"line1\": \"100 Money Street\",\n          \"line2\": \"Suite 1\",\n          \"district\": \"MA\",\n          \"postalCode\": \"01234\"\n     },\n     \"bankAddress\": {\n          \"country\": \"US\"\n     }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/wires",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "wires"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 21:52:29 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ce84af275fc2c8d2860cd2a2120e0c9c"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "846995f2c9351ff1-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"d1c00791-d207-40a1-b265-663293fbdbba\",\n        \"status\": \"pending\",\n        \"description\": \"WELLS FARGO BANK, NA ****0010\",\n        \"trackingRef\": \"CIR3Y6S73L\",\n        \"fingerprint\": \"a9a71b77-d83d-4fbc-997f-41a33550c594\",\n        \"virtualAccountEnabled\": true,\n        \"billingDetails\": {\n            \"name\": \"Satoshi Nakamoto\",\n            \"line1\": \"100 Money Street\",\n            \"line2\": \"Suite 1\",\n            \"city\": \"Boston\",\n            \"postalCode\": \"01234\",\n            \"district\": \"MA\",\n            \"country\": \"US\"\n        },\n        \"bankAddress\": {\n            \"bankName\": \"WELLS FARGO BANK, NA\",\n            \"city\": \"SAN FRANCISCO\",\n            \"district\": \"CA\",\n            \"country\": \"US\"\n        },\n        \"createDate\": \"2024-01-16T21:52:28.824Z\",\n        \"updateDate\": \"2024-01-16T21:52:28.824Z\"\n    }\n}"
+            },
+            {
+              "name": "Non-U.S. Non-IBAN",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n     \"idempotencyKey\": \"{{$guid}}\",\n     \"accountNumber\": \"002010077777777771\",\n     \"routingNumber\": \"BDEMMXMF\",\n     \"billingDetails\": {\n          \"name\": \"Satoshi Nakamoto\",\n          \"city\": \"Boston\",\n          \"country\": \"US\",\n          \"line1\": \"100 Money Street\",\n          \"line2\": \"Suite 1\",\n          \"district\": \"MA\",\n          \"postalCode\": \"01234\"\n     },\n     \"bankAddress\": {\n          \"bankName\": \"Banco Nacional de México\",\n          \"city\": \"México DF\",\n          \"country\": \"MX\"\n     }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/wires",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "wires"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 21:52:54 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "869b266a392b0149cdf2f1e6b030784f"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "84699694d8231ff1-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\",\n        \"status\": \"pending\",\n        \"description\": \"Banco Nacional de México ****7771\",\n        \"trackingRef\": \"CIR3GH9U94\",\n        \"fingerprint\": \"faf6b92c-4e76-426c-9741-95aed1415715\",\n        \"virtualAccountEnabled\": true,\n        \"billingDetails\": {\n            \"name\": \"Satoshi Nakamoto\",\n            \"line1\": \"100 Money Street\",\n            \"line2\": \"Suite 1\",\n            \"city\": \"Boston\",\n            \"postalCode\": \"01234\",\n            \"district\": \"MA\",\n            \"country\": \"US\"\n        },\n        \"bankAddress\": {\n            \"bankName\": \"Banco Nacional de México\",\n            \"city\": \"México DF\",\n            \"country\": \"MX\"\n        },\n        \"createDate\": \"2024-01-16T21:52:54.561Z\",\n        \"updateDate\": \"2024-01-16T21:52:54.561Z\"\n    }\n}"
+            },
+            {
+              "name": "Non-U.S. IBAN",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n     \"idempotencyKey\": \"{{$guid}}\",\n     \"iban\": \"DE31100400480532013000\",\n     \"billingDetails\": {\n          \"name\": \"Satoshi Nakamoto\",\n          \"city\": \"Boston\",\n          \"country\": \"US\",\n          \"line1\": \"100 Money Street\",\n          \"line2\": \"Suite 1\",\n          \"district\": \"MA\",\n          \"postalCode\": \"01234\"\n     },\n     \"bankAddress\": {\n          \"city\": \"Kassel\",\n          \"country\": \"DE\"\n     }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/wires",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "wires"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 21:53:08 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ebebb909b6795a5ac2a9ef57e9b9ef3c"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "846996e9387c1ff1-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"8af774bb-a726-40a2-9e33-bd75f0b02fbe\",\n        \"status\": \"pending\",\n        \"description\": \"Commerzbank GF-B48 ****3000\",\n        \"trackingRef\": \"CIR2AZYEHT\",\n        \"fingerprint\": \"bcd8d325-6229-4594-a89b-0790143e0489\",\n        \"virtualAccountEnabled\": true,\n        \"billingDetails\": {\n            \"name\": \"Satoshi Nakamoto\",\n            \"line1\": \"100 Money Street\",\n            \"line2\": \"Suite 1\",\n            \"city\": \"Boston\",\n            \"postalCode\": \"01234\",\n            \"district\": \"MA\",\n            \"country\": \"US\"\n        },\n        \"bankAddress\": {\n            \"bankName\": \"Commerzbank GF-B48\",\n            \"city\": \"Kassel\",\n            \"country\": \"DE\"\n        },\n        \"createDate\": \"2024-01-16T21:53:08.104Z\",\n        \"updateDate\": \"2024-01-16T21:53:08.104Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all Wire bank accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/wires",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "wires"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all Wire bank accounts",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/wires",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "wires"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:21:58 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "741"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "84b663518b104748ad309692d66bcbe1"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "84b663518b104748ad309692d66bcbe1"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c129cf490630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"8af774bb-a726-40a2-9e33-bd75f0b02fbe\",\n            \"type\": \"wire\",\n            \"status\": \"complete\",\n            \"description\": \"Commerzbank GF-B48 ****3000\",\n            \"trackingRef\": \"CIR2AZYEHT\",\n            \"virtualAccountEnabled\": true,\n            \"fingerprint\": \"bcd8d325-6229-4594-a89b-0790143e0489\",\n            \"billingDetails\": {\n                \"name\": \"Satoshi Nakamoto\",\n                \"line1\": \"100 Money Street\",\n                \"line2\": \"Suite 1\",\n                \"city\": \"Boston\",\n                \"postalCode\": \"01234\",\n                \"district\": \"MA\",\n                \"country\": \"US\",\n                \"valid\": true\n            },\n            \"bankAddress\": {\n                \"bankName\": \"Commerzbank GF-B48\",\n                \"city\": \"Kassel\",\n                \"country\": \"DE\"\n            },\n            \"createDate\": \"2024-01-16T21:53:08.104Z\",\n            \"updateDate\": \"2024-01-16T21:53:08.964Z\",\n            \"supportedRails\": [\n                \"wire\"\n            ]\n        },\n        {\n            \"id\": \"3016a9ca-fe2a-48f4-80d7-16ecfec1de6e\",\n            \"type\": \"wire\",\n            \"status\": \"complete\",\n            \"description\": \"Banco Nacional de México ****7771\",\n            \"trackingRef\": \"CIR3GH9U94\",\n            \"virtualAccountEnabled\": true,\n            \"fingerprint\": \"faf6b92c-4e76-426c-9741-95aed1415715\",\n            \"billingDetails\": {\n                \"name\": \"Satoshi Nakamoto\",\n                \"line1\": \"100 Money Street\",\n                \"line2\": \"Suite 1\",\n                \"city\": \"Boston\",\n                \"postalCode\": \"01234\",\n                \"district\": \"MA\",\n                \"country\": \"US\",\n                \"valid\": true\n            },\n            \"bankAddress\": {\n                \"bankName\": \"Banco Nacional de México\",\n                \"city\": \"México DF\",\n                \"country\": \"MX\"\n            },\n            \"createDate\": \"2024-01-16T21:52:54.561Z\",\n            \"updateDate\": \"2024-01-16T21:55:14.774Z\",\n            \"supportedRails\": [\n                \"wire\"\n            ]\n        },\n        {\n            \"id\": \"d1c00791-d207-40a1-b265-663293fbdbba\",\n            \"type\": \"wire\",\n            \"status\": \"complete\",\n            \"description\": \"WELLS FARGO BANK, NA ****0010\",\n            \"trackingRef\": \"CIR3Y6S73L\",\n            \"virtualAccountEnabled\": true,\n            \"fingerprint\": \"a9a71b77-d83d-4fbc-997f-41a33550c594\",\n            \"billingDetails\": {\n                \"name\": \"Satoshi Nakamoto\",\n                \"line1\": \"100 Money Street\",\n                \"line2\": \"Suite 1\",\n                \"city\": \"Boston\",\n                \"postalCode\": \"01234\",\n                \"district\": \"MA\",\n                \"country\": \"US\",\n                \"valid\": true\n            },\n            \"bankAddress\": {\n                \"bankName\": \"WELLS FARGO BANK, NA\",\n                \"city\": \"SAN FRANCISCO\",\n                \"district\": \"CA\",\n                \"country\": \"US\"\n            },\n            \"createDate\": \"2024-01-16T21:52:28.824Z\",\n            \"updateDate\": \"2024-01-16T21:52:29.754Z\",\n            \"supportedRails\": [\n                \"wire\"\n            ]\n        },\n        {\n            \"id\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"type\": \"wire\",\n            \"status\": \"complete\",\n            \"description\": \"WELLS FARGO BANK, NA ****0010\",\n            \"trackingRef\": \"CIR2GSKVGC\",\n            \"virtualAccountEnabled\": true,\n            \"fingerprint\": \"a9a71b77-d83d-4fbc-997f-41a33550c594\",\n            \"billingDetails\": {\n                \"name\": \"Satoshi Nakamoto\",\n                \"line1\": \"100 Money Street\",\n                \"line2\": \"Suite 1\",\n                \"city\": \"Boston\",\n                \"postalCode\": \"01234\",\n                \"district\": \"MA\",\n                \"country\": \"US\",\n                \"valid\": true\n            },\n            \"bankAddress\": {\n                \"bankName\": \"WELLS FARGO BANK, NA\",\n                \"line1\": \"100 Money Street\",\n                \"line2\": \"Suite 1\",\n                \"city\": \"SAN FRANCISCO\",\n                \"district\": \"CA\",\n                \"country\": \"US\"\n            },\n            \"createDate\": \"2022-11-28T22:19:05.066Z\",\n            \"updateDate\": \"2022-11-28T22:19:05.733Z\",\n            \"supportedRails\": [\n                \"wire\"\n            ]\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a Wire bank account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/wires/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "wires",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "8af774bb-a726-40a2-9e33-bd75f0b02fbe",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a Wire bank account",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/wires/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "wires",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "8af774bb-a726-40a2-9e33-bd75f0b02fbe",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:22:17 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "405"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "e7c0143bb3dff57f0eb1aeb0c4787faf"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "e7c0143bb3dff57f0eb1aeb0c4787faf"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c1a18dcf0630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"8af774bb-a726-40a2-9e33-bd75f0b02fbe\",\n        \"type\": \"wire\",\n        \"status\": \"complete\",\n        \"description\": \"Commerzbank GF-B48 ****3000\",\n        \"trackingRef\": \"CIR2AZYEHT\",\n        \"virtualAccountEnabled\": true,\n        \"fingerprint\": \"bcd8d325-6229-4594-a89b-0790143e0489\",\n        \"billingDetails\": {\n            \"name\": \"Satoshi Nakamoto\",\n            \"line1\": \"100 Money Street\",\n            \"line2\": \"Suite 1\",\n            \"city\": \"Boston\",\n            \"postalCode\": \"01234\",\n            \"district\": \"MA\",\n            \"country\": \"US\",\n            \"valid\": true\n        },\n        \"bankAddress\": {\n            \"bankName\": \"Commerzbank GF-B48\",\n            \"city\": \"Kassel\",\n            \"country\": \"DE\"\n        },\n        \"createDate\": \"2024-01-16T21:53:08.104Z\",\n        \"updateDate\": \"2024-01-16T21:53:08.964Z\",\n        \"supportedRails\": [\n            \"wire\"\n        ]\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Wire instructions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/wires/:id/instructions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "wires",
+                ":id",
+                "instructions"
+              ],
+              "query": [
+                {
+                  "key": "currency",
+                  "value": "USD",
+                  "description": "Queries beneficiary bank account currency. Default is USD.",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            },
+            "description": "Get the wire transfer instructions into the Circle bank account given your bank account id."
+          },
+          "response": [
+            {
+              "name": "Get Wire instructions",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/wires/:id/instructions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "wires",
+                    ":id",
+                    "instructions"
+                  ],
+                  "query": [
+                    {
+                      "key": "currency",
+                      "value": "USD",
+                      "description": "Queries beneficiary bank account currency. Default is USD.",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "8af774bb-a726-40a2-9e33-bd75f0b02fbe",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:22:29 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "273"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "9fcfef314b3e7b924c33442e51e35da6"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "9fcfef314b3e7b924c33442e51e35da6"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c1ea19d50630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"trackingRef\": \"CIR2AZYEHT\",\n        \"beneficiary\": {\n            \"name\": \"CIRCLE INTERNET FINANCIAL INC\",\n            \"address1\": \"1 MAIN STREET\",\n            \"address2\": \"SUITE 1\"\n        },\n        \"virtualAccountEnabled\": true,\n        \"beneficiaryBank\": {\n            \"name\": \"CRYPTO BANK\",\n            \"address\": \"1 MONEY STREET\",\n            \"city\": \"NEW YORK\",\n            \"postalCode\": \"1001\",\n            \"country\": \"US\",\n            \"swiftCode\": \"CRYPTO99\",\n            \"routingNumber\": \"999999999\",\n            \"accountNumber\": \"123180387879\",\n            \"currency\": \"USD\"\n        }\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create, get instructions, and get information on 1st party bank accounts for wire transfers."
+    },
+    {
+      "name": "CBIT",
+      "item": [
+        {
+          "name": "Create a CBIT bank account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"walletAddress\": \"0x7d8da35e03ef3a5ec5d5edbb961ef399dfb42d1e\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "cbit"
+              ]
+            },
+            "description": "\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**walletAddress** *string* (REQUIRED)\nCBIT wallet address.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a CBIT bank account",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"walletAddress\": \"0x7d8da35e03ef3a5ec5d5edbb961ef399dfb42d1e\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "cbit"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:27:07 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "74cbea95e0910773a7f8a883ed4e6567"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c8b38bb10630-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"007019b8-4c6c-4887-bc78-668b64eea51b\",\n        \"status\": \"pending\",\n        \"trackingRef\": \"CIR23X5U26\",\n        \"walletAddress\": \"0x7d8da35e03ef3a5ec5d5edbb961ef399dfb42d1e\",\n        \"createDate\": \"2024-01-16T22:27:07.617651709Z\",\n        \"updateDate\": \"2024-01-16T22:27:07.617651709Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all CBIT bank accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "cbit"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all CBIT bank accounts",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "cbit"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:27:20 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "259"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "e1a7bd1214fb803a0f15b044364a35e4"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "e1a7bd1214fb803a0f15b044364a35e4"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c906dc150630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"007019b8-4c6c-4887-bc78-668b64eea51b\",\n            \"status\": \"complete\",\n            \"trackingRef\": \"CIR23X5U26\",\n            \"walletAddress\": \"0x7d8da35e03ef3a5ec5d5edbb961ef399dfb42d1e\",\n            \"createDate\": \"2024-01-16T22:27:07.618Z\",\n            \"updateDate\": \"2024-01-16T22:27:07.795Z\"\n        },\n        {\n            \"id\": \"b523561a-1574-47c5-ac03-8f17c063da85\",\n            \"status\": \"complete\",\n            \"trackingRef\": \"CIR2M5TJ4P\",\n            \"walletAddress\": \"0x7d8da35e03ef3a5ec5d5edbb961ef399dfb42d1e\",\n            \"createDate\": \"2023-04-11T13:27:38.474Z\",\n            \"updateDate\": \"2023-04-11T13:27:38.804Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a CBIT bank account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "cbit",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a CBIT bank account",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "cbit",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "007019b8-4c6c-4887-bc78-668b64eea51b",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:27:39 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "1ccc3127ce27f9a389611477e4f7d6f8"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "1ccc3127ce27f9a389611477e4f7d6f8"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c97e389c0630-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"007019b8-4c6c-4887-bc78-668b64eea51b\",\n        \"status\": \"complete\",\n        \"trackingRef\": \"CIR23X5U26\",\n        \"walletAddress\": \"0x7d8da35e03ef3a5ec5d5edbb961ef399dfb42d1e\",\n        \"createDate\": \"2024-01-16T22:27:07.618Z\",\n        \"updateDate\": \"2024-01-16T22:27:07.795Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get CBIT instructions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit/:id/instructions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "banks",
+                "cbit",
+                ":id",
+                "instructions"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            },
+            "description": "Get the CBIT transfer instructions into the Circle bank account given your bank account id."
+          },
+          "response": [
+            {
+              "name": "Get CBIT instructions",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/banks/cbit/:id/instructions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "banks",
+                    "cbit",
+                    ":id",
+                    "instructions"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "007019b8-4c6c-4887-bc78-668b64eea51b",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:27:51 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d57dd48b06445aae81b8cd4b8b9f98a4"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "d57dd48b06445aae81b8cd4b8b9f98a4"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469c9c7df480630-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"trackingRef\": \"CIR23X5U26\",\n        \"walletAddress\": \"0x96375da098a72c33d00f06ab072eb44d2c00711c\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create and get information on CBIT accounts."
+    },
+    {
+      "name": "Transfers",
+      "item": [
+        {
+          "name": "Create a transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"type\": \"verified_blockchain\",\n    \"addressId\": \"990f9293-1f62-54ac-9438-29e359f96324\"\n  },\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "transfers"
+              ]
+            },
+            "description": "A transfer can be made from an existing business account to a blockchain location.\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**destination** *object* (REQUIRED)\n\n  * **type** *string* (REQUIRED)\n\n  * **addressId** *string* (REQUIRED)\n  The ID of the verified blockchain recipient address.\n\n**amount** *object* (REQUIRED)\n\n  * **amount** *string* (REQUIRED)\n  Magnitude of the amount, in units of the currency, with a `.`.\n\n  * **currency** *string* (REQUIRED)\n  Currency code for the amount.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a transfer",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"destination\": {\n    \"type\": \"verified_blockchain\",\n    \"addressId\": \"990f9293-1f62-54ac-9438-29e359f96324\"\n  },\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "transfers"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:39:44 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "309"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v6/businessAccount/transfers/4b05a889-631f-4803-9540-a16ec0ff2e25"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "b185ae494b7935521346afb3eed4e7b2"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "b185ae494b7935521346afb3eed4e7b2"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469db2d3a0a3b78-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"4b05a889-631f-4803-9540-a16ec0ff2e25\",\n        \"source\": {\n            \"type\": \"wallet\",\n            \"id\": \"1002753955\"\n        },\n        \"destination\": {\n            \"type\": \"blockchain\",\n            \"address\": \"DnX6KhBqUK1sHUBxh3vqAL63BLhaiUBDHhLHfRsGggEH\",\n            \"chain\": \"SOL\"\n        },\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"status\": \"pending\",\n        \"createDate\": \"2024-01-16T22:39:44.240Z\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all transfers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "transfers"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Searches for transfers from your business account. If the date parameters are omitted, returns the most recent transfers. This endpoint returns up to 50 transfers in descending chronological order or pageSize, if provided."
+          },
+          "response": [
+            {
+              "name": "List all transfers",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/transfers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "transfers"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "5",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:39:51 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "2454"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/transfers?pageSize=50&to=2024-01-16T22%3A39%3A51.894479478Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/transfers?pageSize=50&to=2024-01-16T22%3A39%3A51.894479478Z>; rel=\"self\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "033b09910ac4e3abcfb005244868727e"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "033b09910ac4e3abcfb005244868727e"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469db5d38f23b78-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"4b05a889-631f-4803-9540-a16ec0ff2e25\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"DnX6KhBqUK1sHUBxh3vqAL63BLhaiUBDHhLHfRsGggEH\",\n                \"chain\": \"SOL\"\n            },\n            \"amount\": {\n                \"amount\": \"3.14\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"pending\",\n            \"createDate\": \"2024-01-16T22:39:44.240Z\"\n        },\n        {\n            \"id\": \"a15920e5-5693-4cf5-9e60-ae05d2d500f8\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0xcb02d61f5057366078ca56d7297f5694f445dfc4\",\n                \"chain\": \"MATIC\"\n            },\n            \"amount\": {\n                \"amount\": \"1000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x2d63062d2c26385298b078fd87215c84db3d79152c6fce0dbeb1abb68d67baf0\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-09-20T22:39:54.954Z\"\n        },\n        {\n            \"id\": \"777614bf-d081-4d5c-a027-f2edb9e7f6dc\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x9c39ad35d48b954aeb13ca7fcbc7a334ada80699\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"10000.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0xd9cdcb6318d01ad5319989382c87647d4a0cdf51a08067f7f3603236b2ff0660\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-07-26T19:15:39.890Z\"\n        },\n        {\n            \"id\": \"dfcb7aed-c9f6-4dde-818b-2c6dadc02582\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x9c39ad35d48b954aeb13ca7fcbc7a334ada80699\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"100000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"pending\",\n            \"createDate\": \"2023-07-25T22:07:16.283Z\"\n        },\n        {\n            \"id\": \"e161d615-27f8-45b2-8ae1-0fae39bcccef\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x9c39ad35d48b954aeb13ca7fcbc7a334ada80699\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"1000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"pending\",\n            \"createDate\": \"2023-07-25T22:01:08.383Z\"\n        },\n        {\n            \"id\": \"f59dd98a-bbcd-40a9-b53b-a9a57da93a0e\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268538\"\n            },\n            \"amount\": {\n                \"amount\": \"97.02\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:34:10.937Z\"\n        },\n        {\n            \"id\": \"de260e6b-c23a-4d3e-b5c3-2156307ba1d6\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268535\"\n            },\n            \"amount\": {\n                \"amount\": \"43.45\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:34:06.635Z\"\n        },\n        {\n            \"id\": \"5e750823-3930-47d4-a792-e79c2f1943f7\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268527\"\n            },\n            \"amount\": {\n                \"amount\": \"9.87\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:34:02.323Z\"\n        },\n        {\n            \"id\": \"2fb94635-82b1-4f46-b500-42aae4adafb6\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268514\"\n            },\n            \"amount\": {\n                \"amount\": \"5.86\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:56.717Z\"\n        },\n        {\n            \"id\": \"0d6998c8-fd53-4056-89af-7a93dab46e0c\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268513\"\n            },\n            \"amount\": {\n                \"amount\": \"24.33\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:52.428Z\"\n        },\n        {\n            \"id\": \"73558cef-5b72-458c-9995-bace4464d8b6\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268502\"\n            },\n            \"amount\": {\n                \"amount\": \"105.64\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:48.141Z\"\n        },\n        {\n            \"id\": \"c1013948-bd43-405b-91bc-9d3cb30d0ca5\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268498\"\n            },\n            \"amount\": {\n                \"amount\": \"59.08\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:43.855Z\"\n        },\n        {\n            \"id\": \"694ea19d-3400-45f2-b1ba-36138df4b308\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268495\"\n            },\n            \"amount\": {\n                \"amount\": \"2.65\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:39.565Z\"\n        },\n        {\n            \"id\": \"bc51d883-8699-45e0-badd-cf61e16a156a\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268471\"\n            },\n            \"amount\": {\n                \"amount\": \"34.97\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:35.252Z\"\n        },\n        {\n            \"id\": \"2966bfcf-4164-4a3d-8ce5-a2a563704163\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268449\"\n            },\n            \"amount\": {\n                \"amount\": \"4.98\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:30.973Z\"\n        },\n        {\n            \"id\": \"9070eef6-a790-4322-909b-518a968ae8e3\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268440\"\n            },\n            \"amount\": {\n                \"amount\": \"3.15\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:33:26.600Z\"\n        },\n        {\n            \"id\": \"ebb53c7a-caea-4020-a258-cfee67e16fda\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268422\"\n            },\n            \"amount\": {\n                \"amount\": \"3.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:28:10.224Z\"\n        },\n        {\n            \"id\": \"5f9c9adc-3003-424a-9945-e78049302d9e\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268393\"\n            },\n            \"amount\": {\n                \"amount\": \"97.02\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:15:12.088Z\"\n        },\n        {\n            \"id\": \"0727ecc8-79ea-4686-b503-e679eb6b19e6\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268379\"\n            },\n            \"amount\": {\n                \"amount\": \"43.45\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:15:07.808Z\"\n        },\n        {\n            \"id\": \"f618f06f-372e-4f28-89c8-2840f8897d25\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268373\"\n            },\n            \"amount\": {\n                \"amount\": \"9.87\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:15:03.543Z\"\n        },\n        {\n            \"id\": \"c5e17def-a062-4116-b093-cfa65c70f5a4\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268368\"\n            },\n            \"amount\": {\n                \"amount\": \"5.86\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:59.253Z\"\n        },\n        {\n            \"id\": \"10236c3f-5572-4f28-95bc-47a1c2311980\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268350\"\n            },\n            \"amount\": {\n                \"amount\": \"24.33\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:54.965Z\"\n        },\n        {\n            \"id\": \"c3746c23-a37b-4b05-b1ec-91c4d37fc46c\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268344\"\n            },\n            \"amount\": {\n                \"amount\": \"105.64\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:50.681Z\"\n        },\n        {\n            \"id\": \"3462001e-7234-4c07-bfad-16290e4c027c\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268328\"\n            },\n            \"amount\": {\n                \"amount\": \"59.08\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:46.369Z\"\n        },\n        {\n            \"id\": \"d23b71ea-6735-4fc7-9b6f-df0e5ca23f4f\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268320\"\n            },\n            \"amount\": {\n                \"amount\": \"2.65\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:42.095Z\"\n        },\n        {\n            \"id\": \"06d527c4-b604-4e76-8eb3-6092d08e5814\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268298\"\n            },\n            \"amount\": {\n                \"amount\": \"34.97\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:37.800Z\"\n        },\n        {\n            \"id\": \"1b22091f-2cbf-4712-a01d-31bde5a4569d\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268273\"\n            },\n            \"amount\": {\n                \"amount\": \"4.98\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:33.507Z\"\n        },\n        {\n            \"id\": \"56661a02-a69a-472a-9fcd-bf29ff594d86\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1016268266\"\n            },\n            \"amount\": {\n                \"amount\": \"3.15\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-05-24T21:14:29.184Z\"\n        },\n        {\n            \"id\": \"6c257ff4-6fdc-4e73-aafd-be9e669240a5\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0xd089f4cf864423c7f0fe71dbe0a70d3c251bbf87\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"10000.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x61546c2ab7c353edffe77ef0790ce21f545f53a28d84a0da7a45b0eb209a2631\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-06T20:36:39.054Z\"\n        },\n        {\n            \"id\": \"0d6c3b64-e5e5-471e-9dbd-965b5ab42dee\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x4cf74a30fedf2a5a33b28070daf999c58761619c\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"10000.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x2d692b055324669418560369b26ce251e4dcc3621b27ccca827597d23859c3bc\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-05T20:31:39.793Z\"\n        },\n        {\n            \"id\": \"57654ab9-1409-4636-a3e6-cda6774ade91\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"DnX6KhBqUK1sHUBxh3vqAL63BLhaiUBDHhLHfRsGggEH\",\n                \"chain\": \"SOL\"\n            },\n            \"amount\": {\n                \"amount\": \"5000.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"Dk3rCXV4Puk37DJmc6kWNJFzBJG1htGje1BJWrZptftAn35aVfhZsvcGoL2AeAK8SVgp3qhTuXdgJHik9r7JEqg\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-05T20:21:58.752Z\"\n        },\n        {\n            \"id\": \"d95aa965-8cb9-32fa-8c3f-ce306f74d357\",\n            \"source\": {\n                \"type\": \"blockchain\",\n                \"chain\": \"ETH\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\",\n                \"address\": \"0x8f34ae757f6062017a918af6af377d80fd57aee2\"\n            },\n            \"amount\": {\n                \"amount\": \"100.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x539ecc29fd2524ce8b0fe9b54b0f7165c1c08c49c9af8fb2dd3e10baf746b162\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-03T20:38:39.954Z\"\n        },\n        {\n            \"id\": \"c6e96508-6d2c-4303-9008-61585382bf42\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x5b36fbbd0899c0a050627f610a80bcada4a4dfc3\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"1250.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0xe0faa0bb45de24b21feb2f5996b2f73a5d1941ce77b01920d26285f89c88b36c\",\n            \"status\": \"complete\",\n            \"createDate\": \"2023-02-02T21:24:25.085Z\"\n        },\n        {\n            \"id\": \"3a02a8c8-f5d8-407f-a9e9-9e7d53317fe1\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x5b36fBbD0899c0a050627f610A80bCaDa4A4dFc3\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"1000.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x18726f4a719b165b6915ae6a6dc5bfa746da5cd9a5c05cfa93a663d42ef3405c\",\n            \"status\": \"complete\",\n            \"createDate\": \"2022-12-20T03:12:42.635Z\"\n        },\n        {\n            \"id\": \"815d276a-40b8-337c-89ec-9105eff401bb\",\n            \"source\": {\n                \"type\": \"blockchain\",\n                \"chain\": \"ETH\"\n            },\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\",\n                \"address\": \"0x8f34ae757f6062017a918af6af377d80fd57aee2\"\n            },\n            \"amount\": {\n                \"amount\": \"4.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0xfeae202aa9ced3bae0af57691ce33534d18dc8a0f2d433aeb425f1a77150820d\",\n            \"status\": \"complete\",\n            \"createDate\": \"2022-12-08T13:51:05.701Z\"\n        },\n        {\n            \"id\": \"05d77039-e221-4108-9a4a-46877bbff4ea\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x5b36fbbd0899c0a050627f610a80bcada4a4dfc3\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"50.00\",\n                \"currency\": \"USD\"\n            },\n            \"transactionHash\": \"0x44f6720d55da18911727a203b5a652506ecffd4e594e3f0a8bcdde66226671f2\",\n            \"status\": \"complete\",\n            \"createDate\": \"2022-11-28T22:54:53.251Z\"\n        },\n        {\n            \"id\": \"92f7301e-d2df-441d-8c25-3dfebd6b77a4\",\n            \"source\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"destination\": {\n                \"type\": \"blockchain\",\n                \"address\": \"0x5b36fbbd0899c0a050627f610a80bcada4a4dfc3\",\n                \"chain\": \"ETH\"\n            },\n            \"amount\": {\n                \"amount\": \"5000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"failed\",\n            \"errorCode\": \"insufficient_funds\",\n            \"createDate\": \"2022-11-28T22:53:34.043Z\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get a transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/transfers/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "transfers",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Get a transfer",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/transfers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "transfers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "777614bf-d081-4d5c-a027-f2edb9e7f6dc",
+                      "description": "(Required) Universally unique identifier (UUID v4) of a resource."
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:46:44 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "295"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "3cc08f128cc902b657cbd0cbd743a203"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "3cc08f128cc902b657cbd0cbd743a203"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469e5710d7a0800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"777614bf-d081-4d5c-a027-f2edb9e7f6dc\",\n        \"source\": {\n            \"type\": \"wallet\",\n            \"id\": \"1002753955\"\n        },\n        \"destination\": {\n            \"type\": \"blockchain\",\n            \"address\": \"0x9c39ad35d48b954aeb13ca7fcbc7a334ada80699\",\n            \"chain\": \"ETH\"\n        },\n        \"amount\": {\n            \"amount\": \"10000.00\",\n            \"currency\": \"USD\"\n        },\n        \"transactionHash\": \"0xd9cdcb6318d01ad5319989382c87647d4a0cdf51a08067f7f3603236b2ff0660\",\n        \"status\": \"complete\",\n        \"createDate\": \"2023-07-26T19:15:39.890Z\"\n    }\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Create and get information on 1st party transfers."
+    },
+    {
+      "name": "Addresses",
+      "item": [
+        {
+          "name": "Create a deposit address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"currency\": \"USD\",\n  \"chain\": \"BASE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "wallets",
+                "addresses",
+                "deposit"
+              ]
+            },
+            "description": "Generates a new blockchain address for a wallet for a given currency/chain pair. Circle may reuse addresses on blockchains that support reuse. For example, if you're requesting two addresses for depositing USD and ETH, both on Ethereum, you may see the same Ethereum address returned. Depositing cryptocurrency to a generated address will credit the associated wallet with the value of the deposit. Note: Circle Mint Singapore customers must verify all transfer recipients using the UI in the Circle Console, as transfers from unverified addresses will be held in `pending` status. \n\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**currency** *string* (REQUIRED)\nA currency associated with a balance or address.\n\n**chain** *string* (REQUIRED)\nA blockchain that a given currency is available on.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a deposit address",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"currency\": \"USD\",\n  \"chain\": \"BASE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/deposit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "wallets",
+                    "addresses",
+                    "deposit"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:28:51 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "141"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/api/v6/businessAccount/addresses/deposit"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "777c957f114489de8fa2db80563b1c16"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "777c957f114489de8fa2db80563b1c16"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469cb39ab090630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"22829df5-d3cd-5788-96dc-ee739c365007\",\n        \"address\": \"0x2adfe37f3645529815f786f0f24b870d563ea4f0\",\n        \"currency\": \"USD\",\n        \"chain\": \"BASE\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all deposit addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "wallets",
+                "addresses",
+                "deposit"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "List all deposit addresses",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/deposit",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "wallets",
+                    "addresses",
+                    "deposit"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:28:58 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "343"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "cd50a7cf2dd7da6718baddfe9eeb4b3b"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "cd50a7cf2dd7da6718baddfe9eeb4b3b"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469cb6a5dfc0630-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"22829df5-d3cd-5788-96dc-ee739c365007\",\n            \"address\": \"0x2adfe37f3645529815f786f0f24b870d563ea4f0\",\n            \"currency\": \"USD\",\n            \"chain\": \"BASE\"\n        },\n        {\n            \"id\": \"98e4fdb8-7999-595d-a6b3-ec43adc71862\",\n            \"address\": \"TPdb368YEeFVjr1E1zprAu2gsC9sSfXvRo\",\n            \"currency\": \"USD\",\n            \"chain\": \"TRX\"\n        },\n        {\n            \"id\": \"077ccaa1-f37d-50c6-9d3f-831578ac2b69\",\n            \"address\": \"4vytwKAQPDee8JVJkxwKMmB9upnfvBdTQna1s8cSJrKd\",\n            \"currency\": \"USD\",\n            \"chain\": \"SOL\"\n        },\n        {\n            \"id\": \"5de85ab0-17fc-5a7a-b825-a15f0e97296e\",\n            \"address\": \"0x8f34ae757f6062017a918af6af377d80fd57aee2\",\n            \"currency\": \"USD\",\n            \"chain\": \"ETH\"\n        }\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create a recipient address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"address\": \"0x5b36fBbD0899c0a050626f610A80bCaDa4A4dFc3\",\n  \"chain\": \"ETH\",\n  \"description\": \"My USDC address at a cryptocurrency exchange\",\n  \"currency\": \"ETH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/recipient",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "wallets",
+                "addresses",
+                "recipient"
+              ]
+            },
+            "description": "Stores an external blockchain address. Once added, the recipient address must be verified to ensure that you know and trust each new address. Note: Circle Mint Singapore customers must verify all transfer recipients using the UI in the Circle Console, as transfers from unverified addresses will be held in `pending` status.\n\n#### Body Params\n\n**idempotencyKey** *string* (REQUIRED)\nUniversally unique identifier (UUID v4) idempotency key. This key is utilized to ensure exactly-once execution of mutating requests.\n\n**address** *string* (REQUIRED)\nAn alphanumeric string representing a blockchain address. Will be in different formats for different chains. It is important to preserve the exact formatting and capitalization of the address.\n\n**addressTag** *string*\nThe secondary identifier for a blockchain address. An example of this is the memo field on the Stellar network, which can be text, id, or hash format.\n\n**chain** *string* (REQUIRED)\nA blockchain that a given currency is available on.\n\n**currency** *string*\nA currency associated with a balance or address.\n\n**description** *string* (REQUIRED)\nAn identifier or sentence that describes the recipient.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a recipient address",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idempotencyKey\": \"{{$guid}}\",\n  \"address\": \"0x5b36fBbD0899c0a050626f610A80bCaDa4A4dFc3\",\n  \"chain\": \"ETH\",\n  \"description\": \"My USDC address at a cryptocurrency exchange\",\n  \"currency\": \"ETH\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/recipient",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "wallets",
+                    "addresses",
+                    "recipient"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:38:34 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Transfer-Encoding",
+                  "value": "chunked"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "510f08ab80e88032713f097fd9d7c1ba"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "510f08ab80e88032713f097fd9d7c1ba"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469d97a98cc3b78-IAD"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"id\": \"d5264546-f364-57d4-9d56-2ceb5efbd86c\",\n        \"address\": \"0x5b36fbbd0899c0a050626f610a80bcada4a4dfc3\",\n        \"chain\": \"ETH\",\n        \"currency\": \"ETH\",\n        \"description\": \"My USDC address at a cryptocurrency exchange\"\n    }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List all recipient addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/recipient",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "wallets",
+                "addresses",
+                "recipient"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a list of recipient addresses that have each been verified and are eligible for transfers. Any recipient addresses pending verification are not included in the response.\n"
+          },
+          "response": [
+            {
+              "name": "List all recipient addresses",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/wallets/addresses/recipient",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "wallets",
+                    "addresses",
+                    "recipient"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "5",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:38:47 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "650"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/wallets/addresses/recipient?pageSize=50&to=2024-01-16T22%3A38%3A47.684649853Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/wallets/addresses/recipient?pageSize=50&to=2024-01-16T22%3A38%3A47.684649853Z>; rel=\"self\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ae7bd53d1a61ffe5de3ac7096df46928"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "ae7bd53d1a61ffe5de3ac7096df46928"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469d9cbdda43b78-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"d5264546-f364-57d4-9d56-2ceb5efbd86c\",\n            \"address\": \"0x5b36fbbd0899c0a050626f610a80bcada4a4dfc3\",\n            \"chain\": \"ETH\",\n            \"currency\": \"ETH\",\n            \"description\": \"My USDC address at a cryptocurrency exchange\"\n        },\n        {\n            \"id\": \"c250d9a1-686e-5df1-9d51-a0a2bf197c54\",\n            \"address\": \"0xcb02d61f5057366078ca56d7297f5694f445dfc4\",\n            \"chain\": \"MATIC\",\n            \"currency\": \"USD\",\n            \"description\": \"Coinpro Sandbox\"\n        },\n        {\n            \"id\": \"3d8268d0-4982-5f1c-997c-1aa1119be252\",\n            \"address\": \"0x9c39ad35d48b954aeb13ca7fcbc7a334ada80699\",\n            \"chain\": \"ETH\",\n            \"currency\": \"USD\",\n            \"description\": \"Leo's CYBAVO Vault\"\n        },\n        {\n            \"id\": \"6a07948d-e002-5f24-ab18-0c3c42308ffc\",\n            \"address\": \"0xd089f4cf864423c7f0fe71dbe0a70d3c251bbf87\",\n            \"chain\": \"ETH\",\n            \"currency\": \"USD\",\n            \"description\": \"Barb's Metamask\"\n        },\n        {\n            \"id\": \"14ef6dda-2d99-57cb-8526-580ebd39df10\",\n            \"address\": \"0x4cf74a30fedf2a5a33b28070daf999c58761619c\",\n            \"chain\": \"ETH\",\n            \"currency\": \"USD\",\n            \"description\": \"Brian's ETH Address\"\n        },\n        {\n            \"id\": \"990f9293-1f62-54ac-9438-29e359f96324\",\n            \"address\": \"DnX6KhBqUK1sHUBxh3vqAL63BLhaiUBDHhLHfRsGggEH\",\n            \"chain\": \"SOL\",\n            \"currency\": \"USD\",\n            \"description\": \"Leo's Phantom Wallet\"\n        },\n        {\n            \"id\": \"b546a5c0-3455-5ac0-9a0d-209a628beed7\",\n            \"address\": \"0x8381470ed67c3802402dbbfa0058e8871f017a6f\",\n            \"chain\": \"ETH\",\n            \"currency\": \"USD\",\n            \"description\": \"My USDC address at a cryptocurrency exchange\"\n        },\n        {\n            \"id\": \"33fcde31-7237-511c-8efa-45f77b315cb2\",\n            \"address\": \"0x5b36fbbd0899c0a050627f610a80bcada4a4dfc3\",\n            \"chain\": \"ETH\",\n            \"currency\": \"USD\",\n            \"description\": \"MetaMask\"\n        }\n    ]\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Generate and get information on blockchain addresses."
+    },
+    {
+      "name": "Deposits",
+      "item": [
+        {
+          "name": "List all deposits",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/businessAccount/deposits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "businessAccount",
+                "deposits"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "wire",
+                  "description": "Unique identifier for the deposit type. Filters results to fetch deposits made by this specific type.",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created since the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "2020-04-10T02:13:30.000Z",
+                  "description": "Queries items created before the specified date-time (inclusive).",
+                  "disabled": true
+                },
+                {
+                  "key": "pageBefore",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageAfter",
+                  "value": "in ea eu",
+                  "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                  "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "5",
+                  "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Searches for deposits sent to your business account. If the date parameters are omitted, returns the most recent deposits. This endpoint returns up to 50 deposits in descending chronological order or pageSize, if provided."
+          },
+          "response": [
+            {
+              "name": "List all deposits",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/businessAccount/deposits",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "businessAccount",
+                    "deposits"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "wire",
+                      "description": "Unique identifier for the deposit type. Filters results to fetch deposits made by this specific type.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "from",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created since the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "to",
+                      "value": "2020-04-10T02:13:30.000Z",
+                      "description": "Queries items created before the specified date-time (inclusive).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageBefore",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive end of a page. When provided, the collection resource will return the next `n` items before\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageAfter.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageAfter",
+                      "value": "in ea eu",
+                      "description": "A collection ID value used for pagination.\n\nIt marks the exclusive begin of a page. When provided, the collection resource will return the next `n` items after\nthe id, with `n` being specified by `pageSize`.\n\nThe items will be returned in the natural order of the collection.\n\nThe resource will return the first page if neither `pageAfter` nor `pageBefore` are specified.\n\nSHOULD NOT be used in conjuction with pageBefore.\n",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "5",
+                      "description": "Limits the number of items to be returned.\n\nSome collections have a strict upper bound that will disregard this value. In case the specified value is higher\nthan the allowed limit, the collection limit will be used.\n\nIf avoided, the collection will determine the page size itself.\n",
+                      "disabled": true
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:47:01 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "467"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Content-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/deposits?pageSize=50&to=2024-01-16T22%3A47%3A01.047915996Z>; rel=\"first\""
+                },
+                {
+                  "key": "Link",
+                  "value": "<https://api-sandbox.circle.com/v1/businessAccount/deposits?pageSize=50&to=2024-01-16T22%3A47%3A01.047915996Z>; rel=\"self\""
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "Vary",
+                  "value": "Accept-Encoding"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a7015864618bf895c81b0716e32e45d2"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "a7015864618bf895c81b0716e32e45d2"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469e5d768db0800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": [\n        {\n            \"id\": \"dc230f0b-e11f-43e2-b535-a6d61f95998e\",\n            \"sourceWalletId\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"amount\": {\n                \"amount\": \"100000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-11T13:40:01.395Z\",\n            \"updateDate\": \"2023-04-11T13:40:23.753Z\"\n        },\n        {\n            \"id\": \"4c87cbe7-c434-475e-ba29-6da3e6ae4c7d\",\n            \"sourceWalletId\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"amount\": {\n                \"amount\": \"100000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-05T20:40:01.252Z\",\n            \"updateDate\": \"2023-04-05T20:44:01.460Z\"\n        },\n        {\n            \"id\": \"192eff0a-3ae5-45bb-8838-e7563b992e86\",\n            \"sourceWalletId\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"amount\": {\n                \"amount\": \"10000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-05T17:00:01.274Z\",\n            \"updateDate\": \"2023-04-05T17:02:41.218Z\"\n        },\n        {\n            \"id\": \"9dbe8d64-24be-4b28-97ec-eb2a03a68960\",\n            \"sourceWalletId\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"amount\": {\n                \"amount\": \"10000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-04T16:40:01.141Z\",\n            \"updateDate\": \"2023-04-04T16:43:30.908Z\"\n        },\n        {\n            \"id\": \"3cfcbb0b-615c-45e5-849f-a76315454b83\",\n            \"sourceWalletId\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"amount\": {\n                \"amount\": \"1000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-04T15:50:01.154Z\",\n            \"updateDate\": \"2023-04-04T15:53:05.182Z\"\n        },\n        {\n            \"id\": \"54e7a0e0-d35f-48de-9364-273a7c39000e\",\n            \"sourceWalletId\": \"750d8831-05d5-4fea-88c8-d35d0480bb92\",\n            \"destination\": {\n                \"type\": \"wallet\",\n                \"id\": \"1002753955\"\n            },\n            \"amount\": {\n                \"amount\": \"1000000.00\",\n                \"currency\": \"USD\"\n            },\n            \"status\": \"complete\",\n            \"createDate\": \"2023-04-03T21:50:10.271Z\",\n            \"updateDate\": \"2023-04-03T21:54:19.873Z\"\n        }\n    ]\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Get information on 1st party deposits."
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create a mock Wire payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trackingRef\": \"CIR2AZYEHT\",\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  },\n  \"beneficiaryBank\": {\n    \"accountNumber\": \"123180387879\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/mocks/payments/wire",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "mocks",
+                "payments",
+                "wire"
+              ]
+            },
+            "description": "In the sandbox environment, initiate a mock wire payment that mimics the behavior of funds sent through the bank (wire) account linked to master wallet.\n#### Body Params\n\n**trackingRef** *string* (REQUIRED)\nWire tracking reference that needs to be set in the wire reference to beneficiary field. This field is retrievable through the response during wire creation or via the bank instruction endpoint.\n\n**amount** *object* (REQUIRED)\n\n  * **amount** *string* (REQUIRED)\n  Magnitude of the amount, in units of the currency, with a `.`.\n\n  * **currency** *string* (REQUIRED)\n  Currency code.\n\n**beneficiaryBank** *object* (REQUIRED)\n\n  * **accountNumber** *string* (REQUIRED)\n  Virtual account number or Circle corporate Silvergate Wire account number that needs to be set as destination.\n\n"
+          },
+          "response": [
+            {
+              "name": "Create a mock Wire payment",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"trackingRef\": \"CIR2AZYEHT\",\n  \"amount\": {\n    \"amount\": \"3.14\",\n    \"currency\": \"USD\"\n  },\n  \"beneficiaryBank\": {\n    \"accountNumber\": \"123180387879\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/mocks/payments/wire",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "mocks",
+                    "payments",
+                    "wire"
+                  ]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Date",
+                  "value": "Tue, 16 Jan 2024 22:47:55 GMT"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Length",
+                  "value": "151"
+                },
+                {
+                  "key": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "key": "Location",
+                  "value": "https://api-sandbox.circle.com/CIR2AZYEHT"
+                },
+                {
+                  "key": "Strict-Transport-Security",
+                  "value": "max-age=15724800; includeSubDomains"
+                },
+                {
+                  "key": "X-Content-Type-Options",
+                  "value": "nosniff"
+                },
+                {
+                  "key": "X-Dns-Prefetch-Control",
+                  "value": "off"
+                },
+                {
+                  "key": "X-Download-Options",
+                  "value": "noopen"
+                },
+                {
+                  "key": "X-Frame-Options",
+                  "value": "DENY"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "3ae05d3c20bdf7febd1a83f729dec7ba"
+                },
+                {
+                  "key": "X-Request-Id",
+                  "value": "3ae05d3c20bdf7febd1a83f729dec7ba"
+                },
+                {
+                  "key": "X-Xss-Protection",
+                  "value": "1; mode=block"
+                },
+                {
+                  "key": "CF-Cache-Status",
+                  "value": "DYNAMIC"
+                },
+                {
+                  "key": "Server",
+                  "value": "cloudflare"
+                },
+                {
+                  "key": "CF-RAY",
+                  "value": "8469e726df5b0800-IAD"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"data\": {\n        \"trackingRef\": \"CIR2AZYEHT\",\n        \"beneficiaryBank\": {\n            \"accountNumber\": \"123180387879\"\n        },\n        \"amount\": {\n            \"amount\": \"3.14\",\n            \"currency\": \"USD\"\n        },\n        \"status\": \"pending\"\n    }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "<your-api-key-here>",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api-sandbox.circle.com"
+    }
+  ]
+}
