@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 using Microsoft.Extensions.Options;
@@ -64,8 +65,47 @@ public sealed class MockStablecoinGateway(
     public Task<CreatedTransfer> CreateTransferAsync(
         CreateTransferGatewayRequest request, CancellationToken ct = default)
     {
-        // Ticket 06.5 implements this properly; stub only for now.
-        throw new NotSupportedException("CreateTransferAsync is implemented in ticket 06.5.");
+        MaybeThrowProviderUnavailable();
+
+        var circleTransferId = $"mock-transfer-{randomSource.NewGuid()}";
+        var isRejected = request.DestinationRecipientId.EndsWith(
+            options.Value.RejectBusinessNameSuffix, StringComparison.OrdinalIgnoreCase);
+
+        var runningEnvelope = new TransfersWebhookEnvelope
+        {
+            Transfer = new TransfersWebhookTransfer
+            {
+                Id = circleTransferId,
+                Status = "running",
+                Destination = new TransfersWebhookParty { Type = "verified_blockchain", Id = request.DestinationRecipientId },
+                Amount = new TransfersWebhookAmount
+                {
+                    Amount = request.Amount.Amount.ToString(CultureInfo.InvariantCulture),
+                    Currency = request.Amount.CurrencyCode,
+                },
+            },
+        };
+
+        var outcomeEnvelope = new TransfersWebhookEnvelope
+        {
+            Transfer = new TransfersWebhookTransfer
+            {
+                Id = circleTransferId,
+                Status = isRejected ? "failed" : "complete",
+                Destination = new TransfersWebhookParty { Type = "verified_blockchain", Id = request.DestinationRecipientId },
+                Amount = new TransfersWebhookAmount
+                {
+                    Amount = request.Amount.Amount.ToString(CultureInfo.InvariantCulture),
+                    Currency = request.Amount.CurrencyCode,
+                },
+            },
+        };
+
+        var delay = TimeSpan.FromMilliseconds(options.Value.WebhookDelayMilliseconds);
+        webhookScheduler.Schedule("transfers", JsonSerializer.Serialize(runningEnvelope), delay);
+        webhookScheduler.Schedule("transfers", JsonSerializer.Serialize(outcomeEnvelope), delay + delay);
+
+        return Task.FromResult(new CreatedTransfer(circleTransferId, "pending"));
     }
 
     private void MaybeThrowProviderUnavailable()

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -53,10 +54,30 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
         return new RegisteredRecipient(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
     }
 
-    public Task<CreatedTransfer> CreateTransferAsync(
+    public async Task<CreatedTransfer> CreateTransferAsync(
         CreateTransferGatewayRequest request, CancellationToken ct = default)
     {
-        // Ticket 06.5 implements this properly; stub only for now.
-        throw new NotSupportedException("CreateTransferAsync is implemented in ticket 06.5.");
+        var circleRequest = new CreateTransferCircleRequest
+        {
+            IdempotencyKey = request.IdempotencyKey,
+            Destination = new CreateTransferCircleDestination
+            {
+                AddressId = request.DestinationRecipientId,
+            },
+            Amount = new CreateTransferCircleAmount
+            {
+                Amount = request.Amount.Amount.ToString(CultureInfo.InvariantCulture),
+                Currency = request.Amount.CurrencyCode,
+            },
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            "v1/businessAccount/transfers", circleRequest, ct);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content.ReadFromJsonAsync<CreateTransferCircleEnvelope>(ct)
+            ?? throw new InvalidOperationException("Circle returned an empty transfer-creation response.");
+
+        return new CreatedTransfer(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
     }
 }

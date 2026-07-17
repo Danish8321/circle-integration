@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 
 using FluentAssertions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Providers.Circle;
@@ -105,6 +106,57 @@ public sealed class CircleMintGatewayTests
 
         result.CircleRecipientId.Should().Be("circle-recipient-1");
         result.Status.Should().Be("active");
+    }
+
+    [Fact]
+    public async Task CreateTransferAsync_SendsIdempotencyKeyDestinationAmountAndMapsResponse()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        string? capturedBody = null;
+
+        var handler = new StubHttpMessageHandler(async (request, ct) =>
+        {
+            capturedRequest = request;
+            capturedBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+
+            var envelope = new CreateTransferCircleEnvelope
+            {
+                Data = new CreateTransferCircleData
+                {
+                    Id = "circle-transfer-1",
+                    Status = "pending",
+                },
+            };
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(envelope),
+            };
+        });
+
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.circle.test/") };
+        var sut = new CircleMintGateway(httpClient);
+
+        var request = new CreateTransferGatewayRequest(
+            DestinationRecipientId: "circle-recipient-1",
+            Amount: new Money(100m, "USDC"),
+            IdempotencyKey: "transfer:sub-1:1");
+
+        var result = await sut.CreateTransferAsync(request, TestContext.Current.CancellationToken);
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Method.Should().Be(HttpMethod.Post);
+        capturedRequest.RequestUri!.AbsolutePath.Should().Be("/v1/businessAccount/transfers");
+        capturedBody.Should().Contain("\"idempotencyKey\":\"transfer:sub-1:1\"");
+        capturedBody.Should().Contain("\"type\":\"verified_blockchain\"");
+        capturedBody.Should().Contain("\"addressId\":\"circle-recipient-1\"");
+        capturedBody.Should().Contain("\"amount\":\"100\"");
+        capturedBody.Should().Contain("\"currency\":\"USDC\"");
+        capturedBody.Should().NotContain("identities");
+        capturedBody.Should().NotContain("originator");
+
+        result.CircleTransferId.Should().Be("circle-transfer-1");
+        result.Status.Should().Be("pending");
     }
 
     private sealed class StubHttpMessageHandler(
