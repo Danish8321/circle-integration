@@ -89,3 +89,13 @@ method bag in a shared service class.
 - `format.sh $FILE` — `dotnet format` in place, always exits 0.
 - `run.sh` — start the full stack locally (API only today; extend once Infrastructure needs a real DB).
 - `schema.sh new|apply|verify` — `dotnet ef migrations add` / `database update` / idempotent script (fails until a `DbContext` exists — expected, not a bug).
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
