@@ -26,5 +26,9 @@ boundary violation into the first Ledger-module feature to land.
 `docs/DepositReconciliationPLan.md` Task 2 changes from "add method to `ISubAccountGateway`" to
 "create `IStablecoinGateway` (Ledger.Ports) with `ListRecentDepositsAsync` as its first method,
 plus `CircleMintGateway`/`MockStablecoinGateway` implementations." `ISubAccountGateway` stays at
-`Application.Compliance.Ports` (matching `Phase_1_Feature_Slices.md`'s table and — once moved —
-actual code, which currently has it at `Application.Shared.Ports` and needs correcting).
+`Application.Compliance.Ports` (matching `Phase_1_Feature_Slices.md`'s table; confirmed already
+correct in shipped code as of the sub-account endpoints rework — no move needed).
+
+Also fixed 2026-07-17: `Phase_1_Feature_Slices.md`'s own Module Boundaries table had
+`IStablecoinGateway` listed under `Shared`, contradicting this ADR's Ledger placement. Corrected
+inline in that doc.

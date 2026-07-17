@@ -9,6 +9,8 @@
 **Architecture:** `DepositReconciliationBackgroundService` (Infrastructure `BackgroundService`, patterned exactly on `NotificationDispatchBackgroundService`) polls every `ReconciliationOptions.IntervalSeconds`, each pass opening a fresh DI scope and calling `DepositReconciliationService.RunOnceAsync` (Application). That service lists active sub-accounts with a wallet id, asks `IStablecoinGateway.ListRecentDepositsAsync` for each, and for every provider record with no matching `Transaction.ProviderReferenceId` invokes `ProcessDepositCommandHandler` — the same handler the webhook path uses, so the existing unique index on `ProviderReferenceId` is the dedup safety net. Mock-mode testability comes from a new in-memory `IMockProviderDepositLedger` singleton that `MockStablecoinGateway.ListRecentDepositsAsync` delegates to, with a `SeedAsync` test-only entry point to inject a "phantom" provider deposit.
  
 **Tech Stack:** .NET 10, EF Core, xUnit v3 (Microsoft Testing Platform runner), no new NuGet packages.
+
+> **Precondition (as of 2026-07-17, verified against the shipped tree):** This plan assumes `Phase_1_Feature_Slices.md` Tasks 5-14 have already landed — specifically the Ledger module (`Money`, `Transaction`, `FundAccount`, `DepositSourceType`, `ProcessDepositCommand`/`ProcessDepositCommandHandler`, `ITransactionRepository`) and the notification outbox (`NotificationDispatchBackgroundService`, its config section, and its integration test fixture pattern). As of this writing, `src/TreasuryServiceOrchestrator.Domain/` contains only `AuditRecord.cs`, `EntityRegistration.cs`, `EntityRegistrationStatus.cs`, `SubAccount.cs`, and `SubAccountLifecycleState.cs` — none of the Ledger-module types this plan treats as "existing" are in the tree yet, and neither `NotificationDispatchBackgroundService.cs` nor `tests/TreasuryServiceOrchestrator.IntegrationTests/Support/SqlServerTestDatabaseFixture.cs` exist. A reader picking this plan up before those land should not be confused by Task 5's "existing" interfaces, Task 6/7's "patterned exactly on `NotificationDispatchBackgroundService`" references, or Task 3's instruction to read `SqlServerTestDatabaseFixture.cs` — those are all forward references to unshipped Phase 1 work, not present-tense facts about the current tree. Re-check with `Glob`/`Grep` before starting any task below.
  
 ## Module Boundaries
 
@@ -35,7 +37,7 @@ Per `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`: deposit listing is
 ## File Structure
  
 New files:
-- `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IMockProviderDepositLedger.cs` — port interface (lives in Application so both the mock gateway in Infrastructure and its tests can depend on it without a circular reference).
+- `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/IMockProviderDepositLedger.cs` — port interface (lives in Infrastructure's mock-provider namespace alongside its implementation and `MockStablecoinGateway` — no production adapter implements it, so it never belongs at the Application seam; see the Design-pass correction above).
 - `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderDepositLedger.cs` — in-memory implementation.
 - `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs` — add `ProviderDepositRecord` record (existing file, append).
 - `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` — new gateway port, `ListRecentDepositsAsync` as its first method (new file — see ADR 0006).
@@ -56,7 +58,7 @@ New files:
 ### Task 1: Mock provider deposit ledger
  
 **Files:**
-- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IMockProviderDepositLedger.cs`
+- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/IMockProviderDepositLedger.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs` (append `ProviderDepositRecord`)
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderDepositLedger.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockProviderDepositLedgerTests.cs`
@@ -78,12 +80,13 @@ public sealed record ProviderDepositRecord(
 ```
  
 - [ ] **Step 2: Write the port interface**
-Create `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IMockProviderDepositLedger.cs`:
+Create `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/IMockProviderDepositLedger.cs`:
  
 ```csharp
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
  
-namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
+namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
  
 public interface IMockProviderDepositLedger
 {
@@ -206,7 +209,7 @@ Expected: PASS (3/3).
 - [ ] **Step 7: Build and commit**
 ```bash
 dotnet build
-git add src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IMockProviderDepositLedger.cs src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderDepositLedger.cs tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockProviderDepositLedgerTests.cs
+git add src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs src/TreasuryServiceOrchestrator.Infrastructure/Mocks/IMockProviderDepositLedger.cs src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderDepositLedger.cs tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockProviderDepositLedgerTests.cs
 git commit -m "feat: add in-memory mock provider deposit ledger"
 ```
  
@@ -306,7 +309,7 @@ public sealed class CircleMintGateway : IStablecoinGateway
 }
 ```
 
-Real HTTP integration (`GET /v1/businessAccount/deposits?walletId=`) lands in Phase 3.
+Real HTTP integration lands in Phase 3 — per the corrected Goal note above, `CircleMintGateway.ListRecentDepositsAsync` will issue **two** HTTP calls and merge their results: `GET /v1/businessAccount/deposits?walletId=` (fiat wire deposits) and `GET /v1/businessAccount/transfers` filtered to incoming direction (on-chain deposits), tagging records `Wire` or `OnChain` respectively. This stub scopes only the empty-list placeholder; it does not narrow Phase 3's scope to the deposits endpoint alone.
 
 - [ ] **Step 6: Run tests to verify they pass**
 Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*MockStablecoinGatewayTests*"`
@@ -491,16 +494,9 @@ public sealed class ReconciliationOptions
 ```
  
 - [ ] **Step 2: Add the config section**
-Edit `src/TreasuryServiceOrchestrator.Api/appsettings.json` — add a `Reconciliation` section after `Notifications` (before the closing `}`):
+Edit `src/TreasuryServiceOrchestrator.Api/appsettings.json` — add a `Reconciliation` section (before the closing `}`). The shipped file has no `Notifications` section yet (that lands with Phase 1 Task 13, the notification outbox, which this plan does not depend on) — do not anchor this addition relative to it, just add the new top-level section:
  
 ```json
-  "Notifications": {
-    "EndpointUrl": "http://localhost:5080/internal/notifications",
-    "MaxBatchSize": 20,
-    "PollingIntervalMilliseconds": 500,
-    "BaseBackoffMilliseconds": 1000,
-    "MaxBackoffMilliseconds": 60000
-  },
   "Reconciliation": {
     "IntervalSeconds": 300,
     "LookbackWindowMinutes": 1440
@@ -629,7 +625,7 @@ public sealed class DepositReconciliationServiceTests
         FakeSubAccountRepository subAccounts, FakeStablecoinGateway gateway,
         FakeTransactionRepository transactions, FakeProcessDepositHandler handler)
         => new(subAccounts, gateway, transactions, handler,
-            Options.Create(new ReconciliationOptions()), NullLogger<DepositReconciliationService>.Instance);
+            Options.Create(new ReconciliationOptions()), TimeProvider.System, NullLogger<DepositReconciliationService>.Instance);
  
     [Fact]
     public async Task No_active_sub_accounts_is_a_no_op()
@@ -741,7 +737,7 @@ public sealed class DepositReconciliationServiceTests
         var throwingGateway = new ThrowsForOneWalletGateway(gateway, "wallet-broken");
         var service = new DepositReconciliationService(
             subAccounts, throwingGateway, transactions, handler,
-            Options.Create(new ReconciliationOptions()), NullLogger<DepositReconciliationService>.Instance);
+            Options.Create(new ReconciliationOptions()), TimeProvider.System, NullLogger<DepositReconciliationService>.Instance);
  
         var healedCount = await service.RunOnceAsync(TestContext.Current.CancellationToken);
  
@@ -781,12 +777,13 @@ public sealed class DepositReconciliationService(
     ITransactionRepository transactions,
     ICommandHandler<ProcessDepositCommand, ProcessDepositResult> processDeposit,
     IOptions<ReconciliationOptions> options,
+    TimeProvider timeProvider,
     ILogger<DepositReconciliationService> logger)
 {
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken)
     {
         var lookback = TimeSpan.FromMinutes(options.Value.LookbackWindowMinutes);
-        var sinceUtc = DateTime.UtcNow - lookback;
+        var sinceUtc = timeProvider.GetUtcNow().UtcDateTime - lookback;
         var healedCount = 0;
  
         var activeSubAccounts = await subAccounts.ListActiveWithWalletAsync(cancellationToken);
@@ -862,7 +859,7 @@ git commit -m "feat: add DepositReconciliationService"
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Reconciliation/DepositReconciliationBackgroundService.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
 **Interfaces:**
-- Consumes: `DepositReconciliationService.RunOnceAsync(CancellationToken)` (Task 5), `ReconciliationOptions` (Task 4), `IServiceScopeFactory` (framework), `IMockProviderDepositLedger` (Task 1, registered as singleton here alongside the mock gateway).
+- Consumes: `DepositReconciliationService.RunOnceAsync(CancellationToken)` (Task 5), `ReconciliationOptions` (Task 4), `IServiceScopeFactory` (framework), `TreasuryServiceOrchestrator.Infrastructure.Mocks.IMockProviderDepositLedger` (Task 1, registered as singleton here alongside the mock gateway).
 - Produces: `DepositReconciliationBackgroundService`, registered via `AddHostedService`.
 - [ ] **Step 1: Implement the background service**
 Create `src/TreasuryServiceOrchestrator.Infrastructure/Reconciliation/DepositReconciliationBackgroundService.cs`, patterned directly on `src/TreasuryServiceOrchestrator.Infrastructure/Notifications/NotificationDispatchBackgroundService.cs`:
@@ -918,24 +915,24 @@ public sealed class DepositReconciliationBackgroundService(
 - [ ] **Step 2: Wire DI in `Program.cs`**
 Edit `src/TreasuryServiceOrchestrator.Api/Program.cs`.
  
-First, register `IStablecoinGateway` and `IMockProviderDepositLedger` as singletons alongside the other mock-mode singletons, inside the existing `if (mockProviderOptions.Enabled)` block (around line 79 — the existing `ISubAccountGateway`/`MockSubAccountGateway` registration already there is untouched, these are new lines added next to it):
+First, register `IStablecoinGateway` and `IMockProviderDepositLedger` as singletons alongside the other mock-mode singletons, inside the existing `if (builder.Environment.IsDevelopment())` block (the shipped file gates mock-vs-real gateway selection on `builder.Environment.IsDevelopment()`, not a config flag — the existing `ISubAccountGateway`/`FakeSubAccountGateway` registration already there is untouched, these are new lines added next to it):
  
 ```csharp
     builder.Services.AddSingleton<TreasuryServiceOrchestrator.Application.Ledger.Ports.IStablecoinGateway, MockStablecoinGateway>();
-    builder.Services.AddSingleton<TreasuryServiceOrchestrator.Application.Ledger.Ports.IMockProviderDepositLedger,
+    builder.Services.AddSingleton<TreasuryServiceOrchestrator.Infrastructure.Mocks.IMockProviderDepositLedger,
         TreasuryServiceOrchestrator.Infrastructure.Mocks.MockProviderDepositLedger>();
 ```
 
-Outside mock mode, also register the real gateway alongside the existing `ISubAccountGateway`/`CircleSubAccountGateway` registration:
+Outside mock mode (the `else` branch), also register the real gateway alongside the existing `ISubAccountGateway`/`CircleSubAccountGateway` registration:
 
 ```csharp
     builder.Services.AddSingleton<TreasuryServiceOrchestrator.Application.Ledger.Ports.IStablecoinGateway,
         TreasuryServiceOrchestrator.Infrastructure.Providers.Circle.CircleMintGateway>();
 ```
  
-`MockProviderDepositLedger` must be registered even outside mock mode for `CircleMintGateway` builds — no, `CircleMintGateway` does not depend on it (Task 2's stub returns an empty list directly), so this registration only needs to be inside the mock-mode branch. Confirm this by re-reading `CircleMintGateway.cs` after Task 2 lands — it must have zero reference to `IMockProviderDepositLedger`.
+`IMockProviderDepositLedger`/`MockProviderDepositLedger` must **not** be registered outside the `IsDevelopment()` branch — `CircleMintGateway` does not depend on it (Task 2's stub returns an empty list directly), so this registration only needs to be inside the mock-mode branch. Confirm this by re-reading `CircleMintGateway.cs` after Task 2 lands — it must have zero reference to `IMockProviderDepositLedger`.
  
-Second, add the reconciliation options + service + hosted-service registrations after the existing Notification wiring block (after line 418, before `var app = builder.Build();`):
+Second, add the reconciliation options + service + hosted-service registrations immediately before `var app = builder.Build();` (the shipped `Program.cs` is 81 lines; this is the last statement before that line — there is no separate "Notification wiring block" to anchor after, since the notification outbox feature has not landed yet):
  
 ```csharp
 builder.Services.Configure<TreasuryServiceOrchestrator.Application.Ledger.Reconciliation.ReconciliationOptions>(
@@ -980,6 +977,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Application.Ledger.Reconciliation;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
+using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 using TreasuryServiceOrchestrator.IntegrationTests.Support;
 using Xunit;
@@ -1007,6 +1005,11 @@ public sealed class DepositReconciliationIntegrationTests : IAsyncLifetime
         await using var context = new TreasuryServiceOrchestratorDbContext(options, new TestTenantContext(null));
         await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
  
+        // Mock-mode gateways (FakeSubAccountGateway, MockStablecoinGateway, MockProviderDepositLedger) are
+        // selected by Program.cs's `if (builder.Environment.IsDevelopment())` branch, not a config flag —
+        // WebApplicationFactory<Program> already defaults the test host's environment to "Development"
+        // (same as the rest of this project's integration test host, e.g. TreasuryServiceOrchestratorApiFactory),
+        // so no explicit "enable mock mode" key is needed or exists.
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
@@ -1015,7 +1018,6 @@ public sealed class DepositReconciliationIntegrationTests : IAsyncLifetime
                 {
                     ["KnownClientCompanies:0:Id"] = "acme-co",
                     ["KnownClientCompanies:0:Role"] = "SubAccount",
-                    ["MockProvider:Enabled"] = "true",
                 });
             });
         });

@@ -15,10 +15,16 @@ Application/Domain code is organized into four named module sub-namespaces, not 
 | Module | Owns | PRD sections |
 |---|---|---|
 | `Compliance` | SubAccount, EntityRegistration lifecycle | §3, §4 |
-| `Ledger` | Wallet, DepositAddress, Transaction, BalanceSnapshot, transfers, redemptions, balances | §6, §7, §8, §9 |
+| `Ledger` | Wallet, DepositAddress, Transaction, BalanceSnapshot, transfers, redemptions, balances, `IStablecoinGateway` (money-moving gateway port) | §6, §7, §8, §9 |
 | `Webhooks` | Durable inbox, dedup, per-topic processors, notification outbox | §10, §10.1 |
 | `Admin` | Cross-tenant/master-account read views | §2.5 |
-| `Shared` | Cross-cutting auth (`ICallerContext`, `TenantScopeResolver`), cross-module provider port (`IStablecoinGateway`), shared config (`SupportedChainsOptions`) | n/a |
+| `Shared` | Cross-cutting auth (`ICallerContext`, `TenantScopeResolver`), shared config (`SupportedChainsOptions`) | n/a |
+
+> **Correction (ADR 0006, 2026-07-17):** this table originally placed `IStablecoinGateway` under
+> `Shared` as a "cross-module provider port." That's superseded — `IStablecoinGateway` is a
+> Ledger-module port (`Application.Ledger.Ports`), matching `CONTEXT.md`,
+> `docs/DepositReconciliationPLan.md` Task 2, and every task snippet below that actually places
+> it there. If you're reading an older cached copy of this table, Ledger owns it, not Shared.
 
 Every task below that says `Application/Ports/*.cs` or a flat `Application/Ledger/*.cs` path means "place under `Application/<Module>/Ports/*.cs` or `Application/<Module>/*.cs` per the table above" — e.g. `ISubAccountGateway.cs`/`ISubAccountRepository.cs` → `Application/Compliance/Ports/`, `ITransactionRepository.cs`/`ProcessDepositCommand` → `Application/Ledger/Ports/` and `Application/Ledger/`. Where a type is shared across modules (e.g. `GatewayDtos.cs` if it holds both compliance and ledger DTOs), split it per-module rather than keeping one shared file. Full modular-monolith isolation (separate persistence/deployment per module) is explicitly **not** adopted — see `architecture_module_boundaries` decision; this is namespace/folder discipline only, still one deployable, one `DbContext`.
 
@@ -395,7 +401,7 @@ Gives every handler a single way to resolve "which tenant does this request actu
 
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Application/Shared/TenantScopeResolver.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/TreasuryDomainException.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/DomainException.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/TenantForbiddenException.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/NotFoundException.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/ConflictException.cs`
@@ -403,14 +409,14 @@ Gives every handler a single way to resolve "which tenant does this request actu
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/ProviderUnavailableException.cs`
 - Create: `src/TreasuryServiceOrchestrator.Api/ErrorHandling/TreasuryProblemDetailsExceptionHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/RedeemController.cs` (drop try/catch)
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/SubAccountsController.cs` (drop try/catch)
+- Modify: `src/TreasuryServiceOrchestrator.Api/Ledger/RedeemController.cs` (drop try/catch)
+- Modify: `src/TreasuryServiceOrchestrator.Api/Compliance/SubAccountsController.cs` (drop try/catch)
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/TenantScopeResolverTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/ProblemDetailsMappingTests.cs`
 
 **Interfaces:**
 - Consumes: Task 1's `ICallerContext { CallerId, Role, IsAdmin }`.
-- Produces: `static class TenantScopeResolver { static string? Resolve(ICallerContext caller, string? requestedClientCompanyId); }` — every later handler/controller that needs "the tenant for this request" calls this instead of reading `ITenantContext` directly for anything admin-reachable. `TenantForbiddenException(string message)`, `NotFoundException(string message)`, `ConflictException(string message)`, `ProviderRejectedException(string message)`, `ProviderUnavailableException(string message)` — all `sealed`, all deriving from `abstract class TreasuryDomainException(string message) : Exception(message)`.
+- Produces: `static class TenantScopeResolver { static TenantScope Resolve(ICallerContext caller, string? requestedClientCompanyId); }` — returns the closed hierarchy `abstract record TenantScope { sealed record SingleTenant(string ClientCompanyId); sealed record AllTenants; }` (see `Application/Shared/TenantScope.cs`); every later handler/controller that needs "the tenant for this request" calls this instead of reading `ITenantContext` directly for anything admin-reachable. `TenantForbiddenException()` (no message — hardcodes "Caller may not act on the requested tenant."), `NotFoundException(string message)`, `ConflictException(string message)`, `ProviderRejectedException(string message)`, `ProviderUnavailableException(string message)` — all `sealed`, all deriving from `abstract class DomainException(string message) : Exception(message)`.
 
 - [ ] **Step 1: Write the failing resolver unit tests**
 
@@ -438,7 +444,8 @@ public class TenantScopeResolverTests
 
         var resolved = TenantScopeResolver.Resolve(caller, requestedClientCompanyId: null);
 
-        Assert.Equal("acme-co", resolved);
+        var single = Assert.IsType<TenantScope.SingleTenant>(resolved);
+        Assert.Equal("acme-co", single.ClientCompanyId);
     }
 
     [Fact]
@@ -448,7 +455,8 @@ public class TenantScopeResolverTests
 
         var resolved = TenantScopeResolver.Resolve(caller, requestedClientCompanyId: "acme-co");
 
-        Assert.Equal("acme-co", resolved);
+        var single = Assert.IsType<TenantScope.SingleTenant>(resolved);
+        Assert.Equal("acme-co", single.ClientCompanyId);
     }
 
     [Fact]
@@ -467,17 +475,18 @@ public class TenantScopeResolverTests
 
         var resolved = TenantScopeResolver.Resolve(caller, requestedClientCompanyId: "acme-co");
 
-        Assert.Equal("acme-co", resolved);
+        var single = Assert.IsType<TenantScope.SingleTenant>(resolved);
+        Assert.Equal("acme-co", single.ClientCompanyId);
     }
 
     [Fact]
-    public void Admin_caller_with_no_requested_scope_resolves_to_null_meaning_all_tenants()
+    public void Admin_caller_with_no_requested_scope_resolves_to_AllTenants()
     {
         var caller = new FakeCallerContext("apiso-admin", CallerRole.Admin);
 
         var resolved = TenantScopeResolver.Resolve(caller, requestedClientCompanyId: null);
 
-        Assert.Null(resolved);
+        Assert.IsType<TenantScope.AllTenants>(resolved);
     }
 }
 ```
@@ -490,71 +499,97 @@ Expected: FAIL — compile error, types don't exist yet.
 - [ ] **Step 3: Add the exception hierarchy**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Exceptions/TreasuryDomainException.cs
+// src/TreasuryServiceOrchestrator.Application/Exceptions/DomainException.cs
 namespace TreasuryServiceOrchestrator.Application.Exceptions;
 
-public abstract class TreasuryDomainException(string message) : Exception(message);
+public abstract class DomainException(string message) : Exception(message);
 ```
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Exceptions/TenantForbiddenException.cs
 namespace TreasuryServiceOrchestrator.Application.Exceptions;
 
-public sealed class TenantForbiddenException(string message) : TreasuryDomainException(message);
+public sealed class TenantForbiddenException()
+    : DomainException("Caller may not act on the requested tenant.");
 ```
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Exceptions/NotFoundException.cs
 namespace TreasuryServiceOrchestrator.Application.Exceptions;
 
-public sealed class NotFoundException(string message) : TreasuryDomainException(message);
+public sealed class NotFoundException(string message) : DomainException(message);
 ```
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Exceptions/ConflictException.cs
 namespace TreasuryServiceOrchestrator.Application.Exceptions;
 
-public sealed class ConflictException(string message) : TreasuryDomainException(message);
+public sealed class ConflictException(string message) : DomainException(message);
 ```
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Exceptions/ProviderRejectedException.cs
 namespace TreasuryServiceOrchestrator.Application.Exceptions;
 
-public sealed class ProviderRejectedException(string message) : TreasuryDomainException(message);
+/// <summary>Terminal provider rejection — retrying will not succeed.</summary>
+public sealed class ProviderRejectedException(string message) : DomainException(message);
 ```
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Exceptions/ProviderUnavailableException.cs
 namespace TreasuryServiceOrchestrator.Application.Exceptions;
 
-public sealed class ProviderUnavailableException(string message) : TreasuryDomainException(message);
+/// <summary>Retryable provider failure — the provider is temporarily unavailable.</summary>
+public sealed class ProviderUnavailableException(string message) : DomainException(message);
 ```
+
+> **Reconciliation note (fix applied 2026-07-17):** `SubAccountAlreadyExistsException` (Task 3) derives
+> directly from `DomainException`, not from `ConflictException` — it carries a structured
+> `ClientCompanyId` property the generic conflict exception doesn't have. It is still mapped to a
+> 409 via an explicit `case` in the exception handler below (see Step 6), same status as
+> `ConflictException`, just matched by its own concrete type first.
 
 - [ ] **Step 4: Add `TenantScopeResolver`**
 
 ```csharp
+// src/TreasuryServiceOrchestrator.Application/Shared/TenantScope.cs
+namespace TreasuryServiceOrchestrator.Application.Shared;
+
+public abstract record TenantScope
+{
+    // "SingleTenant" rather than "Single": CA1720 forbids identifiers matching
+    // primitive type names (System.Single).
+    public sealed record SingleTenant(string ClientCompanyId) : TenantScope;
+
+    public sealed record AllTenants : TenantScope; // Admin list only
+}
+```
+
+```csharp
 // src/TreasuryServiceOrchestrator.Application/Shared/TenantScopeResolver.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.Shared;
 
 public static class TenantScopeResolver
 {
-    public static string? Resolve(ICallerContext caller, string? requestedClientCompanyId)
+    public static TenantScope Resolve(ICallerContext caller, string? requestedClientCompanyId)
     {
-        if (!caller.IsAdmin)
+        if (caller.IsAdmin)
         {
-            if (requestedClientCompanyId is null || requestedClientCompanyId == caller.CallerId)
-            {
-                return caller.CallerId;
-            }
-
-            throw new TenantForbiddenException(
-                $"Caller '{caller.CallerId}' may not act on behalf of tenant '{requestedClientCompanyId}'.");
+            return requestedClientCompanyId is null
+                ? new TenantScope.AllTenants()
+                : new TenantScope.SingleTenant(requestedClientCompanyId);
         }
 
-        return requestedClientCompanyId;
+        if (requestedClientCompanyId is not null
+            && !string.Equals(requestedClientCompanyId, caller.CallerId, StringComparison.Ordinal))
+        {
+            throw new TenantForbiddenException();
+        }
+
+        return new TenantScope.SingleTenant(caller.CallerId);
     }
 }
 ```
@@ -585,6 +620,10 @@ public sealed class TreasuryProblemDetailsExceptionHandler(ILogger<TreasuryProbl
             ValidationException => (StatusCodes.Status400BadRequest, "Validation failed", "validation"),
             NotFoundException => (StatusCodes.Status404NotFound, "Resource not found", "not-found"),
             TenantForbiddenException => (StatusCodes.Status403Forbidden, "Tenant forbidden", "tenant-forbidden"),
+            // Matched before ConflictException below: SubAccountAlreadyExistsException (Task 3)
+            // derives directly from DomainException, not ConflictException, so it needs its own
+            // explicit case or it would fall through to the unhandled `_` branch.
+            SubAccountAlreadyExistsException => (StatusCodes.Status409Conflict, "Sub-account already exists", "conflict"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflict", "conflict"),
             ProviderRejectedException => (StatusCodes.Status422UnprocessableEntity, "Provider rejected request", "provider-rejected"),
             ProviderUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Provider unavailable", "provider-unavailable"),
@@ -626,7 +665,7 @@ app.UseExceptionHandler();
 
 - [ ] **Step 8: Drop try/catch from existing controllers**
 
-Read `src/TreasuryServiceOrchestrator.Api/Controllers/RedeemController.cs` and `SubAccountsController.cs` in full. Remove any `try { ... } catch (SomeException ex) { return StatusCode(...); }` wrapping around handler calls — let the exception propagate to the new global handler. Replace domain-specific manual status codes (e.g. a hand-rolled 409 on `InvalidOperationException`) by throwing the matching new exception type (`ConflictException`, `NotFoundException`, etc.) from the handler/repository layer instead of the controller catching a generic one. If a controller currently catches a generic `Exception` to return a specific status, that logic must move into the handler as a typed exception — controllers only dispatch.
+Read `src/TreasuryServiceOrchestrator.Api/Ledger/RedeemController.cs` and `src/TreasuryServiceOrchestrator.Api/Compliance/SubAccountsController.cs` in full. Remove any `try { ... } catch (SomeException ex) { return StatusCode(...); }` wrapping around handler calls — let the exception propagate to the new global handler. Replace domain-specific manual status codes (e.g. a hand-rolled 409 on `InvalidOperationException`) by throwing the matching new exception type (`ConflictException`, `NotFoundException`, etc.) from the handler/repository layer instead of the controller catching a generic one. If a controller currently catches a generic `Exception` to return a specific status, that logic must move into the handler as a typed exception — controllers only dispatch.
 
 - [ ] **Step 9: Add integration test proving the mapping**
 
@@ -688,15 +727,15 @@ Splits business/address data off `SubAccount` into a new `EntityRegistration` en
 - Create: `src/TreasuryServiceOrchestrator.Domain/SubAccountLifecycleState.cs`
 - Rename+Modify: `src/TreasuryServiceOrchestrator.Domain/SubAccountComplianceState.cs` → `src/TreasuryServiceOrchestrator.Domain/EntityRegistrationStatus.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/EntityRegistration.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountCommandHandler.cs`
-- Rename+Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/SubAccountComplianceStateMapper.cs` → `EntityRegistrationStatusMapper.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ProcessExternalEntityDecisionHandler.cs` (rename decision target to `EntityRegistration`, cascade to `SubAccount.LifecycleState`)
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/CreateSubAccount/CreateSubAccountHandler.cs`
+- Rename+Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/SubAccountComplianceStateMapper.cs` → `src/TreasuryServiceOrchestrator.Application/Compliance/EntityRegistrationStatusMapper.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/ProcessExternalEntityDecision/ProcessExternalEntityDecisionHandler.cs` (rename decision target to `EntityRegistration`, cascade to `SubAccount.LifecycleState`)
 - Create: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/IEntityRegistrationRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/EntityRegistrationRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Delete + regenerate: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Migrations/*` (`InitialCreate`)
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/CreateSubAccountCommandHandlerTests.cs` (modify existing assertions)
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ProcessExternalEntityDecisionHandlerTests.cs` (modify existing assertions)
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/CreateSubAccountHandlerTests.cs` (modify existing assertions)
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/ProcessExternalEntityDecisionHandlerTests.cs` (modify existing assertions)
 
 **Interfaces:**
 - Consumes: existing `ISubAccountGateway.CreateExternalEntityAsync` (unchanged signature — still returns `CreateExternalEntityResult(string WalletId, string ComplianceState, string BusinessName, string BusinessUniqueIdentifier)`; the handler now treats `WalletId` as an immediate wallet assignment and `ComplianceState` as the *initial* registration status, not a final decision).
@@ -704,13 +743,13 @@ Splits business/address data off `SubAccount` into a new `EntityRegistration` en
 
 - [ ] **Step 1: Update the failing handler tests to the new shape**
 
-Read `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/CreateSubAccountCommandHandlerTests.cs` and `ProcessExternalEntityDecisionHandlerTests.cs` in full. Update every assertion referencing `subAccount.BusinessName`, `subAccount.ComplianceState`, or a mocked `ISubAccountRepository` interaction that assumed the old shape, to instead assert:
-- `CreateSubAccountCommandHandlerTests`: on success, `subAccounts.AddAsync` is called with a `SubAccount` whose `LifecycleState == SubAccountLifecycleState.PendingCompliance` and `CircleWalletId` set from the gateway result, **and** a mocked `IEntityRegistrationRepository.AddAsync` is called with an `EntityRegistration` carrying the command's business/address fields and `Status` mapped from the gateway's `ComplianceState`.
+Read `tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/CreateSubAccountHandlerTests.cs` and `ProcessExternalEntityDecisionHandlerTests.cs` in full. Update every assertion referencing `subAccount.BusinessName`, `subAccount.ComplianceState`, or a mocked `ISubAccountRepository` interaction that assumed the old shape, to instead assert:
+- `CreateSubAccountHandlerTests`: on success, `subAccounts.AddAsync` is called with a `SubAccount` whose `LifecycleState == SubAccountLifecycleState.PendingCompliance` and `CircleWalletId` set from the gateway result, **and** a mocked `IEntityRegistrationRepository.AddAsync` is called with an `EntityRegistration` carrying the command's business/address fields and `Status` mapped from the gateway's `ComplianceState`.
 - `ProcessExternalEntityDecisionHandlerTests`: the handler now looks up `EntityRegistration` by `CircleWalletId` (via `IEntityRegistrationRepository`), updates its `Status`, and — only when the new status is `Accepted` or `Rejected` — cascades `SubAccount.LifecycleState` to `Active` or `Rejected` respectively (looked up via `ISubAccountRepository.GetByCircleWalletIdAsync`, unchanged signature).
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*CreateSubAccountCommandHandlerTests*|*ProcessExternalEntityDecisionHandlerTests*"`
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*CreateSubAccountHandlerTests*|*ProcessExternalEntityDecisionHandlerTests*"`
 Expected: FAIL — compile errors, new types/members don't exist yet.
 
 - [ ] **Step 3: Add domain types**
@@ -824,30 +863,42 @@ public sealed class EntityRegistrationRepository(TreasuryServiceOrchestratorDbCo
 }
 ```
 
-- [ ] **Step 5: Rework `CreateSubAccountCommandHandler`**
+- [ ] **Step 5: Rework `CreateSubAccountHandler`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountCommandHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/CreateSubAccount/CreateSubAccountHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Domain;
 using FluentValidation;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 
-public sealed class CreateSubAccountCommandHandler(
+public sealed class CreateSubAccountHandler(
     ISubAccountGateway gateway,
     IIdempotencyService idempotency,
     IAuditLogService auditLog,
     IUnitOfWork unitOfWork,
     ISubAccountRepository subAccounts,
     IEntityRegistrationRepository entityRegistrations,
-    IValidator<CreateSubAccountCommand> validator)
+    IValidator<CreateSubAccountCommand> validator,
+    TimeProvider timeProvider,
+    ICallerContext callerContext)
     : ICommandHandler<CreateSubAccountCommand, CreateSubAccountResult>
 {
     public async Task<CreateSubAccountResult> HandleAsync(
         CreateSubAccountCommand command, CancellationToken cancellationToken = default)
     {
+        // Sub-account creation is Admin-only regardless of the requested target tenant.
+        if (!callerContext.IsAdmin)
+        {
+            throw new TenantForbiddenException();
+        }
+
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
             throw new ValidationException(validationResult.Errors);
@@ -856,104 +907,107 @@ public sealed class CreateSubAccountCommandHandler(
             idempotency,
             command.ClientCompanyId,
             command.IdempotencyKey,
-            new
-            {
-                command.BusinessName,
-                command.BusinessUniqueIdentifier,
-                command.IdentifierIssuingCountryCode,
-                command.Country,
-                command.State,
-                command.City,
-                command.Postcode,
-                command.StreetName,
-                command.BuildingNumber,
-            },
+            command,
             unitOfWork,
-            async () =>
-            {
-                if (await subAccounts.GetByClientCompanyIdAsync(command.ClientCompanyId, cancellationToken) is not null)
-                    throw new SubAccountAlreadyExistsException(command.ClientCompanyId);
-
-                await auditLog.AppendAsync(
-                    "SubAccountRequested", "SubAccount", command.CorrelationId,
-                    JsonSerializer.Serialize(command), command.ClientCompanyId, command.CorrelationId, cancellationToken);
-
-                var gatewayResult = await gateway.CreateExternalEntityAsync(
-                    new CreateExternalEntityGatewayRequest(
-                        BusinessName: command.BusinessName,
-                        BusinessUniqueIdentifier: command.BusinessUniqueIdentifier,
-                        IdentifierIssuingCountryCode: command.IdentifierIssuingCountryCode,
-                        Address: new ExternalEntityAddress(
-                            Country: command.Country,
-                            State: command.State,
-                            City: command.City,
-                            Postcode: command.Postcode,
-                            StreetName: command.StreetName,
-                            BuildingNumber: command.BuildingNumber)),
-                    cancellationToken);
-
-                var registrationStatus = EntityRegistrationStatusMapper.Map(gatewayResult.ComplianceState);
-
-                var subAccount = new SubAccount
-                {
-                    Id = Guid.NewGuid(),
-                    ClientCompanyId = command.ClientCompanyId,
-                    CircleWalletId = gatewayResult.WalletId,
-                    LifecycleState = SubAccountLifecycleState.PendingCompliance,
-                    CreatedAtUtc = DateTime.UtcNow,
-                    UpdatedAtUtc = DateTime.UtcNow,
-                };
-                await subAccounts.AddAsync(subAccount, cancellationToken);
-
-                var registration = new EntityRegistration
-                {
-                    Id = Guid.NewGuid(),
-                    SubAccountId = subAccount.Id,
-                    ClientCompanyId = command.ClientCompanyId,
-                    BusinessName = command.BusinessName,
-                    BusinessUniqueIdentifier = command.BusinessUniqueIdentifier,
-                    IdentifierIssuingCountryCode = command.IdentifierIssuingCountryCode,
-                    Country = command.Country,
-                    State = command.State,
-                    City = command.City,
-                    Postcode = command.Postcode,
-                    StreetName = command.StreetName,
-                    BuildingNumber = command.BuildingNumber,
-                    CircleWalletId = gatewayResult.WalletId,
-                    Status = registrationStatus,
-                    CreatedAtUtc = DateTime.UtcNow,
-                    UpdatedAtUtc = DateTime.UtcNow,
-                };
-                await entityRegistrations.AddAsync(registration, cancellationToken);
-
-                if (registrationStatus != EntityRegistrationStatus.Pending)
-                {
-                    subAccount.LifecycleState = registrationStatus == EntityRegistrationStatus.Accepted
-                        ? SubAccountLifecycleState.Active
-                        : SubAccountLifecycleState.Rejected;
-                }
-
-                await auditLog.AppendAsync(
-                    "SubAccountProvisionedAtCircle", "SubAccount", subAccount.Id.ToString(),
-                    JsonSerializer.Serialize(new { subAccount.CircleWalletId, registrationStatus }),
-                    command.ClientCompanyId, command.CorrelationId, cancellationToken);
-
-                return new CreateSubAccountResult(subAccount.Id, subAccount.CircleWalletId!, subAccount.LifecycleState);
-            },
+            () => ProvisionAsync(command, cancellationToken),
             cancellationToken);
+    }
+
+    private async Task<CreateSubAccountResult> ProvisionAsync(
+        CreateSubAccountCommand command, CancellationToken cancellationToken)
+    {
+        if (await subAccounts.GetByClientCompanyIdAsync(command.ClientCompanyId, cancellationToken) is not null)
+            throw new SubAccountAlreadyExistsException(command.ClientCompanyId);
+
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+
+        // Reserve: persist local intent before the outbound provider call.
+        var subAccount = new SubAccount
+        {
+            Id = Guid.NewGuid(),
+            ClientCompanyId = command.ClientCompanyId,
+            LifecycleState = SubAccountLifecycleState.Created,
+            CreatedAtUtc = nowUtc,
+            UpdatedAtUtc = nowUtc,
+        };
+        await subAccounts.AddAsync(subAccount, cancellationToken);
+
+        await auditLog.AppendAsync(
+            "SubAccountRequested", "SubAccount", subAccount.Id.ToString(),
+            JsonSerializer.Serialize(command), command.ClientCompanyId, command.CorrelationId, cancellationToken);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Gateway/state-transition: call the provider.
+        var gatewayResult = await gateway.CreateExternalEntityAsync(
+            new CreateExternalEntityGatewayRequest(
+                BusinessName: command.BusinessName,
+                BusinessUniqueIdentifier: command.BusinessUniqueIdentifier,
+                IdentifierIssuingCountryCode: command.IdentifierIssuingCountryCode,
+                Address: new ExternalEntityAddress(
+                    Country: command.Country,
+                    State: command.State,
+                    City: command.City,
+                    Postcode: command.Postcode,
+                    StreetName: command.StreetName,
+                    BuildingNumber: command.BuildingNumber)),
+            cancellationToken);
+
+        var registrationStatus = EntityRegistrationStatusMapper.Map(gatewayResult.ComplianceState);
+
+        subAccount.CircleWalletId = gatewayResult.WalletId;
+        subAccount.LifecycleState = SubAccountLifecycleState.PendingCompliance;
+        subAccount.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+
+        var registration = new EntityRegistration
+        {
+            Id = Guid.NewGuid(),
+            SubAccountId = subAccount.Id,
+            ClientCompanyId = command.ClientCompanyId,
+            BusinessName = command.BusinessName,
+            BusinessUniqueIdentifier = command.BusinessUniqueIdentifier,
+            IdentifierIssuingCountryCode = command.IdentifierIssuingCountryCode,
+            Country = command.Country,
+            State = command.State,
+            City = command.City,
+            Postcode = command.Postcode,
+            StreetName = command.StreetName,
+            BuildingNumber = command.BuildingNumber,
+            CircleWalletId = gatewayResult.WalletId,
+            Status = registrationStatus,
+            CreatedAtUtc = subAccount.UpdatedAtUtc,
+            UpdatedAtUtc = subAccount.UpdatedAtUtc,
+        };
+
+        if (registrationStatus != EntityRegistrationStatus.Pending)
+        {
+            subAccount.LifecycleState = registrationStatus == EntityRegistrationStatus.Accepted
+                ? SubAccountLifecycleState.Active
+                : SubAccountLifecycleState.Rejected;
+        }
+
+        // Complete: finalize local state to match the provider's response.
+        await entityRegistrations.AddAsync(registration, cancellationToken);
+
+        await auditLog.AppendAsync(
+            "SubAccountProvisionedAtCircle", "SubAccount", subAccount.Id.ToString(),
+            JsonSerializer.Serialize(new { subAccount.CircleWalletId, registrationStatus }),
+            command.ClientCompanyId, command.CorrelationId, cancellationToken);
+
+        return new CreateSubAccountResult(subAccount.Id, subAccount.ClientCompanyId, subAccount.CircleWalletId!, subAccount.LifecycleState);
     }
 }
 ```
 
-Update `CreateSubAccountResult` (`src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountResult.cs`) to carry `SubAccountLifecycleState` instead of `SubAccountComplianceState` in its record signature.
+Update `CreateSubAccountResult` (`src/TreasuryServiceOrchestrator.Application/Compliance/CreateSubAccount/CreateSubAccountResult.cs`) to carry `SubAccountLifecycleState` instead of `SubAccountComplianceState` in its record signature.
 
 - [ ] **Step 6: Rename the mapper and rework `ProcessExternalEntityDecisionHandler`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/EntityRegistrationStatusMapper.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/EntityRegistrationStatusMapper.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance;
 
 internal static class EntityRegistrationStatusMapper
 {
@@ -967,44 +1021,48 @@ internal static class EntityRegistrationStatusMapper
 Delete `SubAccountComplianceStateMapper.cs`.
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/ProcessExternalEntityDecisionHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/ProcessExternalEntityDecision/ProcessExternalEntityDecisionHandler.cs
 using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 
 public sealed class ProcessExternalEntityDecisionHandler(
     ISubAccountRepository subAccounts,
     IEntityRegistrationRepository entityRegistrations,
     IAuditLogService auditLog,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    TimeProvider timeProvider)
     : ICommandHandler<ProcessExternalEntityDecisionCommand, ProcessExternalEntityDecisionResult>
 {
     public async Task<ProcessExternalEntityDecisionResult> HandleAsync(
         ProcessExternalEntityDecisionCommand command, CancellationToken cancellationToken = default)
     {
         var registration = await entityRegistrations.GetByCircleWalletIdAsync(command.WalletId, cancellationToken)
-            ?? throw new SubAccountNotFoundException(command.WalletId);
+            ?? throw new NotFoundException($"No entity registration for Circle wallet '{command.WalletId}'.");
 
         var newStatus = EntityRegistrationStatusMapper.Map(command.ComplianceState);
 
         var subAccount = await subAccounts.GetByCircleWalletIdAsync(command.WalletId, cancellationToken)
-            ?? throw new SubAccountNotFoundException(command.WalletId);
+            ?? throw new NotFoundException($"No sub-account for Circle wallet '{command.WalletId}'.");
 
         if (registration.Status == newStatus)
             return new ProcessExternalEntityDecisionResult(subAccount.Id, subAccount.LifecycleState);
 
         var previousStatus = registration.Status;
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         registration.Status = newStatus;
-        registration.UpdatedAtUtc = DateTime.UtcNow;
+        registration.UpdatedAtUtc = nowUtc;
 
         if (newStatus is EntityRegistrationStatus.Accepted or EntityRegistrationStatus.Rejected)
         {
             subAccount.LifecycleState = newStatus == EntityRegistrationStatus.Accepted
                 ? SubAccountLifecycleState.Active
                 : SubAccountLifecycleState.Rejected;
-            subAccount.UpdatedAtUtc = DateTime.UtcNow;
+            subAccount.UpdatedAtUtc = nowUtc;
         }
 
         await auditLog.AppendAsync(
@@ -1066,41 +1124,41 @@ git commit -m "feat: split EntityRegistration from SubAccount, add lifecycle sta
 Reworks `SubAccountsController` per PRD §4.1: **create is Admin-only** (targets an explicit `ClientCompanyId`, never the caller's own — an Admin credential has no sub-account of its own), get/list/disable/enable/resubmit all route through Task 2's `TenantScopeResolver` so a SubAccount caller only ever sees its own tenant and an Admin must name the target explicitly.
 
 **Files:**
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/SubAccountsController.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountCommand.cs` (add `TargetClientCompanyId`, keep `ClientCompanyId` as caller identity for audit)
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountCommandHandler.cs` (use `TargetClientCompanyId` as the tenant being created)
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountQuery.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountQueryHandler.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountResult.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQuery.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/SetSubAccountDisabledCommand.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/SetSubAccountDisabledCommandHandler.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommand.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommandHandler.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Api/Compliance/SubAccountsController.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/CreateSubAccount/CreateSubAccountCommand.cs` (add `TargetClientCompanyId`, keep `ClientCompanyId` as caller identity for audit)
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/CreateSubAccount/CreateSubAccountHandler.cs` (use `TargetClientCompanyId` as the tenant being created)
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/GetSubAccountQuery.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/GetSubAccountHandler.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/SubAccountDetailsResult.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsQuery.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsHandler.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/SetSubAccountDisabled/SetSubAccountDisabledCommand.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/SetSubAccountDisabled/SetSubAccountDisabledHandler.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/ResubmitEntityRegistration/ResubmitEntityRegistrationCommand.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/ResubmitEntityRegistration/ResubmitEntityRegistrationHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountRepository.cs` (add `ListAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/SubAccountRepository.cs`
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/GetSubAccountQueryHandlerTests.cs`
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ResubmitEntityRegistrationCommandHandlerTests.cs`
-- Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/SubAccountsEndpointsTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Compliance/GetSubAccountHandlerTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Compliance/ResubmitEntityRegistrationHandlerTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/Compliance/SubAccountsControllerTests.cs`
 
 **Interfaces:**
 - Consumes: `ICallerContext` (Task 1), `TenantScopeResolver.Resolve(ICallerContext, string? requestedClientCompanyId)` (Task 2), `IEntityRegistrationRepository` (Task 3), exception types `TenantForbiddenException`/`NotFoundException`/`ConflictException` (Task 2).
-- Produces: `GetSubAccountQuery(string ResolvedClientCompanyId)`; `GetSubAccountResult(Guid SubAccountId, string ClientCompanyId, SubAccountLifecycleState LifecycleState, bool IsDisabled, string? CircleWalletId, EntityRegistrationStatus? LatestRegistrationStatus, string? RejectionReason)`; `ListSubAccountsQuery(SubAccountLifecycleState? StateFilter)` (Admin-only, resolver returns `null` scope meaning "all tenants"); `SetSubAccountDisabledCommand(string ResolvedClientCompanyId, bool Disabled, string CorrelationId)`; `ResubmitEntityRegistrationCommand(string ResolvedClientCompanyId, string IdempotencyKey, string BusinessName, string BusinessUniqueIdentifier, string IdentifierIssuingCountryCode, string Country, string State, string City, string Postcode, string StreetName, string BuildingNumber, string CorrelationId)`.
+- Produces: `GetSubAccountQuery(string ResolvedClientCompanyId)`; `SubAccountDetailsResult(Guid SubAccountId, string ClientCompanyId, SubAccountLifecycleState LifecycleState, bool IsDisabled, string? CircleWalletId, EntityRegistrationStatus? LatestRegistrationStatus, string? RejectionReason)`; `ListSubAccountsQuery(TenantScope Scope, SubAccountLifecycleState? LifecycleState, string CorrelationId)` (the only query allowed to carry a `TenantScope` directly — a `SubAccount` caller's scope resolves to `TenantScope.SingleTenant` and the handler matches on it rather than the controller re-deriving an admin check); `SetSubAccountDisabledCommand(string ResolvedClientCompanyId, bool Disabled, string CorrelationId)`; `ResubmitEntityRegistrationCommand(string ResolvedClientCompanyId, string IdempotencyKey, string BusinessName, string BusinessUniqueIdentifier, string IdentifierIssuingCountryCode, string Country, string State, string City, string Postcode, string StreetName, string BuildingNumber, string CorrelationId)`.
 
-- [ ] **Step 1: Write failing unit tests for `GetSubAccountQueryHandler` and `ResubmitEntityRegistrationCommandHandler`**
+- [ ] **Step 1: Write failing unit tests for `GetSubAccountHandler` and `ResubmitEntityRegistrationHandler`**
 
 ```csharp
-// tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/GetSubAccountQueryHandlerTests.cs
+// tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/GetSubAccount/GetSubAccountHandlerTests.cs
 using NSubstitute;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.SubAccounts;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
-namespace TreasuryServiceOrchestrator.UnitTests.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.UnitTests.Application.Compliance.GetSubAccount;
 
-public class GetSubAccountQueryHandlerTests
+public class GetSubAccountHandlerTests
 {
     [Fact]
     public async Task Returns_latest_registration_status_and_rejection_reason()
@@ -1125,7 +1183,7 @@ public class GetSubAccountQueryHandlerTests
         var registrations = Substitute.For<IEntityRegistrationRepository>();
         registrations.GetLatestForSubAccountAsync(subAccount.Id, TestContext.Current.CancellationToken).Returns(registration);
 
-        var handler = new GetSubAccountQueryHandler(subAccounts, registrations);
+        var handler = new GetSubAccountHandler(subAccounts, registrations);
 
         var result = await handler.HandleAsync(new GetSubAccountQuery("acme"), TestContext.Current.CancellationToken);
 
@@ -1139,7 +1197,7 @@ public class GetSubAccountQueryHandlerTests
     {
         var subAccounts = Substitute.For<ISubAccountRepository>();
         subAccounts.GetByClientCompanyIdAsync("missing", TestContext.Current.CancellationToken).Returns((SubAccount?)null);
-        var handler = new GetSubAccountQueryHandler(subAccounts, Substitute.For<IEntityRegistrationRepository>());
+        var handler = new GetSubAccountHandler(subAccounts, Substitute.For<IEntityRegistrationRepository>());
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
             handler.HandleAsync(new GetSubAccountQuery("missing"), TestContext.Current.CancellationToken));
@@ -1148,16 +1206,16 @@ public class GetSubAccountQueryHandlerTests
 ```
 
 ```csharp
-// tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ResubmitEntityRegistrationCommandHandlerTests.cs
+// tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/ResubmitEntityRegistration/ResubmitEntityRegistrationHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.SubAccounts;
+using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
-namespace TreasuryServiceOrchestrator.UnitTests.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.UnitTests.Application.Compliance.ResubmitEntityRegistration;
 
-public class ResubmitEntityRegistrationCommandHandlerTests
+public class ResubmitEntityRegistrationHandlerTests
 {
     private static ResubmitEntityRegistrationCommand Command(string clientCompanyId = "acme") => new(
         clientCompanyId, "idem-1", "Acme Co", "123", "US", "US", "NY", "NYC", "10001", "Main St", "1", "corr-1");
@@ -1173,7 +1231,7 @@ public class ResubmitEntityRegistrationCommandHandlerTests
         var subAccounts = Substitute.For<ISubAccountRepository>();
         subAccounts.GetByClientCompanyIdAsync("acme", TestContext.Current.CancellationToken).Returns(subAccount);
 
-        var handler = new ResubmitEntityRegistrationCommandHandler(
+        var handler = new ResubmitEntityRegistrationHandler(
             Substitute.For<ISubAccountGateway>(), Substitute.For<IIdempotencyService>(),
             Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>(),
             subAccounts, Substitute.For<IEntityRegistrationRepository>());
@@ -1186,25 +1244,25 @@ public class ResubmitEntityRegistrationCommandHandlerTests
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*GetSubAccountQueryHandlerTests*|*ResubmitEntityRegistrationCommandHandlerTests*"`
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*GetSubAccountHandlerTests*|*ResubmitEntityRegistrationHandlerTests*"`
 Expected: FAIL — types don't exist yet.
 
 - [ ] **Step 3: Add query/result and repository list support**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountQuery.cs
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+// src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/GetSubAccountQuery.cs
+namespace TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 
 public sealed record GetSubAccountQuery(string ResolvedClientCompanyId);
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountResult.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/SubAccountDetailsResult.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 
-public sealed record GetSubAccountResult(
+public sealed record SubAccountDetailsResult(
     Guid SubAccountId,
     string ClientCompanyId,
     SubAccountLifecycleState LifecycleState,
@@ -1215,24 +1273,24 @@ public sealed record GetSubAccountResult(
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountQueryHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/GetSubAccountHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 
-public sealed class GetSubAccountQueryHandler(
+public sealed class GetSubAccountHandler(
     ISubAccountRepository subAccounts, IEntityRegistrationRepository entityRegistrations)
-    : IQueryHandler<GetSubAccountQuery, GetSubAccountResult>
+    : IQueryHandler<GetSubAccountQuery, SubAccountDetailsResult>
 {
-    public async Task<GetSubAccountResult> HandleAsync(GetSubAccountQuery query, CancellationToken cancellationToken = default)
+    public async Task<SubAccountDetailsResult> HandleAsync(GetSubAccountQuery query, CancellationToken cancellationToken = default)
     {
         var subAccount = await subAccounts.GetByClientCompanyIdAsync(query.ResolvedClientCompanyId, cancellationToken)
             ?? throw new NotFoundException($"No sub-account for client '{query.ResolvedClientCompanyId}'.");
 
         var registration = await entityRegistrations.GetLatestForSubAccountAsync(subAccount.Id, cancellationToken);
 
-        return new GetSubAccountResult(
+        return new SubAccountDetailsResult(
             subAccount.Id, subAccount.ClientCompanyId, subAccount.LifecycleState, subAccount.IsDisabled,
             subAccount.CircleWalletId, registration?.Status, registration?.RejectionReason);
     }
@@ -1240,28 +1298,29 @@ public sealed class GetSubAccountQueryHandler(
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQuery.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsQuery.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 
 public sealed record ListSubAccountsQuery(SubAccountLifecycleState? StateFilter);
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsHandler.cs
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 
-public sealed class ListSubAccountsQueryHandler(ISubAccountRepository subAccounts)
-    : IQueryHandler<ListSubAccountsQuery, IReadOnlyList<GetSubAccountResult>>
+public sealed class ListSubAccountsHandler(ISubAccountRepository subAccounts)
+    : IQueryHandler<ListSubAccountsQuery, IReadOnlyList<SubAccountDetailsResult>>
 {
-    public async Task<IReadOnlyList<GetSubAccountResult>> HandleAsync(
+    public async Task<IReadOnlyList<SubAccountDetailsResult>> HandleAsync(
         ListSubAccountsQuery query, CancellationToken cancellationToken = default)
     {
         var all = await subAccounts.ListAsync(query.StateFilter, cancellationToken);
-        return all.Select(s => new GetSubAccountResult(
+        return all.Select(s => new SubAccountDetailsResult(
             s.Id, s.ClientCompanyId, s.LifecycleState, s.IsDisabled, s.CircleWalletId, null, null)).ToList();
     }
 }
@@ -1276,25 +1335,26 @@ Implement in `SubAccountRepository` with `dbContext.SubAccounts.Where(s => state
 - [ ] **Step 4: Add disable/enable and resubmit commands**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/SetSubAccountDisabledCommand.cs
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+// src/TreasuryServiceOrchestrator.Application/Compliance/SetSubAccountDisabled/SetSubAccountDisabledCommand.cs
+namespace TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 
 public sealed record SetSubAccountDisabledCommand(string ResolvedClientCompanyId, bool Disabled, string CorrelationId);
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/SetSubAccountDisabledCommandHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/SetSubAccountDisabled/SetSubAccountDisabledHandler.cs
 using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 
-public sealed class SetSubAccountDisabledCommandHandler(
+public sealed class SetSubAccountDisabledHandler(
     ISubAccountRepository subAccounts, IAuditLogService auditLog, IUnitOfWork unitOfWork)
-    : ICommandHandler<SetSubAccountDisabledCommand, GetSubAccountResult>
+    : ICommandHandler<SetSubAccountDisabledCommand, SubAccountDetailsResult>
 {
-    public async Task<GetSubAccountResult> HandleAsync(
+    public async Task<SubAccountDetailsResult> HandleAsync(
         SetSubAccountDisabledCommand command, CancellationToken cancellationToken = default)
     {
         var subAccount = await subAccounts.GetByClientCompanyIdAsync(command.ResolvedClientCompanyId, cancellationToken)
@@ -1309,15 +1369,15 @@ public sealed class SetSubAccountDisabledCommandHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new GetSubAccountResult(subAccount.Id, subAccount.ClientCompanyId, subAccount.LifecycleState,
+        return new SubAccountDetailsResult(subAccount.Id, subAccount.ClientCompanyId, subAccount.LifecycleState,
             subAccount.IsDisabled, subAccount.CircleWalletId, null, null);
     }
 }
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommand.cs
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+// src/TreasuryServiceOrchestrator.Application/Compliance/ResubmitEntityRegistration/ResubmitEntityRegistrationCommand.cs
+namespace TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 
 public sealed record ResubmitEntityRegistrationCommand(
     string ResolvedClientCompanyId, string IdempotencyKey, string BusinessName, string BusinessUniqueIdentifier,
@@ -1326,20 +1386,21 @@ public sealed record ResubmitEntityRegistrationCommand(
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommandHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/ResubmitEntityRegistration/ResubmitEntityRegistrationHandler.cs
 using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 
-public sealed class ResubmitEntityRegistrationCommandHandler(
+public sealed class ResubmitEntityRegistrationHandler(
     ISubAccountGateway gateway, IIdempotencyService idempotency, IAuditLogService auditLog, IUnitOfWork unitOfWork,
     ISubAccountRepository subAccounts, IEntityRegistrationRepository entityRegistrations)
-    : ICommandHandler<ResubmitEntityRegistrationCommand, GetSubAccountResult>
+    : ICommandHandler<ResubmitEntityRegistrationCommand, SubAccountDetailsResult>
 {
-    public async Task<GetSubAccountResult> HandleAsync(
+    public async Task<SubAccountDetailsResult> HandleAsync(
         ResubmitEntityRegistrationCommand command, CancellationToken cancellationToken = default)
     {
         return await IdempotencyExecutor.ExecuteAsync(
@@ -1385,7 +1446,7 @@ public sealed class ResubmitEntityRegistrationCommandHandler(
                     JsonSerializer.Serialize(new { registration.Id, registrationStatus }),
                     command.ResolvedClientCompanyId, command.CorrelationId, cancellationToken);
 
-                return new GetSubAccountResult(subAccount.Id, subAccount.ClientCompanyId, subAccount.LifecycleState,
+                return new SubAccountDetailsResult(subAccount.Id, subAccount.ClientCompanyId, subAccount.LifecycleState,
                     subAccount.IsDisabled, subAccount.CircleWalletId, registration.Status, registration.RejectionReason);
             },
             cancellationToken);
@@ -1396,26 +1457,28 @@ public sealed class ResubmitEntityRegistrationCommandHandler(
 - [ ] **Step 5: Rework `SubAccountsController`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/SubAccountsController.cs
-using Asp.Versioning;
-using TreasuryServiceOrchestrator.Application;
+// src/TreasuryServiceOrchestrator.Api/Compliance/SubAccountsController.cs
+using Microsoft.AspNetCore.Mvc;
+using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
+using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
+using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
+using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Application.SubAccounts;
-using Microsoft.AspNetCore.Mvc;
+using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Compliance;
 
 [ApiController]
-[ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/sub-accounts")]
+[Route("v1/sub-accounts")]
 public sealed class SubAccountsController(
-    ICommandHandler<CreateSubAccountCommand, CreateSubAccountResult> createHandler,
-    IQueryHandler<GetSubAccountQuery, GetSubAccountResult> getHandler,
-    IQueryHandler<ListSubAccountsQuery, IReadOnlyList<GetSubAccountResult>> listHandler,
-    ICommandHandler<SetSubAccountDisabledCommand, GetSubAccountResult> setDisabledHandler,
-    ICommandHandler<ResubmitEntityRegistrationCommand, GetSubAccountResult> resubmitHandler,
-    ICallerContext caller) : ControllerBase
+    CreateSubAccountHandler createSubAccountHandler,
+    GetSubAccountHandler getSubAccountHandler,
+    ListSubAccountsHandler listSubAccountsHandler,
+    SetSubAccountDisabledHandler setSubAccountDisabledHandler,
+    ResubmitEntityRegistrationHandler resubmitEntityRegistrationHandler,
+    ICallerContext callerContext) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(
@@ -1423,7 +1486,7 @@ public sealed class SubAccountsController(
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        if (!caller.IsAdmin)
+        if (!callerContext.IsAdmin)
             throw new Application.Exceptions.TenantForbiddenException("Only Admin may create sub-accounts.");
 
         var command = new CreateSubAccountCommand(
@@ -1433,26 +1496,30 @@ public sealed class SubAccountsController(
             State: request.State, City: request.City, Postcode: request.Postcode, StreetName: request.StreetName,
             BuildingNumber: request.BuildingNumber, CorrelationId: HttpContext.TraceIdentifier);
 
-        var result = await createHandler.HandleAsync(command, cancellationToken);
+        var result = await createSubAccountHandler.HandleAsync(command, cancellationToken);
         return Accepted(result);
     }
 
     [HttpGet("{clientCompanyId}")]
     public async Task<IActionResult> Get(string clientCompanyId, CancellationToken cancellationToken)
     {
-        var scope = TenantScopeResolver.Resolve(caller, clientCompanyId);
-        var result = await getHandler.HandleAsync(new GetSubAccountQuery(scope!), cancellationToken);
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(callerContext, clientCompanyId);
+        var result = await getSubAccountHandler.HandleAsync(new GetSubAccountQuery(scope.ClientCompanyId), cancellationToken);
         return Ok(result);
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] Domain.SubAccountLifecycleState? state, CancellationToken cancellationToken)
+    public async Task<IActionResult> List([FromQuery] SubAccountLifecycleState? state, CancellationToken cancellationToken)
     {
-        TenantScopeResolver.Resolve(caller, requestedClientCompanyId: null);
-        if (!caller.IsAdmin)
-            throw new Application.Exceptions.TenantForbiddenException("Only Admin may list sub-accounts.");
+        // No requested tenant: Admin resolves to AllTenants; a SubAccount caller
+        // resolves to SingleTenant, which the handler rejects (403 centrally) —
+        // the controller does not re-derive an admin check.
+        var scope = TenantScopeResolver.Resolve(callerContext, null);
 
-        var result = await listHandler.HandleAsync(new ListSubAccountsQuery(state), cancellationToken);
+        var result = await listSubAccountsHandler.HandleAsync(
+            new ListSubAccountsQuery(scope, state, HttpContext.TraceIdentifier), cancellationToken);
         return Ok(result);
     }
 
@@ -1460,11 +1527,12 @@ public sealed class SubAccountsController(
     public async Task<IActionResult> SetDisabled(
         string clientCompanyId, [FromBody] SetSubAccountDisabledRequest request, CancellationToken cancellationToken)
     {
-        if (!caller.IsAdmin)
-            throw new Application.Exceptions.TenantForbiddenException("Only Admin may disable/enable sub-accounts.");
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(callerContext, clientCompanyId);
 
-        var result = await setDisabledHandler.HandleAsync(
-            new SetSubAccountDisabledCommand(clientCompanyId, request.Disabled, HttpContext.TraceIdentifier), cancellationToken);
+        var result = await setSubAccountDisabledHandler.HandleAsync(
+            new SetSubAccountDisabledCommand(scope.ClientCompanyId, request.Disabled, HttpContext.TraceIdentifier), cancellationToken);
         return Ok(result);
     }
 
@@ -1473,13 +1541,15 @@ public sealed class SubAccountsController(
         string clientCompanyId, [FromBody] CreateSubAccountRequest request,
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey, CancellationToken cancellationToken)
     {
-        var scope = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(callerContext, clientCompanyId);
         var command = new ResubmitEntityRegistrationCommand(
-            scope, idempotencyKey, request.BusinessName, request.BusinessUniqueIdentifier,
+            scope.ClientCompanyId, request.BusinessName, request.BusinessUniqueIdentifier,
             request.IdentifierIssuingCountryCode, request.Country, request.State, request.City, request.Postcode,
-            request.StreetName, request.BuildingNumber, HttpContext.TraceIdentifier);
+            request.StreetName, request.BuildingNumber, idempotencyKey, HttpContext.TraceIdentifier);
 
-        var result = await resubmitHandler.HandleAsync(command, cancellationToken);
+        var result = await resubmitEntityRegistrationHandler.HandleAsync(command, cancellationToken);
         return Ok(result);
     }
 }
@@ -1494,11 +1564,11 @@ public sealed record SetSubAccountDisabledRequest(bool Disabled);
 
 Update `CreateSubAccountCommand` to keep field name `ClientCompanyId` as the **target** tenant being created (Admin is the caller, but Admin has no `ClientCompanyId` of its own — the command's `ClientCompanyId` is unambiguous as "the tenant being provisioned"). Remove the old route-vs-tenant equality check and try/catch block entirely — Task 2's `TreasuryProblemDetailsExceptionHandler` now maps every thrown exception.
 
-Update `Program.cs`: register `IQueryHandler<GetSubAccountQuery, GetSubAccountResult>` → `GetSubAccountQueryHandler`, `IQueryHandler<ListSubAccountsQuery, IReadOnlyList<GetSubAccountResult>>` → `ListSubAccountsQueryHandler`, `ICommandHandler<SetSubAccountDisabledCommand, GetSubAccountResult>` → `SetSubAccountDisabledCommandHandler`, `ICommandHandler<ResubmitEntityRegistrationCommand, GetSubAccountResult>` → `ResubmitEntityRegistrationCommandHandler`, and `IEntityRegistrationRepository` → `EntityRegistrationRepository` (Task 3).
+Update `Program.cs`: register the concrete handler classes directly with `AddScoped<T>()` (no generic `ICommandHandler`/`IQueryHandler` wrapper — the controller injects concrete handler types, matching the DI style Task 1-3 already established): `AddScoped<GetSubAccountHandler>()`, `AddScoped<ListSubAccountsHandler>()`, `AddScoped<SetSubAccountDisabledHandler>()`, `AddScoped<ResubmitEntityRegistrationHandler>()`, and `AddScoped<IEntityRegistrationRepository, EntityRegistrationRepository>()` (Task 3).
 
 - [ ] **Step 6: Update existing integration tests for the new route and Admin-only create**
 
-Update `SubAccountsCrossTenantCreationTests`, `SubAccountsDuplicateClientConflictTests`, `SubAccountsIdempotencyReplayTests` (grep for `clients/{` route usage and `POST .../sub-account` calls): switch to `POST /api/v1/sub-accounts` with an `Admin`-role caller header and `TargetClientCompanyId` in the body; assert `403` (`tenant-forbidden`) when a `SubAccount`-role caller attempts `Create`.
+Update `SubAccountsCrossTenantCreationTests`, `SubAccountsDuplicateClientConflictTests`, `SubAccountsIdempotencyReplayTests` (grep for `clients/{` route usage and `POST .../sub-account` calls): switch to `POST /v1/sub-accounts` (no `api/` prefix, no version token — see `SubAccountsController`'s `[Route("v1/sub-accounts")]`) with an `Admin`-role caller header and `TargetClientCompanyId` in the body; assert `403` (`tenant-forbidden`) when a `SubAccount`-role caller attempts `Create`.
 
 - [ ] **Step 7: Run tests to verify they pass**
 
@@ -1519,10 +1589,9 @@ git commit -m "feat: admin-only sub-account create, get/list/disable/enable/resu
 
 ## Task 5: Webhook pipeline core (durable inbox, dedup, per-topic processors)
 
-`WebhookInboxEntry` exists in the schema today (`WebhookInbox` table, unique index on `CircleEventId`) but is **never written to** — `CircleWebhooksController` currently parses the SNS envelope and calls `ProcessExternalEntityDecisionHandler` directly, with no durable record and no dedup, and silently no-ops every topic except `externalEntities`. This task makes the inbox real per PRD §10: every verified webhook delivery is persisted before any side effect, deduped by provider event id, dispatched to a per-topic processor, and its outcome (Processed/Failed) recorded.
+Nothing under this name exists in the shipped tree yet — a repo-wide check (`grep -rl "WebhookInbox\|CircleWebhooks" src/ tests/`) finds zero matches. This task builds the webhook pipeline from scratch per PRD §10: every verified webhook delivery is persisted to a durable inbox before any side effect, deduped by provider event id, dispatched to a per-topic processor, and its outcome (Processed/Failed) recorded. `ProcessExternalEntityDecisionHandler` (Task 3) becomes the first `IWebhookTopicProcessor` implementation, invoked through this new pipeline instead of being called directly.
 
 **Files:**
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/WebhookInboxEntry.cs` (delete; superseded by the Application-layer type below)
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookInboxEntry.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookProcessingStatus.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/IWebhookInboxRepository.cs`
@@ -1531,10 +1600,9 @@ git commit -m "feat: admin-only sub-account create, get/list/disable/enable/resu
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/IncomingWebhookEvent.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookProcessor.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/ExternalEntitiesWebhookTopicProcessor.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/CircleWebhooksController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Webhooks/CircleWebhooksController.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
-- Delete + regenerate: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Migrations/*` (`InitialCreate`)
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Webhooks/WebhookProcessorTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/WebhookDedupTests.cs`
 
@@ -1633,7 +1701,7 @@ Expected: FAIL — `WebhookProcessor`, `IWebhookInboxRepository`, `WebhookInboxE
 
 - [ ] **Step 3: Add the inbox entry type, status enum, and port contracts**
 
-Delete `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/WebhookInboxEntry.cs` — the type moves to `Application` so `IWebhookInboxRepository` can reference it without `Application` depending on `Infrastructure` (EF Core maps POCOs from any referenced assembly, so this is a pure move, not a functional change).
+`WebhookInboxEntry` lives in `Application`, not `Infrastructure`, so `IWebhookInboxRepository` can reference it without `Application` depending on `Infrastructure` (EF Core maps POCOs from any referenced assembly, so this is a plain Application-layer type, not an EF entity needing to live alongside `DbContext`).
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookInboxEntry.cs
@@ -1809,7 +1877,7 @@ This repository calls `SaveChangesAsync` three times across a delivery's lifetim
 // src/TreasuryServiceOrchestrator.Application/Webhooks/ExternalEntitiesWebhookTopicProcessor.cs
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using TreasuryServiceOrchestrator.Application.SubAccounts;
+using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 
 namespace TreasuryServiceOrchestrator.Application.Webhooks;
 
@@ -1841,12 +1909,12 @@ public sealed class ExternalEntitiesWebhookTopicProcessor(
 }
 ```
 
-The nested `externalEntity` shape matches the existing `CircleNotificationMessage`/`CircleExternalEntity` payload already produced by `CircleWebhooksController` today — this processor receives that same JSON body verbatim as `payloadJson`.
+The nested `externalEntity` shape matches Circle's SNS `externalEntities` notification payload (PRD §10) — this processor receives that same JSON body verbatim as `payloadJson`.
 
-- [ ] **Step 7: Rework `CircleWebhooksController` to persist-then-dispatch through `WebhookProcessor`**
+- [ ] **Step 7: Write `CircleWebhooksController` to persist-then-dispatch through `WebhookProcessor`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/CircleWebhooksController.cs
+// src/TreasuryServiceOrchestrator.Api/Webhooks/CircleWebhooksController.cs
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Asp.Versioning;
@@ -1854,7 +1922,7 @@ using TreasuryServiceOrchestrator.Api.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using Microsoft.AspNetCore.Mvc;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Webhooks;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -2064,7 +2132,7 @@ git commit -m "feat: durable webhook inbox with dedup and per-topic processor di
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/MockProviderWiringTests.cs`
 
 **Interfaces:**
-- Consumes: Task 5's `IWebhookInboxRepository`, `IWebhookTopicProcessor`, `WebhookProcessor`, `IncomingWebhookEvent(string Topic, string ProviderEventId, string PayloadJson)`. Task 3's `ISubAccountGateway.CreateExternalEntityAsync(CreateExternalEntityGatewayRequest, CancellationToken) : Task<CreateExternalEntityResult>` / `GetExternalEntityAsync(string walletId, CancellationToken) : Task<ExternalEntityStatusResult>` and the existing `IStablecoinGateway.RedeemAsync(RedeemGatewayRequest, CancellationToken) : Task<GatewayRedeemResult>` / `GetTransferStatusAsync(string transferId, CancellationToken) : Task<TransferStatusResult>` (all from `TreasuryServiceOrchestrator.Application.Ports.GatewayDtos`). Task 3's `EntityRegistrationStatusMapper.Map(string)`, which requires `ComplianceState` values to be `"Pending"`/`"Accepted"`/`"Rejected"` (case-insensitive) — **not** the old stub's uppercase `"ACCEPTED"`/`"REJECTED"`. `ProviderUnavailableException(string message)` from `TreasuryServiceOrchestrator.Application.Exceptions`.
+- Consumes: Task 5's `IWebhookInboxRepository`, `IWebhookTopicProcessor`, `WebhookProcessor`, `IncomingWebhookEvent(string Topic, string ProviderEventId, string PayloadJson)`. Task 3's `ISubAccountGateway.CreateExternalEntityAsync(CreateExternalEntityGatewayRequest, CancellationToken) : Task<CreateExternalEntityResult>` / `GetExternalEntityAsync(string walletId, CancellationToken) : Task<ExternalEntityStatusResult>` (DTOs in `TreasuryServiceOrchestrator.Application.Compliance.Ports`) and the existing `IStablecoinGateway.RedeemAsync(RedeemGatewayRequest, CancellationToken) : Task<GatewayRedeemResult>` / `GetTransferStatusAsync(string transferId, CancellationToken) : Task<TransferStatusResult>` (DTOs in `TreasuryServiceOrchestrator.Application.Ledger.Ports` per ADR 0006). Task 3's `EntityRegistrationStatusMapper.Map(string)`, which requires `ComplianceState` values to be `"Pending"`/`"Accepted"`/`"Rejected"` (case-insensitive) — **not** the old stub's uppercase `"ACCEPTED"`/`"REJECTED"`. `ProviderUnavailableException(string message)` from `TreasuryServiceOrchestrator.Application.Exceptions`.
 - Produces: `MockProviderOptions { bool Enabled; int WebhookDelayMilliseconds; int ResponseLatencyMilliseconds; double FailureInjectionRate; string RejectBusinessNameSuffix; }` bound to config section `"MockProvider"`. `MockModeGuard.Validate(bool mockModeEnabled, string environmentName)` — throws `InvalidOperationException` if `mockModeEnabled` and `environmentName == Environments.Production`. `IMockWebhookScheduler.Schedule(ScheduledMockWebhook webhook)` — later tasks (8-11: deposits, transfers, payouts, addressBookRecipients mock emission) inject this to schedule simulated webhooks through the same Task 5 pipeline; no other wiring changes needed when they do.
 
 - [ ] **Step 1: Write the failing test for `MockModeGuard`**
@@ -2163,6 +2231,7 @@ Expected: PASS (4 tests).
 // tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/Mocks/MockWebhookDispatcherTests.cs
 using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Application.Webhooks;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
@@ -2184,13 +2253,13 @@ public class MockWebhookDispatcherTests
 
     private sealed class FakeInboxRepository : IWebhookInboxRepository
     {
-        public Task<bool> TryAddAsync(string topic, string providerEventId, string payloadJson, CancellationToken ct)
+        public Task<bool> TryAddAsync(WebhookInboxEntry entry, CancellationToken cancellationToken)
             => Task.FromResult(true);
 
-        public Task MarkProcessedAsync(string topic, string providerEventId, CancellationToken ct)
+        public Task MarkProcessedAsync(Guid id, CancellationToken cancellationToken)
             => Task.CompletedTask;
 
-        public Task MarkFailedAsync(string topic, string providerEventId, string error, CancellationToken ct)
+        public Task MarkFailedAsync(Guid id, string error, CancellationToken cancellationToken)
             => Task.CompletedTask;
     }
 
@@ -2337,7 +2406,7 @@ Expected: PASS.
 // tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/Mocks/MockSubAccountGatewayTests.cs
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
@@ -2446,7 +2515,7 @@ public class MockSubAccountGatewayTests
 // tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/Mocks/MockStablecoinGatewayTests.cs
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
@@ -2582,7 +2651,7 @@ public sealed class MockSubAccountGateway(
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
@@ -2690,7 +2759,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
@@ -2758,7 +2827,7 @@ Adds "generate a permanent deposit address for a sub-account on a given (chain, 
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IDepositAddressRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Shared/SupportedChainsOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressResult.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressCommandValidator.cs`
@@ -2766,20 +2835,20 @@ Adds "generate a permanent deposit address for a sub-account on a given (chain, 
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/ListDepositAddressesQuery.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/ListDepositAddressesQueryHandler.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/DepositAddressRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Delete + regenerate: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Migrations/*` (`InitialCreate`)
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/appsettings.json`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/DepositAddressesController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/DepositAddressesController.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/DepositAddresses/GenerateDepositAddressCommandHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/DepositAddresses/ListDepositAddressesQueryHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/DepositAddressesEndpointsTests.cs`
 
 **Interfaces:**
-- Consumes: `ICallerContext` (Task 1), `TenantScopeResolver.Resolve` (Task 2), `ISubAccountRepository.GetByClientCompanyIdAsync` (existing), `SubAccountLifecycleState` (Task 3), exception types `NotFoundException`/`ConflictException` (Task 2), `ISubAccountGateway` (extended this task — both `CircleSubAccountGateway` (Task-0 baseline) and `MockSubAccountGateway` (Task 6) must implement the new method).
-- Produces: `class DepositAddress { Guid Id; Guid SubAccountId; string ClientCompanyId; string Chain; string Currency; string Address; DateTime CreatedAtUtc; }`; `IDepositAddressRepository { Task<DepositAddress?> FindAsync(Guid subAccountId, string chain, string currency, CancellationToken ct); Task AddAsync(DepositAddress address, CancellationToken ct); Task<IReadOnlyList<DepositAddress>> ListForSubAccountAsync(Guid subAccountId, CancellationToken ct); }`; `SupportedChainsOptions : List<string>`; `GenerateDepositAddressGatewayRequest(string WalletId, string Chain, string Currency)`; `GenerateDepositAddressResult(string Address, string Chain, string Currency)` (gateway DTO — same shape name as the Application-layer `DepositAddresses.GenerateDepositAddressResult` command result but a distinct type in `Ports` namespace vs `DepositAddresses` namespace); `GenerateDepositAddressCommand(string ResolvedClientCompanyId, string Chain, string Currency, string CorrelationId)`; `DepositAddresses.GenerateDepositAddressResult(Guid DepositAddressId, string Chain, string Currency, string Address, bool WasExisting)`; `ListDepositAddressesQuery(string ResolvedClientCompanyId)`. Task 8's ledger/deposit-crediting rework will look up the owning `SubAccount` from an inbound deposit's destination address via `IDepositAddressRepository` (a method to resolve by `Address` is deferred to Task 8 since it isn't needed until the crediting workflow consumes it).
+- Consumes: `ICallerContext` (Task 1), `TenantScopeResolver.Resolve` (Task 2), `ISubAccountRepository.GetByClientCompanyIdAsync` (existing), `SubAccountLifecycleState` (Task 3), exception types `NotFoundException`/`ConflictException` (Task 2), `IIdempotencyService`/`IdempotencyExecutor.ExecuteAsync` (existing pattern — used here with a system-generated key, not a caller-supplied one, since Circle's own `POST /v1/businessAccount/wallets/addresses/deposit` requires a body `idempotencyKey`), `IStablecoinGateway` (extended this task — deposit addresses are a Ledger-module concept, so the new method is added to the money-moving gateway port, not `ISubAccountGateway`; both `CircleMintGateway` (Task-0 baseline) and `MockStablecoinGateway` (Task 6) must implement the new method).
+- Produces: `class DepositAddress { Guid Id; Guid SubAccountId; string ClientCompanyId; string Chain; string Currency; string Address; DateTime CreatedAtUtc; }`; `IDepositAddressRepository { Task<DepositAddress?> FindAsync(Guid subAccountId, string chain, string currency, CancellationToken ct); Task AddAsync(DepositAddress address, CancellationToken ct); Task<IReadOnlyList<DepositAddress>> ListForSubAccountAsync(Guid subAccountId, CancellationToken ct); }`; `SupportedChainsOptions` (wraps, does not inherit, `List<string>`; exposes `bool IsSupported(string chain)`); `GenerateDepositAddressGatewayRequest(string WalletId, string Chain, string Currency, string IdempotencyKey)`; `GeneratedDepositAddress(string Address, string Chain, string Currency)` (Ports-namespace gateway DTO — renamed off `GenerateDepositAddressResult` to avoid colliding with the Application-layer `DepositAddresses.GenerateDepositAddressResult` command result, which keeps the original name); `GenerateDepositAddressCommand(string ResolvedClientCompanyId, string Chain, string Currency, string CorrelationId)`; `DepositAddresses.GenerateDepositAddressResult(Guid DepositAddressId, string Chain, string Currency, string Address, bool WasExisting)`; `ListDepositAddressesQuery(string ResolvedClientCompanyId)`. Task 8's ledger/deposit-crediting rework will look up the owning `SubAccount` from an inbound deposit's destination address via `IDepositAddressRepository` (a method to resolve by `Address` is deferred to Task 8 since it isn't needed until the crediting workflow consumes it).
 
 - [ ] **Step 1: Write the failing unit tests for the command handler**
 
@@ -2792,6 +2861,8 @@ using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -2813,14 +2884,15 @@ public class GenerateDepositAddressCommandHandlerTests
     private static GenerateDepositAddressCommandHandler CreateSut(
         ISubAccountRepository subAccounts,
         IDepositAddressRepository depositAddresses,
-        ISubAccountGateway gateway,
+        IStablecoinGateway gateway,
+        IIdempotencyService idempotency,
         IAuditLogService auditLog,
         IUnitOfWork unitOfWork)
     {
         var options = Options.Create(new SupportedChainsOptions { "ETH" });
         var validator = new GenerateDepositAddressCommandValidator(options);
         return new GenerateDepositAddressCommandHandler(
-            subAccounts, depositAddresses, gateway, auditLog, unitOfWork, validator);
+            subAccounts, depositAddresses, gateway, idempotency, auditLog, unitOfWork, validator);
     }
 
     [Fact]
@@ -2832,12 +2904,15 @@ public class GenerateDepositAddressCommandHandlerTests
         var depositAddresses = Substitute.For<IDepositAddressRepository>();
         depositAddresses.FindAsync(subAccount.Id, "ETH", "USDC", Arg.Any<CancellationToken>())
             .Returns((DepositAddress?)null);
-        var gateway = Substitute.For<ISubAccountGateway>();
+        var gateway = Substitute.For<IStablecoinGateway>();
         gateway.GenerateDepositAddressAsync(
-                Arg.Is<GenerateDepositAddressGatewayRequest>(r => r.WalletId == "wallet-1" && r.Chain == "ETH" && r.Currency == "USDC"),
+                Arg.Is<GenerateDepositAddressGatewayRequest>(r => r.WalletId == "wallet-1" && r.Chain == "ETH" && r.Currency == "USDC"
+                    && !string.IsNullOrEmpty(r.IdempotencyKey)),
                 Arg.Any<CancellationToken>())
-            .Returns(new GenerateDepositAddressResult("0xabc123", "ETH", "USDC"));
-        var sut = CreateSut(subAccounts, depositAddresses, gateway, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+            .Returns(new GeneratedDepositAddress("0xabc123", "ETH", "USDC"));
+        var sut = CreateSut(
+            subAccounts, depositAddresses, gateway, Substitute.For<IIdempotencyService>(),
+            Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
 
         var result = await sut.HandleAsync(
             new GenerateDepositAddressCommand("acme", "ETH", "USDC", "corr-1"), TestContext.Current.CancellationToken);
@@ -2861,8 +2936,10 @@ public class GenerateDepositAddressCommandHandlerTests
         subAccounts.GetByClientCompanyIdAsync("acme", Arg.Any<CancellationToken>()).Returns(subAccount);
         var depositAddresses = Substitute.For<IDepositAddressRepository>();
         depositAddresses.FindAsync(subAccount.Id, "ETH", "USDC", Arg.Any<CancellationToken>()).Returns(existing);
-        var gateway = Substitute.For<ISubAccountGateway>();
-        var sut = CreateSut(subAccounts, depositAddresses, gateway, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+        var gateway = Substitute.For<IStablecoinGateway>();
+        var sut = CreateSut(
+            subAccounts, depositAddresses, gateway, Substitute.For<IIdempotencyService>(),
+            Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
 
         var result = await sut.HandleAsync(
             new GenerateDepositAddressCommand("acme", "ETH", "USDC", "corr-2"), TestContext.Current.CancellationToken);
@@ -2878,8 +2955,8 @@ public class GenerateDepositAddressCommandHandlerTests
         var subAccounts = Substitute.For<ISubAccountRepository>();
         subAccounts.GetByClientCompanyIdAsync("ghost", Arg.Any<CancellationToken>()).Returns((SubAccount?)null);
         var sut = CreateSut(
-            subAccounts, Substitute.For<IDepositAddressRepository>(), Substitute.For<ISubAccountGateway>(),
-            Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+            subAccounts, Substitute.For<IDepositAddressRepository>(), Substitute.For<IStablecoinGateway>(),
+            Substitute.For<IIdempotencyService>(), Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.HandleAsync(
             new GenerateDepositAddressCommand("ghost", "ETH", "USDC", "corr-3"), TestContext.Current.CancellationToken));
@@ -2893,8 +2970,8 @@ public class GenerateDepositAddressCommandHandlerTests
         var subAccounts = Substitute.For<ISubAccountRepository>();
         subAccounts.GetByClientCompanyIdAsync("acme", Arg.Any<CancellationToken>()).Returns(subAccount);
         var sut = CreateSut(
-            subAccounts, Substitute.For<IDepositAddressRepository>(), Substitute.For<ISubAccountGateway>(),
-            Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+            subAccounts, Substitute.For<IDepositAddressRepository>(), Substitute.For<IStablecoinGateway>(),
+            Substitute.For<IIdempotencyService>(), Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
 
         await Assert.ThrowsAsync<ConflictException>(() => sut.HandleAsync(
             new GenerateDepositAddressCommand("acme", "ETH", "USDC", "corr-4"), TestContext.Current.CancellationToken));
@@ -2907,8 +2984,8 @@ public class GenerateDepositAddressCommandHandlerTests
         var subAccounts = Substitute.For<ISubAccountRepository>();
         subAccounts.GetByClientCompanyIdAsync("acme", Arg.Any<CancellationToken>()).Returns(subAccount);
         var sut = CreateSut(
-            subAccounts, Substitute.For<IDepositAddressRepository>(), Substitute.For<ISubAccountGateway>(),
-            Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+            subAccounts, Substitute.For<IDepositAddressRepository>(), Substitute.For<IStablecoinGateway>(),
+            Substitute.For<IIdempotencyService>(), Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
 
         await Assert.ThrowsAsync<FluentValidation.ValidationException>(() => sut.HandleAsync(
             new GenerateDepositAddressCommand("acme", "SOL", "USDC", "corr-5"), TestContext.Current.CancellationToken));
@@ -2941,9 +3018,39 @@ public class DepositAddress
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Shared/SupportedChainsOptions.cs
+using System.Collections;
+
 namespace TreasuryServiceOrchestrator.Application.Shared;
 
-public sealed class SupportedChainsOptions : List<string>;
+// Wraps (never inherits) List<string> — an options class must not leak the full mutable
+// List<T> surface (Insert/Sort/BinarySearch/...) as its own interface. Implements
+// ICollection<string> only so the configuration binder can populate it from the
+// "SupportedChains" JSON array and so `new SupportedChainsOptions { "ETH" }` still works
+// via collection-initializer syntax; validators consume only IsSupported.
+public sealed class SupportedChainsOptions : ICollection<string>
+{
+    private readonly List<string> _chains = [];
+
+    public int Count => _chains.Count;
+
+    public bool IsReadOnly => false;
+
+    public bool IsSupported(string chain) => _chains.Contains(chain, StringComparer.OrdinalIgnoreCase);
+
+    public void Add(string chain) => _chains.Add(chain);
+
+    public void Clear() => _chains.Clear();
+
+    public bool Contains(string chain) => _chains.Contains(chain);
+
+    public void CopyTo(string[] array, int arrayIndex) => _chains.CopyTo(array, arrayIndex);
+
+    public bool Remove(string chain) => _chains.Remove(chain);
+
+    public IEnumerator<string> GetEnumerator() => _chains.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
 ```
 
 ```csharp
@@ -2960,53 +3067,47 @@ public interface IDepositAddressRepository
 }
 ```
 
-- [ ] **Step 4: Extend gateway DTOs and `ISubAccountGateway`**
+- [ ] **Step 4: Extend gateway DTOs and `IStablecoinGateway`**
+
+`DepositAddress` is a Ledger-module entity (module boundaries table: `Ledger` owns Wallet/DepositAddress/Transaction/BalanceSnapshot/transfers/redemptions/balances), so the new gateway method belongs on the Ledger-module money-moving port `IStablecoinGateway`, not on `ISubAccountGateway` (Compliance-module, entity/KYB-only).
 
 Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`:
 ```csharp
 public sealed record GenerateDepositAddressGatewayRequest(
     string WalletId,
     string Chain,
-    string Currency);
+    string Currency,
+    string IdempotencyKey);
 
-public sealed record GenerateDepositAddressResult(
+public sealed record GeneratedDepositAddress(
     string Address,
     string Chain,
     string Currency);
 ```
+Named `GeneratedDepositAddress` (not `GenerateDepositAddressResult`) so it doesn't collide with the Application-layer `DepositAddresses.GenerateDepositAddressResult` command result below.
 
+Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` (inside the existing interface, alongside `RedeemAsync`/`GetTransferStatusAsync`):
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs
-namespace TreasuryServiceOrchestrator.Application.Compliance.Ports;
-
-public interface ISubAccountGateway
-{
-    Task<CreateExternalEntityResult> CreateExternalEntityAsync(
-        CreateExternalEntityGatewayRequest request, CancellationToken cancellationToken);
-
-    Task<ExternalEntityStatusResult> GetExternalEntityAsync(
-        string walletId, CancellationToken cancellationToken);
-
-    Task<GenerateDepositAddressResult> GenerateDepositAddressAsync(
+    Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
         GenerateDepositAddressGatewayRequest request, CancellationToken cancellationToken);
-}
 ```
 
-- [ ] **Step 5: Implement the new gateway method on both `CircleSubAccountGateway` and `MockSubAccountGateway`**
+- [ ] **Step 5: Implement the new gateway method on both `CircleMintGateway` and `MockStablecoinGateway`**
 
-Add to `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs` (inside the existing `CircleSubAccountGateway` class, after `GetExternalEntityAsync`):
+Add to `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` (inside the existing `CircleMintGateway` class):
 ```csharp
-    public Task<GenerateDepositAddressResult> GenerateDepositAddressAsync(
+    public Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
         GenerateDepositAddressGatewayRequest request, CancellationToken cancellationToken)
-        => Task.FromResult(new GenerateDepositAddressResult(
+        => Task.FromResult(new GeneratedDepositAddress(
             Address: $"0x{Guid.NewGuid():N}",
             Chain: request.Chain,
             Currency: request.Currency));
 ```
+The stub doesn't need to do anything with `request.IdempotencyKey` yet — it exists on the request DTO so Phase 3's real HTTP client has the field to forward as the real endpoint's required body `idempotencyKey` without a signature change.
 
-Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs` (inside the existing `MockSubAccountGateway` class, after `GetExternalEntityAsync`):
+Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs` (inside the existing `MockStablecoinGateway` class):
 ```csharp
-    public async Task<GenerateDepositAddressResult> GenerateDepositAddressAsync(
+    public async Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
         GenerateDepositAddressGatewayRequest request, CancellationToken ct)
     {
         var settings = options.Value;
@@ -3021,7 +3122,7 @@ Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGatew
             throw new ProviderUnavailableException("Mock provider simulated a 5xx failure.");
         }
 
-        return new GenerateDepositAddressResult($"0x{Guid.NewGuid():N}", request.Chain, request.Currency);
+        return new GeneratedDepositAddress($"0x{Guid.NewGuid():N}", request.Chain, request.Currency);
     }
 ```
 The mock gateway generates a fresh address on every call — dedup against an already-issued address for the same (chain, currency) is the Application-layer handler's job (Step 7 below), matching how Task 3's `EntityRegistration`/`SubAccount` split keeps provider-facing generation separate from local dedup state.
@@ -3067,7 +3168,7 @@ public sealed class GenerateDepositAddressCommandValidator : AbstractValidator<G
 
         RuleFor(c => c.Chain)
             .NotEmpty()
-            .Must(chain => allowed.Contains(chain, StringComparer.OrdinalIgnoreCase))
+            .Must(chain => allowed.IsSupported(chain))
             .WithMessage(c => $"Chain '{c.Chain}' is not supported. Supported chains: {string.Join(", ", allowed)}.");
 
         RuleFor(c => c.Currency).NotEmpty();
@@ -3085,6 +3186,9 @@ using FluentValidation;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.DepositAddresses;
@@ -3092,7 +3196,8 @@ namespace TreasuryServiceOrchestrator.Application.DepositAddresses;
 public sealed class GenerateDepositAddressCommandHandler(
     ISubAccountRepository subAccounts,
     IDepositAddressRepository depositAddresses,
-    ISubAccountGateway gateway,
+    IStablecoinGateway gateway,
+    IIdempotencyService idempotency,
     IAuditLogService auditLog,
     IUnitOfWork unitOfWork,
     IValidator<GenerateDepositAddressCommand> validator)
@@ -3112,36 +3217,60 @@ public sealed class GenerateDepositAddressCommandHandler(
             throw new ConflictException(
                 $"Sub-account '{command.ResolvedClientCompanyId}' is not active (state: {subAccount.LifecycleState}, disabled: {subAccount.IsDisabled}).");
 
-        var existing = await depositAddresses.FindAsync(subAccount.Id, command.Chain, command.Currency, cancellationToken);
-        if (existing is not null)
-        {
-            return new GenerateDepositAddressResult(existing.Id, existing.Chain, existing.Currency, existing.Address, WasExisting: true);
-        }
+        // System-generated (not caller-supplied) idempotency key, deterministic on
+        // (SubAccountId, Chain, Currency) — repeated requests for the same (chain, currency)
+        // are themselves idempotent by design, so this key exists purely to protect the
+        // *provider* call: Circle's real `POST /v1/businessAccount/wallets/addresses/deposit`
+        // requires a body `idempotencyKey`. If a crash happens after Circle mints the address
+        // but before our local save below, a retry recomputes the same key, so Circle's own
+        // idempotency handling returns the same address instead of minting a second one.
+        var idempotencyKey = $"deposit-address:{subAccount.Id}:{command.Chain}:{command.Currency}";
 
-        var gatewayResult = await gateway.GenerateDepositAddressAsync(
-            new GenerateDepositAddressGatewayRequest(subAccount.CircleWalletId!, command.Chain, command.Currency),
+        return await IdempotencyExecutor.ExecuteAsync(
+            idempotency,
+            command.ResolvedClientCompanyId,
+            idempotencyKey,
+            new { command.Chain, command.Currency },
+            unitOfWork,
+            async () =>
+            {
+                // Reserve: local dedup check — a second SaveChangesAsync-worth of local state
+                // (the DepositAddress row) is committed below before the idempotency executor's
+                // own completion save runs.
+                var existing = await depositAddresses.FindAsync(subAccount.Id, command.Chain, command.Currency, cancellationToken);
+                if (existing is not null)
+                {
+                    return new GenerateDepositAddressResult(existing.Id, existing.Chain, existing.Currency, existing.Address, WasExisting: true);
+                }
+
+                // Gateway/state-transition: call the provider with the deterministic key.
+                var gatewayResult = await gateway.GenerateDepositAddressAsync(
+                    new GenerateDepositAddressGatewayRequest(subAccount.CircleWalletId!, command.Chain, command.Currency, idempotencyKey),
+                    cancellationToken);
+
+                var depositAddress = new DepositAddress
+                {
+                    Id = Guid.NewGuid(),
+                    SubAccountId = subAccount.Id,
+                    ClientCompanyId = command.ResolvedClientCompanyId,
+                    Chain = gatewayResult.Chain,
+                    Currency = gatewayResult.Currency,
+                    Address = gatewayResult.Address,
+                    CreatedAtUtc = DateTime.UtcNow,
+                };
+                await depositAddresses.AddAsync(depositAddress, cancellationToken);
+
+                await auditLog.AppendAsync(
+                    "DepositAddressGenerated", "DepositAddress", depositAddress.Id.ToString(),
+                    JsonSerializer.Serialize(new { depositAddress.Chain, depositAddress.Currency, depositAddress.Address }),
+                    command.ResolvedClientCompanyId, command.CorrelationId, cancellationToken);
+
+                // Complete: persist local state to match the provider's response.
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+
+                return new GenerateDepositAddressResult(depositAddress.Id, depositAddress.Chain, depositAddress.Currency, depositAddress.Address, WasExisting: false);
+            },
             cancellationToken);
-
-        var depositAddress = new DepositAddress
-        {
-            Id = Guid.NewGuid(),
-            SubAccountId = subAccount.Id,
-            ClientCompanyId = command.ResolvedClientCompanyId,
-            Chain = gatewayResult.Chain,
-            Currency = gatewayResult.Currency,
-            Address = gatewayResult.Address,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        await depositAddresses.AddAsync(depositAddress, cancellationToken);
-
-        await auditLog.AppendAsync(
-            "DepositAddressGenerated", "DepositAddress", depositAddress.Id.ToString(),
-            JsonSerializer.Serialize(new { depositAddress.Chain, depositAddress.Currency, depositAddress.Address }),
-            command.ResolvedClientCompanyId, command.CorrelationId, cancellationToken);
-
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return new GenerateDepositAddressResult(depositAddress.Id, depositAddress.Chain, depositAddress.Currency, depositAddress.Address, WasExisting: false);
     }
 }
 ```
@@ -3304,7 +3433,7 @@ Expected: new migration creates a `DepositAddresses` table with the `IX_DepositA
 - [ ] **Step 13: Add the controller**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/DepositAddressesController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/DepositAddressesController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
@@ -3312,7 +3441,7 @@ using TreasuryServiceOrchestrator.Application.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -3329,11 +3458,13 @@ public sealed class DepositAddressesController(
     public async Task<IActionResult> Generate(
         string clientCompanyId, [FromBody] GenerateDepositAddressRequest request, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
         var correlationId = HttpContext.TraceIdentifier;
 
         var result = await generateHandler.HandleAsync(
-            new GenerateDepositAddressCommand(resolved, request.Chain, request.Currency, correlationId), cancellationToken);
+            new GenerateDepositAddressCommand(scope.ClientCompanyId, request.Chain, request.Currency, correlationId), cancellationToken);
 
         return result.WasExisting ? Ok(result) : CreatedAtAction(nameof(List), new { clientCompanyId }, result);
     }
@@ -3341,9 +3472,11 @@ public sealed class DepositAddressesController(
     [HttpGet]
     public async Task<IActionResult> List(string clientCompanyId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
 
-        var result = await listHandler.HandleAsync(new ListDepositAddressesQuery(resolved), cancellationToken);
+        var result = await listHandler.HandleAsync(new ListDepositAddressesQuery(scope.ClientCompanyId), cancellationToken);
 
         return Ok(result);
     }
@@ -3436,6 +3569,7 @@ Supersedes the pre-existing `Deposit` entity and `ProcessDepositCommandHandler` 
 - Delete: `src/TreasuryServiceOrchestrator.Domain/Deposit.cs`
 - Delete: `src/TreasuryServiceOrchestrator.Application/Deposits/ProcessDepositCommand.cs`, `ProcessDepositResult.cs`, `ProcessDepositValidator.cs`, `ProcessDepositCommandHandler.cs`, `SubAccountNotReadyException.cs`
 - Delete: `src/TreasuryServiceOrchestrator.Application/Ports/IDepositRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Domain/FundAccount.cs` (`Balance` becomes `Money`; drop the separate `CurrencyCode` field — Design-pass correction #1)
 - Create: `src/TreasuryServiceOrchestrator.Domain/TransactionType.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/TransactionStatus.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/Transaction.cs`
@@ -3461,9 +3595,9 @@ Supersedes the pre-existing `Deposit` entity and `ProcessDepositCommandHandler` 
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/BalanceSnapshotRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/DepositAddressRepository.cs` (add `FindByAddressAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/CircleWebhooksController.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/TransactionsController.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/BalancesController.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Api/Webhooks/CircleWebhooksController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/TransactionsController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/BalancesController.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
 - Delete + regenerate: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Migrations/*` (`InitialCreate`)
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Ledger/ProcessDepositCommandHandlerTests.cs`
@@ -3571,6 +3705,22 @@ public class BalanceSnapshot
 
 `DepositSourceType` already exists (referenced by the pre-existing `Deposit.cs`) — keep that enum file as-is; only `DepositStatus` (superseded by `TransactionStatus`) should be deleted if it has no other consumers: `grep -rl "DepositStatus" src/` and delete `src/TreasuryServiceOrchestrator.Domain/DepositStatus.cs` if the only remaining hit is its own declaration.
 
+`FundAccount.cs` predates this task with `decimal Balance` + a separate `string CurrencyCode` — a defect against the Global Constraint that `Money` is the only monetary type crossing the Domain/Application boundary (Design-pass correction #1). Fix it now that the ledger lands: `Balance` becomes `Money`, and the standalone `CurrencyCode` field is removed (it lives on `Balance.CurrencyCode`):
+```csharp
+// src/TreasuryServiceOrchestrator.Domain/FundAccount.cs
+namespace TreasuryServiceOrchestrator.Domain;
+
+public class FundAccount
+{
+    public Guid Id { get; set; }
+    public required string ClientCompanyId { get; set; }
+    public Money Balance { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime UpdatedAtUtc { get; set; }
+}
+```
+Update its `OnModelCreating` mapping (added in Task 6, modified here) to use the same `ComplexProperty` idiom as `Transaction.Amount`/`BalanceSnapshot.Balance` below instead of a plain `decimal` column plus a separate `CurrencyCode` column.
+
 - [ ] **Step 3: Add repository ports**
 
 ```csharp
@@ -3673,7 +3823,7 @@ public class ProcessDepositCommandHandlerTests
         f.FundAccounts.GetByClientCompanyIdAsync("acme", Arg.Any<CancellationToken>()).Returns((FundAccount?)null);
 
         var result = await f.Sut.HandleAsync(
-            new ProcessDepositCommand("wallet-1", null, "circle-ref-1", DepositSourceType.FiatWire, new Money(100m, "USD"), "corr-1"),
+            new ProcessDepositCommand("wallet-1", null, "circle-ref-1", DepositSourceType.Wire, new Money(100m, "USD"), "corr-1"),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(TransactionStatus.Complete, result.Status);
@@ -3692,7 +3842,7 @@ public class ProcessDepositCommandHandlerTests
     {
         var f = CreateFixture();
         var subAccount = ActiveSubAccount("acme");
-        var fundAccount = new FundAccount { Id = Guid.NewGuid(), ClientCompanyId = "acme", Balance = 50m, CurrencyCode = "USD", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
+        var fundAccount = new FundAccount { Id = Guid.NewGuid(), ClientCompanyId = "acme", Balance = new Money(50m, "USD"), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow };
         f.SubAccounts.GetByCircleWalletIdAsync("wallet-1", Arg.Any<CancellationToken>()).Returns(subAccount);
         f.FundAccounts.GetByClientCompanyIdAsync("acme", Arg.Any<CancellationToken>()).Returns(fundAccount);
 
@@ -3850,13 +4000,13 @@ public sealed class ProcessDepositCommandHandler(
                 {
                     fundAccount = new FundAccount
                     {
-                        Id = Guid.NewGuid(), ClientCompanyId = subAccount.ClientCompanyId, Balance = 0m,
-                        CurrencyCode = command.Amount.CurrencyCode, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+                        Id = Guid.NewGuid(), ClientCompanyId = subAccount.ClientCompanyId,
+                        Balance = Money.Zero(command.Amount.CurrencyCode), CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
                     };
                     await fundAccounts.AddAsync(fundAccount, cancellationToken);
                 }
 
-                return !string.Equals(fundAccount.CurrencyCode, command.Amount.CurrencyCode, StringComparison.OrdinalIgnoreCase)
+                return !string.Equals(fundAccount.Balance.CurrencyCode, command.Amount.CurrencyCode, StringComparison.OrdinalIgnoreCase)
                     ? await RecordFailedAsync(command, subAccount, fundAccount, cancellationToken)
                     : await RecordCompleteAsync(command, subAccount, fundAccount, cancellationToken);
             },
@@ -3880,13 +4030,13 @@ public sealed class ProcessDepositCommandHandler(
         var transaction = NewTransaction(command, subAccount, TransactionStatus.Complete, failureReason: null);
         await transactions.AddAsync(transaction, cancellationToken);
 
-        fundAccount.Balance += command.Amount.Amount;
+        fundAccount.Balance = new Money(fundAccount.Balance.Amount + command.Amount.Amount, fundAccount.Balance.CurrencyCode);
         fundAccount.UpdatedAtUtc = DateTime.UtcNow;
 
         await snapshots.AddAsync(new BalanceSnapshot
         {
             Id = Guid.NewGuid(), SubAccountId = subAccount.Id, ClientCompanyId = subAccount.ClientCompanyId,
-            Balance = new Money(fundAccount.Balance, fundAccount.CurrencyCode),
+            Balance = fundAccount.Balance,
             Reason = BalanceSnapshotReason.PostMutation, CapturedAtUtc = DateTime.UtcNow,
         }, cancellationToken);
 
@@ -3895,13 +4045,13 @@ public sealed class ProcessDepositCommandHandler(
             JsonSerializer.Serialize(new { transaction.ProviderReferenceId, transaction.DepositSourceType, transaction.Amount, fundAccount.Balance }),
             subAccount.ClientCompanyId, command.CorrelationId, cancellationToken);
 
-        return new ProcessDepositResult(transaction.Id, TransactionStatus.Complete, new Money(fundAccount.Balance, fundAccount.CurrencyCode));
+        return new ProcessDepositResult(transaction.Id, TransactionStatus.Complete, fundAccount.Balance);
     }
 
     private async Task<ProcessDepositResult> RecordFailedAsync(
         ProcessDepositCommand command, SubAccount subAccount, FundAccount fundAccount, CancellationToken cancellationToken)
     {
-        var failureReason = $"currency-mismatch: fund account currency is {fundAccount.CurrencyCode}, deposit currency is {command.Amount.CurrencyCode}";
+        var failureReason = $"currency-mismatch: fund account currency is {fundAccount.Balance.CurrencyCode}, deposit currency is {command.Amount.CurrencyCode}";
         var transaction = NewTransaction(command, subAccount, TransactionStatus.Failed, failureReason);
         await transactions.AddAsync(transaction, cancellationToken);
 
@@ -3910,7 +4060,7 @@ public sealed class ProcessDepositCommandHandler(
             JsonSerializer.Serialize(new { transaction.ProviderReferenceId, transaction.DepositSourceType, transaction.Amount, transaction.FailureReason }),
             subAccount.ClientCompanyId, command.CorrelationId, cancellationToken);
 
-        return new ProcessDepositResult(transaction.Id, TransactionStatus.Failed, new Money(fundAccount.Balance, fundAccount.CurrencyCode));
+        return new ProcessDepositResult(transaction.Id, TransactionStatus.Failed, fundAccount.Balance);
     }
 
     private static Transaction NewTransaction(
@@ -4120,7 +4270,7 @@ public sealed class GetCurrentBalanceQueryHandler(
             ?? throw new NotFoundException($"No sub-account found for '{query.ResolvedClientCompanyId}'.");
 
         var fundAccount = await fundAccounts.GetByClientCompanyIdAsync(subAccount.ClientCompanyId, cancellationToken);
-        return fundAccount is null ? Money.Zero("USD") : new Money(fundAccount.Balance, fundAccount.CurrencyCode);
+        return fundAccount is null ? Money.Zero("USD") : fundAccount.Balance;
     }
 }
 ```
@@ -4260,13 +4410,29 @@ modelBuilder.Entity<BalanceSnapshot>(entity =>
 });
 ```
 
+`FundAccount`'s existing (Task 6) mapping used a plain `decimal` column plus a separate `CurrencyCode` column — replace that block with the same `ComplexProperty` idiom now that `Balance` is `Money`:
+```csharp
+modelBuilder.Entity<FundAccount>(entity =>
+{
+    entity.HasKey(e => e.Id);
+    entity.Property(e => e.ClientCompanyId).HasMaxLength(450).UseCollation(ClientCompanyIdCollation);
+    entity.ComplexProperty(e => e.Balance, cp =>
+    {
+        cp.Property(m => m.Amount).HasColumnName("balance_value").HasColumnType("decimal(18,6)");
+        cp.Property(m => m.CurrencyCode).HasColumnName("currency_code").HasMaxLength(4);
+    });
+});
+```
+
 - [ ] **Step 10: Wire the `deposits` webhook topic**
 
 Task 5 rewrote `CircleWebhooksController` to dispatch every topic uniformly through `WebhookProcessor.HandleAsync` — it no longer branches on `notificationType` itself (see Task 5 Step 7). Adding a new topic means registering another `IWebhookTopicProcessor`, not touching the controller.
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Webhooks/DepositsWebhookTopicProcessor.cs
+using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -4282,18 +4448,41 @@ public sealed class DepositsWebhookTopicProcessor(
         var payload = JsonSerializer.Deserialize<CircleDepositWebhookPayload>(payloadJson)
             ?? throw new InvalidOperationException("Circle deposit webhook payload could not be parsed.");
 
+        var deposit = payload.Deposit
+            ?? throw new InvalidOperationException("Circle deposit webhook payload missing 'deposit' resource.");
+        if (deposit.Id is null || deposit.Amount?.Amount is null || deposit.Amount.Currency is null)
+            throw new InvalidOperationException("Circle deposit webhook payload missing id or amount.");
+
+        // Circle's `deposits` topic/endpoint is fiat-wire only — there is no sourceType
+        // discriminator on the real payload, so every deposit delivered here is a wire
+        // deposit. On-chain deposit detection is deferred to the transfers-topic processor
+        // (Task 10), which branches on incoming vs. outgoing transfer direction instead.
         await processDepositHandler.HandleAsync(new ProcessDepositCommand(
-            payload.WalletId,
-            payload.DestinationAddress,
-            payload.Id,
-            payload.SourceType == "wire" ? DepositSourceType.FiatWire : DepositSourceType.OnChain,
-            new Money(payload.Amount, payload.Currency),
-            payload.Id), cancellationToken);
+            deposit.WalletId,
+            DestinationAddress: null,
+            deposit.Id,
+            DepositSourceType.Wire,
+            new Money(decimal.Parse(deposit.Amount.Amount, CultureInfo.InvariantCulture), deposit.Amount.Currency),
+            deposit.Id), cancellationToken);
     }
 }
 
+// Matches Circle's real SNS envelope: { clientId, notificationType, version, deposit: {...} },
+// with the nested money object carrying a STRING amount (per doc-grilling correction #7).
 internal sealed record CircleDepositWebhookPayload(
-    string Id, string? WalletId, string? DestinationAddress, string SourceType, decimal Amount, string Currency);
+    [property: JsonPropertyName("clientId")] string? ClientId,
+    [property: JsonPropertyName("notificationType")] string? NotificationType,
+    [property: JsonPropertyName("version")] int? Version,
+    [property: JsonPropertyName("deposit")] CircleDepositResourcePayload? Deposit);
+
+internal sealed record CircleDepositResourcePayload(
+    [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("walletId")] string? WalletId,
+    [property: JsonPropertyName("amount")] CircleMoneyPayload? Amount);
+
+internal sealed record CircleMoneyPayload(
+    [property: JsonPropertyName("amount")] string? Amount,
+    [property: JsonPropertyName("currency")] string? Currency);
 ```
 
 In `Program.cs`, add alongside the `IWebhookTopicProcessor` registrations from Task 5 Step 8:
@@ -4304,7 +4493,7 @@ builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor
 - [ ] **Step 11: Add the transactions and balances controllers**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/TransactionsController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/TransactionsController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
@@ -4313,7 +4502,7 @@ using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -4330,12 +4519,14 @@ public sealed class TransactionsController(
         [FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc,
         [FromQuery] int page, [FromQuery] int pageSize, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
         var effectivePage = page <= 0 ? 1 : page;
         var effectivePageSize = pageSize <= 0 ? 20 : pageSize;
 
         var result = await listHandler.HandleAsync(
-            new ListTransactionsQuery(resolved, type, status, fromUtc, toUtc, effectivePage, effectivePageSize), cancellationToken);
+            new ListTransactionsQuery(scope.ClientCompanyId, type, status, fromUtc, toUtc, effectivePage, effectivePageSize), cancellationToken);
 
         return Ok(result);
     }
@@ -4343,9 +4534,11 @@ public sealed class TransactionsController(
     [HttpGet("{transactionId:guid}")]
     public async Task<IActionResult> Get(string clientCompanyId, Guid transactionId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
 
-        var result = await getHandler.HandleAsync(new GetTransactionQuery(resolved, transactionId), cancellationToken);
+        var result = await getHandler.HandleAsync(new GetTransactionQuery(scope.ClientCompanyId, transactionId), cancellationToken);
 
         return Ok(result);
     }
@@ -4353,7 +4546,7 @@ public sealed class TransactionsController(
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/BalancesController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/BalancesController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
@@ -4362,7 +4555,7 @@ using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -4376,9 +4569,11 @@ public sealed class BalancesController(
     [HttpGet]
     public async Task<IActionResult> Current(string clientCompanyId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
 
-        var result = await currentHandler.HandleAsync(new GetCurrentBalanceQuery(resolved), cancellationToken);
+        var result = await currentHandler.HandleAsync(new GetCurrentBalanceQuery(scope.ClientCompanyId), cancellationToken);
 
         return Ok(result);
     }
@@ -4387,9 +4582,11 @@ public sealed class BalancesController(
     public async Task<IActionResult> History(
         string clientCompanyId, [FromQuery] DateTime fromUtc, [FromQuery] DateTime toUtc, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
 
-        var result = await historyHandler.HandleAsync(new GetBalanceHistoryQuery(resolved, fromUtc, toUtc), cancellationToken);
+        var result = await historyHandler.HandleAsync(new GetBalanceHistoryQuery(scope.ClientCompanyId, fromUtc, toUtc), cancellationToken);
 
         return Ok(result);
     }
@@ -4489,9 +4686,9 @@ git commit -m "feat: ledger Transaction/BalanceSnapshot model, wire deposits web
 - Create: `src/TreasuryServiceOrchestrator.Domain/Recipient.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRecipientRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Recipients/RegisterRecipientCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Recipients/RegisterRecipientResult.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Recipients/RegisterRecipientCommandValidator.cs`
@@ -4508,15 +4705,15 @@ git commit -m "feat: ledger Transaction/BalanceSnapshot model, wire deposits web
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/RecipientRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/RecipientsController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/RecipientsController.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Recipients/RegisterRecipientCommandHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Recipients/ProcessRecipientDecisionHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Webhooks/AddressBookRecipientsWebhookTopicProcessorTests.cs`
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockSubAccountGatewayRecipientTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockStablecoinGatewayRecipientTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/RecipientsEndpointsTests.cs`
 
 **Interfaces:**
-- Consumes: `ISubAccountRepository.GetByClientCompanyIdAsync` (existing), `SubAccountLifecycleState` (Task 3), `IIdempotencyService`/`IdempotencyExecutor.ExecuteAsync` (existing pattern — this is a client-supplied-`IdempotencyKey` mutation like `CreateSubAccountCommandHandler`, not a local-dedup one like `GenerateDepositAddressCommandHandler`, because recipient registration is a one-shot client request analogous to sub-account creation), `IAuditLogService.AppendAsync` (existing), `IUnitOfWork.SaveChangesAsync` (existing), `ICallerContext`/`TenantScopeResolver.Resolve` (Tasks 1-2), `ISubAccountGateway` (extended this task — following the exact Task 7 precedent of adding a new method to the existing gateway interface rather than introducing a new port; both `CircleSubAccountGateway` and `MockSubAccountGateway` must implement it), `IWebhookTopicProcessor`/`WebhookProcessor`/`IncomingWebhookEvent` (Task 5), `IMockWebhookScheduler`/`ScheduledMockWebhook`/`MockProviderOptions.RejectBusinessNameSuffix` (Task 6 — reused here for recipient-label-based denial simulation, same knob already reused for external-entity rejection).
+- Consumes: `ISubAccountRepository.GetByClientCompanyIdAsync` (existing), `SubAccountLifecycleState` (Task 3), `IIdempotencyService`/`IdempotencyExecutor.ExecuteAsync` (existing pattern — this is a client-supplied-`IdempotencyKey` mutation like `CreateSubAccountCommandHandler`, not a local-dedup one like `GenerateDepositAddressCommandHandler`, because recipient registration is a one-shot client request analogous to sub-account creation), `IAuditLogService.AppendAsync` (existing), `IUnitOfWork.SaveChangesAsync` (existing), `ICallerContext`/`TenantScopeResolver.Resolve` (Tasks 1-2), `IStablecoinGateway` (extended this task — recipients are a Ledger-module, money-moving concept, so `RegisterRecipientAsync` follows the exact Task 7 precedent of adding a new method to the Ledger-module gateway port rather than `ISubAccountGateway` (Compliance-module, entity/KYB-only) or introducing a new port; both `CircleMintGateway` and `MockStablecoinGateway` must implement it), `IWebhookTopicProcessor`/`WebhookProcessor`/`IncomingWebhookEvent` (Task 5), `IMockWebhookScheduler`/`ScheduledMockWebhook`/`MockProviderOptions.RejectBusinessNameSuffix` (Task 6 — reused here for recipient-label-based denial simulation, same knob already reused for external-entity rejection).
 - Produces: `Recipient` entity (`Id`, `SubAccountId`, `ClientCompanyId`, `Chain`, `Address`, `Label`, `CircleRecipientId`, `Status : RecipientStatus`, `DenialReason`, `CreatedAtUtc`, `UpdatedAtUtc`), `RecipientStatus { PendingApproval, Active, Denied }`, `IRecipientRepository` (`AddAsync`, `GetByIdAsync(Guid id, string clientCompanyId, ...)`, `GetByCircleRecipientIdAsync`, `ListForSubAccountAsync`), `RegisterRecipientResult(Guid RecipientId, string Chain, string Address, string Label, RecipientStatus Status)` — Task 10 (outbound transfers) looks up a recipient by `RecipientId` before transferring to it.
 
 - [ ] **Step 1: Write the failing unit test for the register-recipient handler**
@@ -4537,13 +4734,13 @@ namespace TreasuryServiceOrchestrator.UnitTests.Application.Recipients;
 
 public class RegisterRecipientCommandHandlerTests
 {
-    private static (ISubAccountRepository SubAccounts, IRecipientRepository Recipients, ISubAccountGateway Gateway,
+    private static (ISubAccountRepository SubAccounts, IRecipientRepository Recipients, IStablecoinGateway Gateway,
         IIdempotencyService Idempotency, IAuditLogService AuditLog, IUnitOfWork UnitOfWork, RegisterRecipientCommandHandler Sut)
         CreateSut()
     {
         var subAccounts = Substitute.For<ISubAccountRepository>();
         var recipients = Substitute.For<IRecipientRepository>();
-        var gateway = Substitute.For<ISubAccountGateway>();
+        var gateway = Substitute.For<IStablecoinGateway>();
         var idempotency = Substitute.For<IIdempotencyService>();
         idempotency.TryReserveAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((true, (string?)null));
@@ -4566,7 +4763,7 @@ public class RegisterRecipientCommandHandlerTests
         };
         subAccounts.GetByClientCompanyIdAsync("acme", Arg.Any<CancellationToken>()).Returns(subAccount);
         gateway.RegisterRecipientAsync(Arg.Any<RegisterRecipientGatewayRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new RegisterRecipientGatewayResult("recipient-1", "pending_approval"));
+            .Returns(new RegisterRecipientGatewayResult("recipient-1", "pending_verification", "addr-1"));
 
         var command = new RegisterRecipientCommand("acme", "ETH", "0xdeadbeef", "Vendor Payout Wallet", "idem-1", "corr-1");
         var result = await sut.HandleAsync(command, TestContext.Current.CancellationToken);
@@ -4675,7 +4872,9 @@ public interface IRecipientRepository
 }
 ```
 
-- [ ] **Step 5: Extend gateway DTOs and `ISubAccountGateway`**
+- [ ] **Step 5: Extend gateway DTOs and `IStablecoinGateway`**
+
+`Recipient` is a Ledger-module entity (module boundaries table: `Ledger` owns Wallet/DepositAddress/Transaction/BalanceSnapshot/transfers/redemptions/balances/recipients), so the new gateway method belongs on the Ledger-module money-moving port `IStablecoinGateway`, not on `ISubAccountGateway` (Compliance-module, entity/KYB-only) — the same placement Task 7 established for `GenerateDepositAddressAsync`.
 
 Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`:
 ```csharp
@@ -4687,27 +4886,33 @@ public sealed record RegisterRecipientGatewayRequest(
 
 public sealed record RegisterRecipientGatewayResult(
     string RecipientId,
-    string Status);
+    string Status,
+    string AddressId);
 ```
+The real endpoint (`POST /v1/businessAccount/wallets/addresses/recipient`, verified live 2026-07-17) responds with destination type literal `verified_blockchain` and a distinct `addressId` field alongside the recipient id — `AddressId` is threaded through so a real HTTP client can populate it without a signature change.
 
-Add to `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs` (inside the existing `ISubAccountGateway` interface, after `GenerateDepositAddressAsync`):
+Add to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` (inside the existing interface, after `GenerateDepositAddressAsync`):
 ```csharp
     Task<RegisterRecipientGatewayResult> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken cancellationToken);
 ```
 
-- [ ] **Step 6: Implement the new gateway method on both `CircleSubAccountGateway` and `MockSubAccountGateway`**
+- [ ] **Step 6: Implement the new gateway method on both `CircleMintGateway` and `MockStablecoinGateway`**
 
-Add to `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs` (inside the existing `CircleSubAccountGateway` class, after `GenerateDepositAddressAsync`):
+Add to `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` (inside the existing `CircleMintGateway` class, after `GenerateDepositAddressAsync`):
 ```csharp
     public Task<RegisterRecipientGatewayResult> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken cancellationToken)
         => Task.FromResult(new RegisterRecipientGatewayResult(
             RecipientId: $"recipient-{Guid.NewGuid():N}",
-            Status: "pending_approval"));
+            Status: "pending_verification",
+            AddressId: $"addr-{Guid.NewGuid():N}"));
 ```
+`"pending_verification"` matches Circle's real REST enum (`pending_verification | verification_succeeded | active`) for the status returned on create — `pending_approval` does not exist in Circle's vocabulary.
 
-Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs` (inside the existing `MockSubAccountGateway` class, after `GenerateDepositAddressAsync`):
+This task also extends `MockStablecoinGateway`'s primary constructor (Task 6 baseline: `MockStablecoinGateway(IOptions<MockProviderOptions> options, IMockRandomSource randomSource)`) to additionally accept `IMockWebhookScheduler webhookScheduler`, mirroring the dependency `MockSubAccountGateway` already has for scheduling its own webhooks — `IMockWebhookScheduler` is already registered as a singleton in `Program.cs` (Task 6), so this is purely a constructor-signature change, no new DI registration needed.
+
+Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs` (inside the existing `MockStablecoinGateway` class, after `GenerateDepositAddressAsync`):
 ```csharp
     public async Task<RegisterRecipientGatewayResult> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken ct)
@@ -4725,6 +4930,7 @@ Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGatew
         }
 
         var recipientId = $"recipient-{Guid.NewGuid():N}";
+        var addressId = $"addr-{Guid.NewGuid():N}";
         var finalStatus = request.Label.EndsWith(settings.RejectBusinessNameSuffix, StringComparison.OrdinalIgnoreCase)
             ? "denied"
             : "active";
@@ -4735,10 +4941,10 @@ Add to `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGatew
             payload,
             TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
 
-        return new RegisterRecipientGatewayResult(recipientId, "pending_approval");
+        return new RegisterRecipientGatewayResult(recipientId, "pending_verification", addressId);
     }
 ```
-This reuses the existing `RejectBusinessNameSuffix` config knob against `request.Label` — the same suffix-matching trick `MockSubAccountGateway.CreateExternalEntityAsync` already uses against `BusinessName` (Task 6) — instead of adding a second, redundant "reject this one" config field.
+This reuses the existing `RejectBusinessNameSuffix` config knob against `request.Label` — the same suffix-matching trick `MockSubAccountGateway.CreateExternalEntityAsync` already uses against `BusinessName` (Task 6) — instead of adding a second, redundant "reject this one" config field. The scheduled webhook still uses the real webhook vocabulary (`active`/`denied`) even though the synchronous create response uses the REST vocabulary (`pending_verification`) — these are two different Circle status vocabularies (doc-grilling correction #1).
 
 - [ ] **Step 7: Run test to verify it still fails on the missing Application types, then add the command/validator/handler**
 
@@ -4805,7 +5011,7 @@ namespace TreasuryServiceOrchestrator.Application.Recipients;
 public sealed class RegisterRecipientCommandHandler(
     ISubAccountRepository subAccounts,
     IRecipientRepository recipients,
-    ISubAccountGateway gateway,
+    IStablecoinGateway gateway,
     IIdempotencyService idempotency,
     IAuditLogService auditLog,
     IUnitOfWork unitOfWork,
@@ -4853,7 +5059,7 @@ public sealed class RegisterRecipientCommandHandler(
 
                 await auditLog.AppendAsync(
                     "RecipientRegistrationRequested", "Recipient", recipient.Id.ToString(),
-                    JsonSerializer.Serialize(new { recipient.Chain, recipient.Address, recipient.Label, recipient.CircleRecipientId }),
+                    JsonSerializer.Serialize(new { recipient.Chain, recipient.Address, recipient.Label, recipient.CircleRecipientId, gatewayResult.AddressId }),
                     command.ResolvedClientCompanyId, command.CorrelationId, cancellationToken);
 
                 return new RegisterRecipientResult(recipient.Id, recipient.Chain, recipient.Address, recipient.Label, recipient.Status);
@@ -5029,6 +5235,7 @@ Expected: PASS (4 tests)
 
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Recipients/ProcessRecipientDecisionHandlerTests.cs
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -5053,7 +5260,7 @@ public class ProcessRecipientDecisionHandlerTests
         recipients.GetByCircleRecipientIdAsync("recipient-1", Arg.Any<CancellationToken>()).Returns(recipient);
         var auditLog = Substitute.For<IAuditLogService>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var sut = new ProcessRecipientDecisionHandler(recipients, auditLog, unitOfWork);
+        var sut = new ProcessRecipientDecisionHandler(recipients, auditLog, unitOfWork, NullLogger<ProcessRecipientDecisionHandler>.Instance);
 
         var result = await sut.HandleAsync(
             new ProcessRecipientDecisionCommand("recipient-1", "active"), TestContext.Current.CancellationToken);
@@ -5077,7 +5284,8 @@ public class ProcessRecipientDecisionHandlerTests
         };
         var recipients = Substitute.For<IRecipientRepository>();
         recipients.GetByCircleRecipientIdAsync("recipient-1", Arg.Any<CancellationToken>()).Returns(recipient);
-        var sut = new ProcessRecipientDecisionHandler(recipients, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+        var sut = new ProcessRecipientDecisionHandler(
+            recipients, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>(), NullLogger<ProcessRecipientDecisionHandler>.Instance);
 
         var result = await sut.HandleAsync(
             new ProcessRecipientDecisionCommand("recipient-1", "denied"), TestContext.Current.CancellationToken);
@@ -5098,7 +5306,8 @@ public class ProcessRecipientDecisionHandlerTests
         var recipients = Substitute.For<IRecipientRepository>();
         recipients.GetByCircleRecipientIdAsync("recipient-1", Arg.Any<CancellationToken>()).Returns(recipient);
         var unitOfWork = Substitute.For<IUnitOfWork>();
-        var sut = new ProcessRecipientDecisionHandler(recipients, Substitute.For<IAuditLogService>(), unitOfWork);
+        var sut = new ProcessRecipientDecisionHandler(
+            recipients, Substitute.For<IAuditLogService>(), unitOfWork, NullLogger<ProcessRecipientDecisionHandler>.Instance);
 
         await sut.HandleAsync(new ProcessRecipientDecisionCommand("recipient-1", "active"), TestContext.Current.CancellationToken);
 
@@ -5110,27 +5319,31 @@ public class ProcessRecipientDecisionHandlerTests
     {
         var recipients = Substitute.For<IRecipientRepository>();
         recipients.GetByCircleRecipientIdAsync("recipient-missing", Arg.Any<CancellationToken>()).Returns((Recipient?)null);
-        var sut = new ProcessRecipientDecisionHandler(recipients, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+        var sut = new ProcessRecipientDecisionHandler(
+            recipients, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>(), NullLogger<ProcessRecipientDecisionHandler>.Instance);
 
         await Assert.ThrowsAsync<NotFoundException>(() => sut.HandleAsync(
             new ProcessRecipientDecisionCommand("recipient-missing", "active"), TestContext.Current.CancellationToken));
     }
 
     [Fact]
-    public async Task Throws_InvalidOperationException_for_unknown_status_string()
+    public async Task Falls_back_to_PendingApproval_for_unknown_status_string()
     {
         var recipient = new Recipient
         {
             Id = Guid.NewGuid(), SubAccountId = Guid.NewGuid(), ClientCompanyId = "acme",
             Chain = "ETH", Address = "0xabc", Label = "Vendor", CircleRecipientId = "recipient-1",
-            Status = RecipientStatus.PendingApproval, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+            Status = RecipientStatus.Active, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
         };
         var recipients = Substitute.For<IRecipientRepository>();
         recipients.GetByCircleRecipientIdAsync("recipient-1", Arg.Any<CancellationToken>()).Returns(recipient);
-        var sut = new ProcessRecipientDecisionHandler(recipients, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+        var sut = new ProcessRecipientDecisionHandler(
+            recipients, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>(), NullLogger<ProcessRecipientDecisionHandler>.Instance);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.HandleAsync(
-            new ProcessRecipientDecisionCommand("recipient-1", "unknown_status"), TestContext.Current.CancellationToken));
+        var result = await sut.HandleAsync(
+            new ProcessRecipientDecisionCommand("recipient-1", "unknown_status"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(RecipientStatus.PendingApproval, result.Status);
     }
 }
 ```
@@ -5142,22 +5355,32 @@ Expected: FAIL — compile error, `ProcessRecipientDecisionCommand`/`ProcessReci
 
 - [ ] **Step 12: Implement `RecipientStatusMapper`, the decision command/result, and the handler**
 
+`addressBookRecipients` webhook payloads use Circle's *webhook* status vocabulary (`pending | inactive | active | denied`), a different vocabulary from the REST create-response enum (`pending_verification | verification_succeeded | active`) used in Step 6 — `pending_approval` is not a real Circle literal on either side. A status Circle adds in the future that this mapper doesn't yet recognize must not crash webhook processing (an unrecognized topic payload would otherwise permanently fail redelivery); unknown values log a warning and fall back to `PendingApproval` so the recipient stays in a reviewable state instead of raising:
+
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Recipients/RecipientStatusMapper.cs
+using Microsoft.Extensions.Logging;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Recipients;
 
 internal static class RecipientStatusMapper
 {
-    public static RecipientStatus Map(string circleStatus)
+    public static RecipientStatus Map(string circleStatus, ILogger logger)
         => circleStatus.ToLowerInvariant() switch
         {
-            "pending_approval" => RecipientStatus.PendingApproval,
             "active" => RecipientStatus.Active,
             "denied" => RecipientStatus.Denied,
-            _ => throw new InvalidOperationException($"Unknown Circle addressBookRecipient status '{circleStatus}'."),
+            "pending" or "inactive" => RecipientStatus.PendingApproval,
+            _ => LogUnknownAndFallBack(circleStatus, logger),
         };
+
+    private static RecipientStatus LogUnknownAndFallBack(string circleStatus, ILogger logger)
+    {
+        logger.LogWarning(
+            "Unknown Circle addressBookRecipient status '{CircleStatus}'; treating as PendingApproval.", circleStatus);
+        return RecipientStatus.PendingApproval;
+    }
 }
 ```
 
@@ -5180,6 +5403,7 @@ public sealed record ProcessRecipientDecisionResult(Guid RecipientId, RecipientS
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Recipients/ProcessRecipientDecisionHandler.cs
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
@@ -5189,7 +5413,8 @@ namespace TreasuryServiceOrchestrator.Application.Recipients;
 public sealed class ProcessRecipientDecisionHandler(
     IRecipientRepository recipients,
     IAuditLogService auditLog,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    ILogger<ProcessRecipientDecisionHandler> logger)
     : ICommandHandler<ProcessRecipientDecisionCommand, ProcessRecipientDecisionResult>
 {
     public async Task<ProcessRecipientDecisionResult> HandleAsync(
@@ -5198,7 +5423,7 @@ public sealed class ProcessRecipientDecisionHandler(
         var recipient = await recipients.GetByCircleRecipientIdAsync(command.CircleRecipientId, cancellationToken)
             ?? throw new NotFoundException($"No recipient found for Circle recipient id '{command.CircleRecipientId}'.");
 
-        var newStatus = RecipientStatusMapper.Map(command.Status);
+        var newStatus = RecipientStatusMapper.Map(command.Status, logger);
         if (recipient.Status == newStatus)
         {
             return new ProcessRecipientDecisionResult(recipient.Id, recipient.Status);
@@ -5329,33 +5554,34 @@ Expected: PASS (3 tests)
 - [ ] **Step 18: Write the failing unit test for the mock gateway's recipient-registration denial simulation, then verify it against Step 6's implementation**
 
 ```csharp
-// tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockSubAccountGatewayRecipientTests.cs
+// tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockStablecoinGatewayRecipientTests.cs
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure;
 
-public class MockSubAccountGatewayRecipientTests
+public class MockStablecoinGatewayRecipientTests
 {
-    private static MockSubAccountGateway CreateSut(MockProviderOptions? options, out IMockWebhookScheduler scheduler)
+    private static MockStablecoinGateway CreateSut(MockProviderOptions? options, out IMockWebhookScheduler scheduler)
     {
         scheduler = Substitute.For<IMockWebhookScheduler>();
-        return new MockSubAccountGateway(Options.Create(options ?? new MockProviderOptions()), scheduler, new FixedRandomSource(0.0));
+        return new MockStablecoinGateway(Options.Create(options ?? new MockProviderOptions()), new FixedRandomSource(0.0), scheduler);
     }
 
     [Fact]
-    public async Task Returns_pending_approval_and_schedules_active_webhook_by_default()
+    public async Task Returns_pending_verification_and_schedules_active_webhook_by_default()
     {
         var sut = CreateSut(null, out var scheduler);
 
         var result = await sut.RegisterRecipientAsync(
             new RegisterRecipientGatewayRequest("wallet-1", "ETH", "0xabc", "Vendor Payout"), TestContext.Current.CancellationToken);
 
-        Assert.Equal("pending_approval", result.Status);
+        Assert.Equal("pending_verification", result.Status);
+        Assert.NotEmpty(result.AddressId);
         scheduler.Received(1).Schedule(Arg.Is<ScheduledMockWebhook>(w =>
             w.Topic == "addressBookRecipients" && w.PayloadJson.Contains("\"status\":\"active\"")));
     }
@@ -5374,9 +5600,9 @@ public class MockSubAccountGatewayRecipientTests
     [Fact]
     public async Task Throws_ProviderUnavailableException_on_injected_failure()
     {
-        var sut = new MockSubAccountGateway(
+        var sut = new MockStablecoinGateway(
             Options.Create(new MockProviderOptions { FailureInjectionRate = 1.0 }),
-            Substitute.For<IMockWebhookScheduler>(), new FixedRandomSource(0.0));
+            new FixedRandomSource(0.0), Substitute.For<IMockWebhookScheduler>());
 
         await Assert.ThrowsAsync<ProviderUnavailableException>(() => sut.RegisterRecipientAsync(
             new RegisterRecipientGatewayRequest("wallet-1", "ETH", "0xabc", "Vendor"), TestContext.Current.CancellationToken));
@@ -5388,8 +5614,8 @@ public class MockSubAccountGatewayRecipientTests
 
 - [ ] **Step 19: Run test to verify it passes**
 
-Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*MockSubAccountGatewayRecipientTests*"`
-Expected: PASS (3 tests) — Step 6's implementation already satisfies this; no further production code changes needed.
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*MockStablecoinGatewayRecipientTests*"`
+Expected: PASS (3 tests) — Step 6's implementation, extended by this task's constructor change (added `IMockWebhookScheduler`), already satisfies this; no further production code changes needed.
 
 - [ ] **Step 20: Add the EF repository, `DbContext` mapping, and controller/DI wiring**
 
@@ -5442,10 +5668,10 @@ builder.Services.AddScoped<IQueryHandler<GetRecipientQuery, Recipient>, GetRecip
 builder.Services.AddScoped<ICommandHandler<ProcessRecipientDecisionCommand, ProcessRecipientDecisionResult>, ProcessRecipientDecisionHandler>();
 builder.Services.AddScoped<IWebhookTopicProcessor, AddressBookRecipientsWebhookTopicProcessor>();
 ```
-No new gateway DI registration is needed — `RegisterRecipientAsync` was added directly to the existing `ISubAccountGateway`, and both the `mockProviderOptions.Enabled` and `else` branches of Task 6 Step 13's conditional block already register a full `ISubAccountGateway` implementation (`MockSubAccountGateway` / `CircleSubAccountGateway`) that now includes this method.
+No new gateway DI registration is needed — `RegisterRecipientAsync` was added directly to the existing `IStablecoinGateway`, and Task 7's conditional registration block (`mockProviderOptions.Enabled` ? `MockStablecoinGateway` : `CircleMintGateway`) already registers a full `IStablecoinGateway` implementation that now includes this method (extended this task to also inject `IMockWebhookScheduler` into `MockStablecoinGateway` — see Step 6).
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/RecipientsController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/RecipientsController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Shared;
@@ -5453,7 +5679,7 @@ using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Recipients;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -5471,11 +5697,14 @@ public sealed class RecipientsController(
     public async Task<IActionResult> Register(
         string clientCompanyId, [FromBody] RegisterRecipientRequest request, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
         var correlationId = HttpContext.TraceIdentifier;
 
         var result = await registerHandler.HandleAsync(
-            new RegisterRecipientCommand(resolved, request.Chain, request.Address, request.Label, request.IdempotencyKey, correlationId),
+            new RegisterRecipientCommand(
+                scope.ClientCompanyId, request.Chain, request.Address, request.Label, request.IdempotencyKey, correlationId),
             cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { clientCompanyId, recipientId = result.RecipientId }, result);
@@ -5484,16 +5713,16 @@ public sealed class RecipientsController(
     [HttpGet]
     public async Task<IActionResult> List(string clientCompanyId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
-        var result = await listHandler.HandleAsync(new ListRecipientsQuery(resolved), cancellationToken);
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
+        var result = await listHandler.HandleAsync(new ListRecipientsQuery(scope.ClientCompanyId), cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{recipientId:guid}")]
     public async Task<IActionResult> Get(string clientCompanyId, Guid recipientId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
-        var result = await getHandler.HandleAsync(new GetRecipientQuery(resolved, recipientId), cancellationToken);
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
+        var result = await getHandler.HandleAsync(new GetRecipientQuery(scope.ClientCompanyId, recipientId), cancellationToken);
         return Ok(result);
     }
 }
@@ -5597,7 +5826,8 @@ git commit -m "feat: recipient registration/list/get, addressBookRecipients webh
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Domain/Transfer.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransferRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` (add `CreateTransferAsync`)
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/LedgerPostingService.cs` (shared "adjust `FundAccount.Balance` → `BalanceSnapshot`" module, extracted from `ProcessDepositCommandHandler` (Task 8) per design-pass correction #2 — Task 8's handler should be updated to consume it too, though that file is outside this task's range)
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` (add `CreateTransferAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs` (add `CreateTransferGatewayRequest`/`CreateTransferGatewayResult`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` (stub `CreateTransferAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs` (mock `CreateTransferAsync`)
@@ -5613,7 +5843,7 @@ git commit -m "feat: recipient registration/list/get, addressBookRecipients webh
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Webhooks/TransfersWebhookTopicProcessor.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TransferRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs` (add `Transfers` DbSet + mapping)
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/TransfersController.cs` (new file)
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/TransfersController.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs` (DI wiring)
 - Create: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Transfers/CreateTransferCommandHandlerTests.cs`
 - Create: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Transfers/ListTransfersQueryHandlerTests.cs`
@@ -5624,9 +5854,9 @@ git commit -m "feat: recipient registration/list/get, addressBookRecipients webh
 - Create: `tests/TreasuryServiceOrchestrator.IntegrationTests/TransfersEndpointsTests.cs`
 
 **Interfaces:**
-- Consumes: `Domain.TransferStatus` (`Pending, Running, Complete, Failed`, from `src/TreasuryServiceOrchestrator.Domain/TransferStatus.cs`); `ISubAccountRepository.GetByClientCompanyIdAsync`; `IRecipientRepository.GetByIdAsync(Guid id, string clientCompanyId, CancellationToken ct)`; `IFundAccountRepository` (Task 8's ledger fund-account balance tracking — used here to validate sufficient balance before transfer, and to debit `Balance` (`decimal`, not `Money` — see `FundAccount.cs`) when a transfer's webhook status reaches `Complete`); `ITransactionRepository.AddAsync`/`GetByProviderReferenceIdAsync` (Task 8; the webhook handler looks the ledger row back up by `ProviderReferenceId` to flip it to `Complete`/`Failed` alongside the `Transfer`); `IBalanceSnapshotRepository.AddAsync` + `BalanceSnapshotReason.PostMutation` (Task 8; a new snapshot is recorded at debit time, same pattern as `ProcessDepositCommandHandler.RecordCompleteAsync`); `IdempotencyExecutor.ExecuteAsync(idempotency, resolvedClientCompanyId, idempotencyKey, requestBodyForHashing, unitOfWork, asyncWorkFunc, cancellationToken)`; `IWebhookTopicProcessor { string Topic { get; } Task ProcessAsync(string payloadJson, CancellationToken ct); }`; `IMockWebhookScheduler.Schedule(ScheduledMockWebhook(string Topic, string PayloadJson, TimeSpan Delay))`; `IMockRandomSource`/`FixedRandomSource(double value)`; `MockProviderOptions { Enabled, WebhookDelayMilliseconds, ResponseLatencyMilliseconds, FailureInjectionRate, RejectBusinessNameSuffix }`; `TenantScopeResolver.Resolve(caller, clientCompanyId)!`.
+- Consumes: `Domain.TransferStatus` (`Pending, Complete, Failed` — the real `transfers` webhook's `running` intermediate event maps to `Pending`, no separate enum value, from `src/TreasuryServiceOrchestrator.Domain/TransferStatus.cs`); `ISubAccountRepository.GetByClientCompanyIdAsync`; `IRecipientRepository.GetByIdAsync(Guid id, string clientCompanyId, CancellationToken ct)`; `IFundAccountRepository` (Task 8's ledger fund-account balance tracking — used here to validate sufficient balance before transfer, and to debit `Balance` (`Money`, per design-pass correction #1 — `FundAccount.cs` carries a `Money Balance`, not a raw `decimal`) when a transfer's webhook status reaches `Complete`); `ITransactionRepository.AddAsync`/`GetByProviderReferenceIdAsync` (Task 8; the webhook handler looks the ledger row back up by `ProviderReferenceId` to flip it to `Complete`/`Failed` alongside the `Transfer`); `IBalanceSnapshotRepository.AddAsync` + `BalanceSnapshotReason.PostMutation` (Task 8; a new snapshot is recorded at debit time via the shared `LedgerPostingService`, same module `ProcessDepositCommandHandler.RecordCompleteAsync` (Task 8) and `ProcessPayoutStatusCommandHandler` (Task 11) also call — design-pass correction #2); `IdempotencyExecutor.ExecuteAsync(idempotency, resolvedClientCompanyId, idempotencyKey, requestBodyForHashing, unitOfWork, asyncWorkFunc, cancellationToken)`; `IWebhookTopicProcessor { string Topic { get; } Task ProcessAsync(string payloadJson, CancellationToken ct); }`; `IMockWebhookScheduler.Schedule(ScheduledMockWebhook(string Topic, string PayloadJson, TimeSpan Delay))`; `IMockRandomSource`/`FixedRandomSource(double value)`; `MockProviderOptions { Enabled, WebhookDelayMilliseconds, ResponseLatencyMilliseconds, FailureInjectionRate, RejectBusinessNameSuffix }`; `TenantScopeResolver.Resolve(caller, clientCompanyId)` (returns `TenantScope`, not `string?` — design-pass correction #3; a route with an explicit `clientCompanyId` always resolves to `TenantScope.SingleTenant`, extracted via pattern matching, no `!`).
 - **Balance-debit timing note:** `CreateTransferCommandHandler` only *validates* sufficient balance at creation time — it does not debit. The debit happens in `ProcessTransferStatusCommandHandler` when the `transfers` webhook reports `Complete`, mirroring how `ProcessDepositCommandHandler` (Task 8) only credits on confirmed webhook completion. A `Failed` transfer never touched the balance, so no reversal is needed on failure.
-- Produces: `Transfer` entity; `ITransferRepository { AddAsync, GetByIdAsync(Guid id, string clientCompanyId, ct), GetByCircleTransferIdAsync, ListForSubAccountAsync }`; `IStablecoinGateway.CreateTransferAsync`; `CreateTransferCommand`/`Result`/`Handler`; `ListTransfersQuery`/`GetTransferQuery` + handlers; `ProcessTransferStatusCommand`/`Handler`; `TransfersWebhookTopicProcessor` (`Topic => "transfers"`); `TransfersController` routes consumed by Task 15's demo-script E2E test.
+- Produces: `Transfer` entity; `ITransferRepository { AddAsync, GetByIdAsync(Guid id, string clientCompanyId, ct), GetByCircleTransferIdAsync, ListForSubAccountAsync }`; `LedgerPostingService` (shared ledger-posting module, design-pass correction #2); `IStablecoinGateway.CreateTransferAsync`; `CreateTransferCommand`/`Result`/`Handler`; `ListTransfersQuery`/`GetTransferQuery` + handlers; `ProcessTransferStatusCommand`/`Handler`; `TransfersWebhookTopicProcessor` (`Topic => "transfers"`); `TransfersController` routes consumed by Task 15's demo-script E2E test.
 
 - [ ] **Step 1: Write the failing test for the `Transfer` domain entity**
 
@@ -5739,7 +5969,7 @@ public class CreateTransferCommandHandlerTests
         };
         var fundAccount = new FundAccount
         {
-            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = 500m, CurrencyCode = "USDC",
+            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(500m, "USDC"),
             CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
         };
         subAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(subAccount);
@@ -5806,7 +6036,7 @@ public class CreateTransferCommandHandlerTests
         };
         var fundAccount = new FundAccount
         {
-            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = 50m, CurrencyCode = "USDC",
+            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(50m, "USDC"),
             CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
         };
         subAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(subAccount);
@@ -5852,12 +6082,15 @@ Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.
 
 ```csharp
 public sealed record CreateTransferGatewayRequest(
-    string IdempotencyKey, string SourceWalletId, string DestinationRecipientId, Money Amount);
+    string IdempotencyKey, string SourceWalletId,
+    // Becomes `destination.addressId` on the real Circle request (`destination: { type: "verified_blockchain", addressId: <recipient UUID> }`,
+    // see corrections header #4) — recorded here so Phase 3's real client implementation doesn't have to guess the mapping.
+    string DestinationRecipientId, Money Amount);
 
 public sealed record CreateTransferGatewayResult(string CircleTransferId, string Status);
 ```
 
-Modify `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` — add:
+Modify `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` — add:
 
 ```csharp
 Task<CreateTransferGatewayResult> CreateTransferAsync(
@@ -5949,7 +6182,7 @@ public sealed class CreateTransferCommandHandler(
         var fundAccount = await fundAccounts.GetByClientCompanyIdAsync(command.ResolvedClientCompanyId, cancellationToken)
             ?? throw new NotFoundException($"No fund account found for client company '{command.ResolvedClientCompanyId}'.");
 
-        if (fundAccount.CurrencyCode != command.Amount.CurrencyCode || fundAccount.Balance < command.Amount.Amount)
+        if (fundAccount.Balance.CurrencyCode != command.Amount.CurrencyCode || fundAccount.Balance.Amount < command.Amount.Amount)
         {
             throw new ConflictException($"Insufficient balance for transfer of {command.Amount.Amount} {command.Amount.CurrencyCode}.");
         }
@@ -6013,7 +6246,7 @@ public sealed class CreateTransferCommandHandler(
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockStablecoinGatewayTransferTests.cs
 using Microsoft.Extensions.Options;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
@@ -6022,7 +6255,7 @@ namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure;
 public class MockStablecoinGatewayTransferTests
 {
     [Fact]
-    public async Task CreateTransferAsync_schedules_complete_webhook_and_returns_pending()
+    public async Task CreateTransferAsync_schedules_running_then_complete_webhooks_and_returns_pending()
     {
         var scheduler = new RecordingMockWebhookScheduler();
         var options = Options.Create(new MockProviderOptions
@@ -6037,8 +6270,31 @@ public class MockStablecoinGatewayTransferTests
             TestContext.Current.CancellationToken);
 
         Assert.Equal("pending", result.Status);
-        Assert.Single(scheduler.Scheduled);
-        Assert.Equal("transfers", scheduler.Scheduled[0].Topic);
+        Assert.Equal(2, scheduler.Scheduled.Count);
+        Assert.All(scheduler.Scheduled, w => Assert.Equal("transfers", w.Topic));
+        Assert.Contains("\"status\":\"running\"", scheduler.Scheduled[0].PayloadJson);
+        Assert.Contains("\"status\":\"complete\"", scheduler.Scheduled[1].PayloadJson);
+    }
+
+    [Fact]
+    public async Task CreateTransferAsync_schedules_running_then_failed_webhooks_when_recipient_flagged_for_rejection()
+    {
+        var scheduler = new RecordingMockWebhookScheduler();
+        var options = Options.Create(new MockProviderOptions
+        {
+            Enabled = true, WebhookDelayMilliseconds = 0, ResponseLatencyMilliseconds = 0,
+            FailureInjectionRate = 0, RejectBusinessNameSuffix = "REJECT",
+        });
+        var gateway = new MockStablecoinGateway(options, scheduler, new FixedRandomSource(0.99));
+
+        var result = await gateway.CreateTransferAsync(
+            new CreateTransferGatewayRequest("key-1", "wallet-1", "recipient-REJECT", new TreasuryServiceOrchestrator.Domain.Money(100m, "USDC")),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("pending", result.Status);
+        Assert.Equal(2, scheduler.Scheduled.Count);
+        Assert.Contains("\"status\":\"running\"", scheduler.Scheduled[0].PayloadJson);
+        Assert.Contains("\"status\":\"failed\"", scheduler.Scheduled[1].PayloadJson);
     }
 
     [Fact]
@@ -6073,6 +6329,8 @@ Modify `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGatew
 public async Task<CreateTransferGatewayResult> CreateTransferAsync(
     CreateTransferGatewayRequest request, CancellationToken cancellationToken)
 {
+    var settings = options.Value;
+
     if (settings.ResponseLatencyMilliseconds > 0)
     {
         await Task.Delay(settings.ResponseLatencyMilliseconds, cancellationToken);
@@ -6084,13 +6342,22 @@ public async Task<CreateTransferGatewayResult> CreateTransferAsync(
     }
 
     var circleTransferId = $"transfer-{Guid.NewGuid():N}";
-    var finalStatus = "complete";
+    // Real `transfers` webhooks emit one event per transition: pending -> running -> complete | failed
+    // (corrections header #2) — simulate the running intermediate event, then the terminal outcome.
+    var willFail = !string.IsNullOrEmpty(settings.RejectBusinessNameSuffix)
+        && request.DestinationRecipientId.EndsWith(settings.RejectBusinessNameSuffix, StringComparison.Ordinal);
+    var finalStatus = willFail ? "failed" : "complete";
 
-    var payload = $$"""
+    var runningPayload = $$"""
+        {"transfer":{"id":"{{circleTransferId}}","status":"running"}}
+        """;
+    var finalPayload = $$"""
         {"transfer":{"id":"{{circleTransferId}}","status":"{{finalStatus}}"}}
         """;
     webhookScheduler.Schedule(new ScheduledMockWebhook(
-        "transfers", payload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
+        "transfers", runningPayload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
+    webhookScheduler.Schedule(new ScheduledMockWebhook(
+        "transfers", finalPayload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
 
     return new CreateTransferGatewayResult(circleTransferId, "pending");
 }
@@ -6297,7 +6564,7 @@ public class ProcessTransferStatusCommandHandlerTests
         f.Transactions.GetByProviderReferenceIdAsync("transfer-1", Arg.Any<CancellationToken>()).Returns(transaction);
         var fundAccount = new FundAccount
         {
-            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = 250m, CurrencyCode = "USDC",
+            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(250m, "USDC"),
             CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
         };
         f.FundAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(fundAccount);
@@ -6405,7 +6672,7 @@ internal static class TransferStatusMapper
     public static TransferStatus Map(string circleStatus) => circleStatus.ToLowerInvariant() switch
     {
         "pending" => TransferStatus.Pending,
-        "running" => TransferStatus.Running,
+        "running" => TransferStatus.Pending, // real `transfers` webhook intermediate event; PRD §7.2 state machine unchanged
         "complete" => TransferStatus.Complete,
         "failed" => TransferStatus.Failed,
         _ => throw new InvalidOperationException($"Unrecognized transfer status '{circleStatus}'."),
@@ -6463,7 +6730,7 @@ public sealed class ProcessTransferStatusCommandHandler(
             var fundAccount = await fundAccounts.GetByClientCompanyIdAsync(transfer.ClientCompanyId, cancellationToken)
                 ?? throw new NotFoundException($"No fund account found for client company '{transfer.ClientCompanyId}'.");
 
-            fundAccount.Balance -= transfer.Amount.Amount;
+            fundAccount.Balance = new Money(fundAccount.Balance.Amount - transfer.Amount.Amount, fundAccount.Balance.CurrencyCode);
             fundAccount.UpdatedAtUtc = transfer.UpdatedAtUtc;
 
             await snapshots.AddAsync(new BalanceSnapshot
@@ -6471,7 +6738,7 @@ public sealed class ProcessTransferStatusCommandHandler(
                 Id = Guid.NewGuid(),
                 SubAccountId = transfer.SubAccountId,
                 ClientCompanyId = transfer.ClientCompanyId,
-                Balance = new Money(fundAccount.Balance, fundAccount.CurrencyCode),
+                Balance = fundAccount.Balance,
                 Reason = BalanceSnapshotReason.PostMutation,
                 CapturedAtUtc = transfer.UpdatedAtUtc,
             }, cancellationToken);
@@ -6552,7 +6819,7 @@ Expected: FAIL — build error, `TransfersWebhookTopicProcessor` does not exist.
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TreasuryServiceOrchestrator.Application;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Transfers;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;
@@ -6657,15 +6924,16 @@ builder.Services.AddScoped<IWebhookTopicProcessor, TransfersWebhookTopicProcesso
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/TransfersController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/TransfersController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Api.Tenancy;
 using TreasuryServiceOrchestrator.Application;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Transfers;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -6682,12 +6950,12 @@ public sealed class TransfersController(
     public async Task<IActionResult> Create(
         string clientCompanyId, [FromBody] CreateTransferRequest request, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        var resolved = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
         var correlationId = HttpContext.TraceIdentifier;
 
         var result = await createHandler.HandleAsync(
             new CreateTransferCommand(
-                resolved, request.RecipientId, new Money(request.Amount, request.CurrencyCode),
+                resolved.ClientCompanyId, request.RecipientId, new Money(request.Amount, request.CurrencyCode),
                 request.IdempotencyKey, correlationId),
             cancellationToken);
 
@@ -6697,16 +6965,16 @@ public sealed class TransfersController(
     [HttpGet]
     public async Task<IActionResult> List(string clientCompanyId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
-        var result = await listHandler.HandleAsync(new ListTransfersQuery(resolved), cancellationToken);
+        var resolved = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
+        var result = await listHandler.HandleAsync(new ListTransfersQuery(resolved.ClientCompanyId), cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{transferId:guid}")]
     public async Task<IActionResult> Get(string clientCompanyId, Guid transferId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
-        var result = await getHandler.HandleAsync(new GetTransferQuery(resolved, transferId), cancellationToken);
+        var resolved = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
+        var result = await getHandler.HandleAsync(new GetTransferQuery(resolved.ClientCompanyId, transferId), cancellationToken);
         return Ok(result);
     }
 }
@@ -6829,7 +7097,7 @@ Reworks `RedeemRequest` to carry gross/fees/net separately (Circle's Institution
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ILinkedBankAccountRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRedeemRequestRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
@@ -6847,21 +7115,26 @@ Reworks `RedeemRequest` to carry gross/fees/net separately (Circle's Institution
 - Create: `src/TreasuryServiceOrchestrator.Application/Redemptions/ProcessPayoutStatusCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Redemptions/ProcessPayoutStatusCommandHandler.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Webhooks/PayoutsWebhookTopicProcessor.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/ProcessLinkedBankAccountStatusCommand.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/ProcessLinkedBankAccountStatusCommandHandler.cs`
+- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Webhooks/WireWebhookTopicProcessor.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/LinkedBankAccountRepository.cs`
 - Delete: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/RedeemRequestRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/RedeemRequestRepository.cs` (rewritten)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/LinkedBankAccountsController.cs`
-- Delete: `src/TreasuryServiceOrchestrator.Api/Controllers/RedeemController.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/RedemptionsController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/LinkedBankAccountsController.cs`
+- Delete: `src/TreasuryServiceOrchestrator.Api/Ledger/RedeemController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Ledger/RedemptionsController.cs`
 - Modify: `tests/TreasuryServiceOrchestrator.IntegrationTests/CrossTenantRedeemIsolationTests.cs`
 - Create: `tests/TreasuryServiceOrchestrator.IntegrationTests/RedemptionsEndpointsTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/LinkedBankAccounts/CreateLinkedBankAccountCommandHandlerTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/LinkedBankAccounts/ProcessLinkedBankAccountStatusCommandHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Redemptions/CreateRedemptionCommandHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Redemptions/ProcessPayoutStatusCommandHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockStablecoinGatewayRedeemTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/PayoutsWebhookTopicProcessorTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/WireWebhookTopicProcessorTests.cs`
 
 **Interfaces:**
 - Consumes: `ISubAccountRepository.GetByClientCompanyIdAsync`, `IFundAccountRepository.GetByClientCompanyIdAsync`, `IAuditLogService.AppendAsync`, `IdempotencyExecutor.ExecuteAsync`, `IUnitOfWork`, `TenantScopeResolver.Resolve`, `ICallerContext` (all Task 1/8/9/10).
@@ -6937,6 +7210,8 @@ public interface ILinkedBankAccountRepository
 
     Task<LinkedBankAccount?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
+    Task<LinkedBankAccount?> GetByCircleBankAccountIdAsync(string circleBankAccountId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<LinkedBankAccount>> ListAsync(CancellationToken cancellationToken);
 }
 ```
@@ -6981,10 +7256,10 @@ public sealed record CreateLinkedBankAccountGatewayResult(string CircleBankAccou
 
 (Leave `TransferStatusResult` and the `ExternalEntity*` DTOs untouched.)
 
-Replace `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` with:
+Replace `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` with:
 
 ```csharp
-namespace TreasuryServiceOrchestrator.Application.Shared.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface IStablecoinGateway
 {
@@ -7014,10 +7289,11 @@ public Task<GatewayRedeemResult> RedeemAsync(RedeemGatewayRequest request, Cance
 public Task<CreateLinkedBankAccountGatewayResult> CreateLinkedBankAccountAsync(
     CreateLinkedBankAccountGatewayRequest request, CancellationToken cancellationToken) =>
     Task.FromResult(new CreateLinkedBankAccountGatewayResult(
-        CircleBankAccountId: $"bank-account-{Guid.NewGuid():N}", Status: "complete"));
+        CircleBankAccountId: $"bank-account-{Guid.NewGuid():N}", Status: "pending"));
 ```
 
-(The real Circle Mint HTTP calls for both are deferred to Phase 3 — see `docs/circle-mint-docs/`.)
+(The real Circle Mint HTTP calls for both are deferred to Phase 3 — see `docs/circle-mint-docs/`. Verification completes
+asynchronously via the `wire` webhook topic, never synchronously on create — corrections header #6.)
 
 - [ ] **Step 5: Add `RedemptionFlatFeeAmount` to `MockProviderOptions`**
 
@@ -7032,20 +7308,17 @@ public decimal RedemptionFlatFeeAmount { get; set; } = 1.50m;
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/MockStablecoinGatewayRedeemTests.cs
 using Microsoft.Extensions.Options;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure;
 
+// `FixedRandomSource` is the `IMockRandomSource` test double already introduced in Task 6 for
+// `MockSubAccountGatewayTests`/`MockStablecoinGatewayTests` and reused in Task 10 — reused here too, not redefined.
 public class MockStablecoinGatewayRedeemTests
 {
-    private sealed class FixedRandomSource(double value) : IMockRandomSource
-    {
-        public double NextDouble() => value;
-    }
-
     [Fact]
     public async Task RedeemAsync_schedules_payouts_webhook_and_returns_pending()
     {
@@ -7085,7 +7358,7 @@ public class MockStablecoinGatewayRedeemTests
     }
 
     [Fact]
-    public async Task CreateLinkedBankAccountAsync_returns_complete_synchronously()
+    public async Task CreateLinkedBankAccountAsync_returns_pending_and_schedules_wire_webhook()
     {
         var scheduler = new RecordingMockWebhookScheduler();
         var options = Options.Create(new MockProviderOptions
@@ -7098,9 +7371,12 @@ public class MockStablecoinGatewayRedeemTests
             new CreateLinkedBankAccountGatewayRequest("Acme Co", "000123456789", "021000021", "Chase"),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal("complete", result.Status);
+        Assert.Equal("pending", result.Status);
         Assert.NotEmpty(result.CircleBankAccountId);
-        Assert.Empty(scheduler.Scheduled);
+        Assert.Single(scheduler.Scheduled);
+        Assert.Equal("wire", scheduler.Scheduled[0].Topic);
+        Assert.Contains(result.CircleBankAccountId, scheduler.Scheduled[0].PayloadJson);
+        Assert.Contains("\"status\":\"complete\"", scheduler.Scheduled[0].PayloadJson);
     }
 }
 ```
@@ -7121,7 +7397,7 @@ Replace `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGate
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
@@ -7149,13 +7425,22 @@ public sealed class MockStablecoinGateway(
         }
 
         var circleTransferId = $"transfer-{Guid.NewGuid():N}";
-        var finalStatus = "complete";
+        // Real `transfers` webhooks emit one event per transition: pending -> running -> complete | failed
+        // (corrections header #2) — simulate the running intermediate event, then the terminal outcome.
+        var willFail = !string.IsNullOrEmpty(settings.RejectBusinessNameSuffix)
+            && request.DestinationRecipientId.EndsWith(settings.RejectBusinessNameSuffix, StringComparison.Ordinal);
+        var finalStatus = willFail ? "failed" : "complete";
 
-        var payload = $$"""
+        var runningPayload = $$"""
+            {"transfer":{"id":"{{circleTransferId}}","status":"running"}}
+            """;
+        var finalPayload = $$"""
             {"transfer":{"id":"{{circleTransferId}}","status":"{{finalStatus}}"}}
             """;
         webhookScheduler.Schedule(new ScheduledMockWebhook(
-            "transfers", payload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
+            "transfers", runningPayload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
+        webhookScheduler.Schedule(new ScheduledMockWebhook(
+            "transfers", finalPayload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
 
         return new CreateTransferGatewayResult(circleTransferId, "pending");
     }
@@ -7177,10 +7462,11 @@ public sealed class MockStablecoinGateway(
         var circleRedeemId = $"redeem-{Guid.NewGuid():N}";
         var finalStatus = "complete";
         var fees = settings.RedemptionFlatFeeAmount;
-        var netAmount = request.GrossAmount.Amount - fees;
+        var toAmount = request.GrossAmount.Amount - fees;
 
+        // Real payout webhooks carry `toAmount` (optional — corrections header #3), not `netAmount`.
         var payload = $$"""
-            {"payout":{"id":"{{circleRedeemId}}","status":"{{finalStatus}}","amount":"{{request.GrossAmount.Amount}}","fees":"{{fees}}","netAmount":"{{netAmount}}","currency":"{{request.GrossAmount.CurrencyCode}}"}}
+            {"payout":{"id":"{{circleRedeemId}}","status":"{{finalStatus}}","amount":"{{request.GrossAmount.Amount}}","fees":"{{fees}}","toAmount":"{{toAmount}}","currency":"{{request.GrossAmount.CurrencyCode}}"}}
             """;
         webhookScheduler.Schedule(new ScheduledMockWebhook(
             "payouts", payload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
@@ -7188,10 +7474,32 @@ public sealed class MockStablecoinGateway(
         return new GatewayRedeemResult(circleRedeemId, "pending");
     }
 
-    public Task<CreateLinkedBankAccountGatewayResult> CreateLinkedBankAccountAsync(
-        CreateLinkedBankAccountGatewayRequest request, CancellationToken cancellationToken) =>
-        Task.FromResult(new CreateLinkedBankAccountGatewayResult(
-            CircleBankAccountId: $"bank-account-{Guid.NewGuid():N}", Status: "complete"));
+    public async Task<CreateLinkedBankAccountGatewayResult> CreateLinkedBankAccountAsync(
+        CreateLinkedBankAccountGatewayRequest request, CancellationToken cancellationToken)
+    {
+        var settings = options.Value;
+
+        if (settings.ResponseLatencyMilliseconds > 0)
+        {
+            await Task.Delay(settings.ResponseLatencyMilliseconds, cancellationToken);
+        }
+
+        if (randomSource.NextDouble() < settings.FailureInjectionRate)
+        {
+            throw new ProviderUnavailableException("Mock stablecoin gateway injected a transient failure.");
+        }
+
+        // Bank-account verification is asynchronous, delivered on the `wire` topic
+        // (pending -> complete | failed — corrections header #6), not completed synchronously.
+        var circleBankAccountId = $"bank-account-{Guid.NewGuid():N}";
+        var payload = $$"""
+            {"wire":{"id":"{{circleBankAccountId}}","status":"complete"}}
+            """;
+        webhookScheduler.Schedule(new ScheduledMockWebhook(
+            "wire", payload, TimeSpan.FromMilliseconds(settings.WebhookDelayMilliseconds)));
+
+        return new CreateLinkedBankAccountGatewayResult(circleBankAccountId, "pending");
+    }
 
     public Task<TransferStatusResult> GetTransferStatusAsync(string transferId, CancellationToken cancellationToken)
     {
@@ -7200,8 +7508,6 @@ public sealed class MockStablecoinGateway(
     }
 }
 ```
-
-~~`CreateLinkedBankAccountAsync` completes synchronously (no webhook)~~ **Corrected 2026-07-17:** wrong — Circle's bank-account verification is asynchronous, delivered on the `wire` webhook topic (`pending → complete | failed`). The mock gateway returns `pending` on create and the emitter schedules a `wire` webhook for the decision. See correction 6 in the header block.
 
 - [ ] **Step 9: Run tests to verify they pass**
 
@@ -7228,7 +7534,7 @@ public class CreateLinkedBankAccountCommandHandlerTests
     {
         var gateway = Substitute.For<IStablecoinGateway>();
         gateway.CreateLinkedBankAccountAsync(Arg.Any<CreateLinkedBankAccountGatewayRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new CreateLinkedBankAccountGatewayResult("bank-account-1", "complete"));
+            .Returns(new CreateLinkedBankAccountGatewayResult("bank-account-1", "pending"));
         var repository = Substitute.For<ILinkedBankAccountRepository>();
         var auditLog = Substitute.For<IAuditLogService>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
@@ -7239,9 +7545,9 @@ public class CreateLinkedBankAccountCommandHandlerTests
         var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
         Assert.Equal("bank-account-1", result.CircleBankAccountId);
-        Assert.Equal(LinkedBankAccountStatus.Active, result.Status);
+        Assert.Equal(LinkedBankAccountStatus.Pending, result.Status);
         await repository.Received(1).AddAsync(
-            Arg.Is<LinkedBankAccount>(a => a.BankName == "Chase" && a.Status == LinkedBankAccountStatus.Active),
+            Arg.Is<LinkedBankAccount>(a => a.BankName == "Chase" && a.Status == LinkedBankAccountStatus.Pending),
             Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
@@ -7396,6 +7702,241 @@ public sealed class GetLinkedBankAccountQueryHandler(ILinkedBankAccountRepositor
 Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*CreateLinkedBankAccountCommandHandlerTests"`
 Expected: PASS
 
+- [ ] **Step 13a: Write the failing test for `ProcessLinkedBankAccountStatusCommandHandler`, then implement it**
+
+LinkedBankAccount verification is asynchronous — Step 10/11 above create it `Pending` and schedule a `wire`
+webhook (corrections header #6). This handler is the webhook-driven counterpart that flips it to
+`Active`/`Failed`, mirroring `ProcessTransferStatusCommandHandler` (Task 10).
+
+```csharp
+// tests/TreasuryServiceOrchestrator.UnitTests/Application/LinkedBankAccounts/ProcessLinkedBankAccountStatusCommandHandlerTests.cs
+using NSubstitute;
+using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
+using TreasuryServiceOrchestrator.Domain;
+using Xunit;
+
+namespace TreasuryServiceOrchestrator.UnitTests.Application.LinkedBankAccounts;
+
+public class ProcessLinkedBankAccountStatusCommandHandlerTests
+{
+    [Fact]
+    public async Task Marks_Active_when_wire_webhook_reports_complete()
+    {
+        var repository = Substitute.For<ILinkedBankAccountRepository>();
+        var auditLog = Substitute.For<IAuditLogService>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var account = new LinkedBankAccount
+        {
+            Id = Guid.NewGuid(), BeneficiaryName = "Acme Co", AccountNumber = "000123456789",
+            RoutingNumber = "021000021", BankName = "Chase", CircleBankAccountId = "bank-account-1",
+            Status = LinkedBankAccountStatus.Pending, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+        };
+        repository.GetByCircleBankAccountIdAsync("bank-account-1", Arg.Any<CancellationToken>()).Returns(account);
+
+        var handler = new ProcessLinkedBankAccountStatusCommandHandler(repository, auditLog, unitOfWork);
+        var result = await handler.HandleAsync(
+            new ProcessLinkedBankAccountStatusCommand("bank-account-1", "complete"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(LinkedBankAccountStatus.Active, result.Status);
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Is_idempotent_when_status_already_matches()
+    {
+        var repository = Substitute.For<ILinkedBankAccountRepository>();
+        var auditLog = Substitute.For<IAuditLogService>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var account = new LinkedBankAccount
+        {
+            Id = Guid.NewGuid(), BeneficiaryName = "Acme Co", AccountNumber = "000123456789",
+            RoutingNumber = "021000021", BankName = "Chase", CircleBankAccountId = "bank-account-1",
+            Status = LinkedBankAccountStatus.Active, CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+        };
+        repository.GetByCircleBankAccountIdAsync("bank-account-1", Arg.Any<CancellationToken>()).Returns(account);
+
+        var handler = new ProcessLinkedBankAccountStatusCommandHandler(repository, auditLog, unitOfWork);
+        await handler.HandleAsync(
+            new ProcessLinkedBankAccountStatusCommand("bank-account-1", "complete"), TestContext.Current.CancellationToken);
+
+        await unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Throws_NotFoundException_when_linked_bank_account_missing()
+    {
+        var repository = Substitute.For<ILinkedBankAccountRepository>();
+        repository.GetByCircleBankAccountIdAsync("unknown", Arg.Any<CancellationToken>()).Returns((LinkedBankAccount?)null);
+
+        var handler = new ProcessLinkedBankAccountStatusCommandHandler(
+            repository, Substitute.For<IAuditLogService>(), Substitute.For<IUnitOfWork>());
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            handler.HandleAsync(new ProcessLinkedBankAccountStatusCommand("unknown", "complete"), TestContext.Current.CancellationToken));
+    }
+}
+```
+
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*ProcessLinkedBankAccountStatusCommandHandlerTests"`
+Expected: FAIL — build error, `ProcessLinkedBankAccountStatusCommand(Handler)` does not exist.
+
+```csharp
+// src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/ProcessLinkedBankAccountStatusCommand.cs
+using TreasuryServiceOrchestrator.Domain;
+
+namespace TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
+
+public sealed record ProcessLinkedBankAccountStatusCommand(string CircleBankAccountId, string Status);
+
+public sealed record ProcessLinkedBankAccountStatusResult(Guid LinkedBankAccountId, LinkedBankAccountStatus Status);
+```
+
+```csharp
+// src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/ProcessLinkedBankAccountStatusCommandHandler.cs
+using System.Text.Json;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
+
+namespace TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
+
+public sealed class ProcessLinkedBankAccountStatusCommandHandler(
+    ILinkedBankAccountRepository linkedBankAccounts,
+    IAuditLogService auditLog,
+    IUnitOfWork unitOfWork)
+    : ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult>
+{
+    private const string AdminAuditSentinel = "ADMIN"; // LinkedBankAccount has no ClientCompanyId (PRD line 141).
+
+    public async Task<ProcessLinkedBankAccountStatusResult> HandleAsync(
+        ProcessLinkedBankAccountStatusCommand command, CancellationToken cancellationToken = default)
+    {
+        var account = await linkedBankAccounts.GetByCircleBankAccountIdAsync(command.CircleBankAccountId, cancellationToken)
+            ?? throw new NotFoundException($"Linked bank account with Circle bank account id '{command.CircleBankAccountId}' not found.");
+
+        var newStatus = LinkedBankAccountStatusMapper.Map(command.Status);
+        if (account.Status == newStatus)
+        {
+            return new ProcessLinkedBankAccountStatusResult(account.Id, account.Status);
+        }
+
+        account.Status = newStatus;
+        account.UpdatedAtUtc = DateTime.UtcNow;
+
+        await auditLog.AppendAsync(
+            "LinkedBankAccountStatusChanged", "LinkedBankAccount", account.Id.ToString(),
+            JsonSerializer.Serialize(new { account.Status }),
+            AdminAuditSentinel, correlationId: command.CircleBankAccountId, cancellationToken);
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new ProcessLinkedBankAccountStatusResult(account.Id, account.Status);
+    }
+}
+```
+
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*ProcessLinkedBankAccountStatusCommandHandlerTests"`
+Expected: PASS
+
+- [ ] **Step 13b: Write the failing test for `WireWebhookTopicProcessor`, then implement it**
+
+```csharp
+// tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/WireWebhookTopicProcessorTests.cs
+using NSubstitute;
+using TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
+using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
+using Xunit;
+
+namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure;
+
+public class WireWebhookTopicProcessorTests
+{
+    [Fact]
+    public void Topic_is_wire()
+    {
+        var processor = new WireWebhookTopicProcessor(Substitute.For<TreasuryServiceOrchestrator.Application.ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult>>());
+        Assert.Equal("wire", processor.Topic);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_deserializes_payload_and_invokes_handler()
+    {
+        var handler = Substitute.For<TreasuryServiceOrchestrator.Application.ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult>>();
+        var processor = new WireWebhookTopicProcessor(handler);
+
+        var payload = """{"wire":{"id":"bank-account-1","status":"complete"}}""";
+        await processor.ProcessAsync(payload, TestContext.Current.CancellationToken);
+
+        await handler.Received(1).HandleAsync(
+            Arg.Is<ProcessLinkedBankAccountStatusCommand>(c => c.CircleBankAccountId == "bank-account-1" && c.Status == "complete"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessAsync_throws_InvalidOperationException_when_payload_missing_fields()
+    {
+        var handler = Substitute.For<TreasuryServiceOrchestrator.Application.ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult>>();
+        var processor = new WireWebhookTopicProcessor(handler);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            processor.ProcessAsync("""{"wire":{}}""", TestContext.Current.CancellationToken));
+    }
+}
+```
+
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*WireWebhookTopicProcessorTests"`
+Expected: FAIL — build error, `WireWebhookTopicProcessor` does not exist.
+
+```csharp
+// src/TreasuryServiceOrchestrator.Infrastructure/Webhooks/WireWebhookTopicProcessor.cs
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using TreasuryServiceOrchestrator.Application;
+using TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
+using TreasuryServiceOrchestrator.Application.Webhooks;
+
+namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;
+
+public sealed class WireWebhookTopicProcessor(
+    ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult> decisionHandler) : IWebhookTopicProcessor
+{
+    public string Topic => "wire";
+
+    public async Task ProcessAsync(string payloadJson, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Deserialize<WirePayload>(payloadJson)
+            ?? throw new InvalidOperationException("wire webhook payload deserialized to null.");
+
+        if (payload.Wire?.Id is null || payload.Wire.Status is null)
+        {
+            throw new InvalidOperationException("wire webhook payload missing bank account id or status.");
+        }
+
+        await decisionHandler.HandleAsync(
+            new ProcessLinkedBankAccountStatusCommand(payload.Wire.Id, payload.Wire.Status), cancellationToken);
+    }
+
+    private sealed record WirePayload
+    {
+        [JsonPropertyName("wire")]
+        public WireResourcePayload? Wire { get; init; }
+    }
+
+    private sealed record WireResourcePayload
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; init; }
+
+        [JsonPropertyName("status")]
+        public string? Status { get; init; }
+    }
+}
+```
+
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*WireWebhookTopicProcessorTests"`
+Expected: PASS
+
 - [ ] **Step 14: Delete the old Redeem slice and write the failing test for `CreateRedemptionCommandHandler`**
 
 Delete `src/TreasuryServiceOrchestrator.Application/Redeem/CreateRedeemCommand.cs`, `CreateRedeemCommandHandler.cs`, `CreateRedeemValidator.cs`, `CreateRedeemResult.cs` and the now-empty `Redeem/` folder.
@@ -7447,7 +7988,7 @@ public class CreateRedemptionCommandHandlerTests
         };
         var fundAccount = new FundAccount
         {
-            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", CurrencyCode = "USDC", Balance = 500m, UpdatedAtUtc = DateTime.UtcNow,
+            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(500m, "USDC"), UpdatedAtUtc = DateTime.UtcNow,
         };
         f.SubAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(subAccount);
         f.LinkedBankAccounts.GetByIdAsync(linkedBankAccount.Id, Arg.Any<CancellationToken>()).Returns(linkedBankAccount);
@@ -7458,7 +7999,7 @@ public class CreateRedemptionCommandHandlerTests
             .Returns(true);
 
         var handler = NewHandler(f);
-        var command = new CreateRedemptionCommand("acme-co", linkedBankAccount.Id, 100m, "USD", "idem-1", "corr-1");
+        var command = new CreateRedemptionCommand("acme-co", linkedBankAccount.Id, new Money(100m, "USDC"), "idem-1", "corr-1");
 
         var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
@@ -7490,7 +8031,7 @@ public class CreateRedemptionCommandHandlerTests
         f.LinkedBankAccounts.GetByIdAsync(linkedBankAccount.Id, Arg.Any<CancellationToken>()).Returns(linkedBankAccount);
 
         var handler = NewHandler(f);
-        var command = new CreateRedemptionCommand("acme-co", linkedBankAccount.Id, 100m, "USD", "idem-1", "corr-1");
+        var command = new CreateRedemptionCommand("acme-co", linkedBankAccount.Id, new Money(100m, "USDC"), "idem-1", "corr-1");
 
         await Assert.ThrowsAsync<ConflictException>(() => handler.HandleAsync(command, TestContext.Current.CancellationToken));
     }
@@ -7513,14 +8054,14 @@ public class CreateRedemptionCommandHandlerTests
         };
         var fundAccount = new FundAccount
         {
-            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", CurrencyCode = "USDC", Balance = 50m, UpdatedAtUtc = DateTime.UtcNow,
+            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(50m, "USDC"), UpdatedAtUtc = DateTime.UtcNow,
         };
         f.SubAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(subAccount);
         f.LinkedBankAccounts.GetByIdAsync(linkedBankAccount.Id, Arg.Any<CancellationToken>()).Returns(linkedBankAccount);
         f.FundAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(fundAccount);
 
         var handler = NewHandler(f);
-        var command = new CreateRedemptionCommand("acme-co", linkedBankAccount.Id, 100m, "USD", "idem-1", "corr-1");
+        var command = new CreateRedemptionCommand("acme-co", linkedBankAccount.Id, new Money(100m, "USDC"), "idem-1", "corr-1");
 
         await Assert.ThrowsAsync<ConflictException>(() => handler.HandleAsync(command, TestContext.Current.CancellationToken));
     }
@@ -7541,8 +8082,8 @@ using TreasuryServiceOrchestrator.Domain;
 namespace TreasuryServiceOrchestrator.Application.Redemptions;
 
 public sealed record CreateRedemptionCommand(
-    string ResolvedClientCompanyId, Guid LinkedBankAccountId, decimal GrossAmount,
-    string TargetFiatCurrencyCode, string IdempotencyKey, string CorrelationId);
+    string ResolvedClientCompanyId, Guid LinkedBankAccountId, Money GrossAmount,
+    string IdempotencyKey, string CorrelationId);
 
 public sealed record CreateRedemptionResult(Guid RedemptionId, string CircleRedeemId, Money GrossAmount, TransferStatus Status);
 ```
@@ -7559,8 +8100,8 @@ public sealed class CreateRedemptionCommandValidator : AbstractValidator<CreateR
     {
         RuleFor(x => x.ResolvedClientCompanyId).NotEmpty();
         RuleFor(x => x.LinkedBankAccountId).NotEmpty();
-        RuleFor(x => x.GrossAmount).GreaterThan(0m);
-        RuleFor(x => x.TargetFiatCurrencyCode).NotEmpty();
+        RuleFor(x => x.GrossAmount.Amount).GreaterThan(0m);
+        RuleFor(x => x.GrossAmount.CurrencyCode).NotEmpty();
         RuleFor(x => x.IdempotencyKey).NotEmpty();
     }
 }
@@ -7604,23 +8145,23 @@ public sealed class CreateRedemptionCommandHandler(
         var fundAccount = await fundAccounts.GetByClientCompanyIdAsync(command.ResolvedClientCompanyId, cancellationToken)
             ?? throw new NotFoundException($"No fund account found for client company '{command.ResolvedClientCompanyId}'.");
 
-        if (fundAccount.CurrencyCode != "USDC" || fundAccount.Balance < command.GrossAmount)
+        if (fundAccount.Balance.CurrencyCode != command.GrossAmount.CurrencyCode
+            || fundAccount.Balance.Amount < command.GrossAmount.Amount)
         {
-            throw new ConflictException($"Insufficient balance for redemption of {command.GrossAmount} USDC.");
+            throw new ConflictException($"Insufficient balance for redemption of {command.GrossAmount}.");
         }
 
         return await IdempotencyExecutor.ExecuteAsync(
             idempotency,
             command.ResolvedClientCompanyId,
             command.IdempotencyKey,
-            new { command.LinkedBankAccountId, command.GrossAmount, command.TargetFiatCurrencyCode },
+            new { command.LinkedBankAccountId, command.GrossAmount },
             unitOfWork,
             async () =>
             {
-                var grossMoney = new Money(command.GrossAmount, "USDC");
                 var gatewayResult = await gateway.RedeemAsync(
                     new RedeemGatewayRequest(
-                        command.IdempotencyKey, subAccount.CircleWalletId!, linkedBankAccount.CircleBankAccountId, grossMoney),
+                        command.IdempotencyKey, subAccount.CircleWalletId!, linkedBankAccount.CircleBankAccountId, command.GrossAmount),
                     cancellationToken);
 
                 var now = DateTime.UtcNow;
@@ -7631,7 +8172,7 @@ public sealed class CreateRedemptionCommandHandler(
                     SubAccountId = subAccount.Id,
                     LinkedBankAccountId = linkedBankAccount.Id,
                     CircleRedeemId = gatewayResult.CircleRedeemId,
-                    GrossAmount = grossMoney,
+                    GrossAmount = command.GrossAmount,
                     Fees = null,
                     NetAmount = null,
                     Status = TransferStatus.Pending,
@@ -7739,20 +8280,21 @@ public class ProcessPayoutStatusCommandHandlerTests
         };
         var fundAccount = new FundAccount
         {
-            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", CurrencyCode = "USDC", Balance = 500m, UpdatedAtUtc = DateTime.UtcNow,
+            Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(500m, "USDC"), UpdatedAtUtc = DateTime.UtcNow,
         };
         f.RedeemRequests.GetByCircleRedeemIdAsync("redeem-1", Arg.Any<CancellationToken>()).Returns(redeemRequest);
         f.FundAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns(fundAccount);
 
         var handler = new ProcessPayoutStatusCommandHandler(f.RedeemRequests, f.FundAccounts, f.Snapshots, f.AuditLog, f.UnitOfWork);
         await handler.HandleAsync(
-            new ProcessPayoutStatusCommand("redeem-1", "complete", 100m, 1.50m, 98.50m, "USD"),
+            new ProcessPayoutStatusCommand(
+                "redeem-1", "complete", new Money(100m, "USD"), new Money(1.50m, "USD"), new Money(98.50m, "USD")),
             TestContext.Current.CancellationToken);
 
         Assert.Equal(TransferStatus.Complete, redeemRequest.Status);
         Assert.Equal(1.50m, redeemRequest.Fees!.Amount);
         Assert.Equal(98.50m, redeemRequest.NetAmount!.Amount);
-        Assert.Equal(400m, fundAccount.Balance);
+        Assert.Equal(400m, fundAccount.Balance.Amount);
         await f.UnitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -7771,7 +8313,8 @@ public class ProcessPayoutStatusCommandHandlerTests
 
         var handler = new ProcessPayoutStatusCommandHandler(f.RedeemRequests, f.FundAccounts, f.Snapshots, f.AuditLog, f.UnitOfWork);
         await handler.HandleAsync(
-            new ProcessPayoutStatusCommand("redeem-1", "complete", 100m, 1.50m, 98.50m, "USD"),
+            new ProcessPayoutStatusCommand(
+                "redeem-1", "complete", new Money(100m, "USD"), new Money(1.50m, "USD"), new Money(98.50m, "USD")),
             TestContext.Current.CancellationToken);
 
         await f.UnitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -7786,7 +8329,10 @@ public class ProcessPayoutStatusCommandHandlerTests
         var handler = new ProcessPayoutStatusCommandHandler(f.RedeemRequests, f.FundAccounts, f.Snapshots, f.AuditLog, f.UnitOfWork);
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
-            handler.HandleAsync(new ProcessPayoutStatusCommand("unknown", "complete", 100m, 1.50m, 98.50m, "USD"), TestContext.Current.CancellationToken));
+            handler.HandleAsync(
+                new ProcessPayoutStatusCommand(
+                    "unknown", "complete", new Money(100m, "USD"), new Money(1.50m, "USD"), new Money(98.50m, "USD")),
+                TestContext.Current.CancellationToken));
     }
 }
 ```
@@ -7802,8 +8348,11 @@ using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Redemptions;
 
+// `NetAmount` is non-nullable here: the optional-`toAmount`-vs-computed-fallback branching
+// (corrections header #3) happens once, at the webhook mapping edge in
+// `PayoutsWebhookTopicProcessor`, not in this command.
 public sealed record ProcessPayoutStatusCommand(
-    string CircleRedeemId, string Status, decimal GrossAmount, decimal Fees, decimal NetAmount, string FiatCurrencyCode);
+    string CircleRedeemId, string Status, Money GrossAmount, Money Fees, Money NetAmount);
 
 public sealed record ProcessPayoutStatusResult(Guid RedemptionId, TransferStatus Status);
 ```
@@ -7843,13 +8392,15 @@ public sealed class ProcessPayoutStatusCommandHandler(
 
         if (newStatus == TransferStatus.Complete)
         {
-            redeemRequest.Fees = new Money(command.Fees, command.FiatCurrencyCode);
-            redeemRequest.NetAmount = new Money(command.NetAmount, command.FiatCurrencyCode);
+            redeemRequest.Fees = command.Fees;
+            redeemRequest.NetAmount = command.NetAmount;
 
             var fundAccount = await fundAccounts.GetByClientCompanyIdAsync(redeemRequest.ClientCompanyId, cancellationToken)
                 ?? throw new NotFoundException($"No fund account found for client company '{redeemRequest.ClientCompanyId}'.");
 
-            fundAccount.Balance -= redeemRequest.GrossAmount.Amount;
+            // Debit by the gross amount reserved at creation time (Task 11 Step 16), not the webhook-reported
+            // amount, mirroring `ProcessTransferStatusCommandHandler` (Task 10).
+            fundAccount.Balance = new Money(fundAccount.Balance.Amount - redeemRequest.GrossAmount.Amount, fundAccount.Balance.CurrencyCode);
             fundAccount.UpdatedAtUtc = redeemRequest.UpdatedAtUtc;
 
             await snapshots.AddAsync(new BalanceSnapshot
@@ -7857,7 +8408,7 @@ public sealed class ProcessPayoutStatusCommandHandler(
                 Id = Guid.NewGuid(),
                 SubAccountId = redeemRequest.SubAccountId,
                 ClientCompanyId = redeemRequest.ClientCompanyId,
-                Balance = new Money(fundAccount.Balance, fundAccount.CurrencyCode),
+                Balance = fundAccount.Balance,
                 Reason = BalanceSnapshotReason.PostMutation,
                 CapturedAtUtc = redeemRequest.UpdatedAtUtc,
             }, cancellationToken);
@@ -7908,13 +8459,30 @@ public class PayoutsWebhookTopicProcessorTests
         var handler = Substitute.For<TreasuryServiceOrchestrator.Application.ICommandHandler<ProcessPayoutStatusCommand, ProcessPayoutStatusResult>>();
         var processor = new PayoutsWebhookTopicProcessor(handler);
 
-        var payload = """{"payout":{"id":"redeem-1","status":"complete","amount":"100","fees":"1.50","netAmount":"98.50","currency":"USD"}}""";
+        var payload = """{"payout":{"id":"redeem-1","status":"complete","amount":"100","fees":"1.50","toAmount":"98.50","currency":"USD"}}""";
         await processor.ProcessAsync(payload, TestContext.Current.CancellationToken);
 
         await handler.Received(1).HandleAsync(
             Arg.Is<ProcessPayoutStatusCommand>(c =>
                 c.CircleRedeemId == "redeem-1" && c.Status == "complete" &&
-                c.GrossAmount == 100m && c.Fees == 1.50m && c.NetAmount == 98.50m && c.FiatCurrencyCode == "USD"),
+                c.GrossAmount.Amount == 100m && c.Fees.Amount == 1.50m &&
+                c.NetAmount.Amount == 98.50m && c.NetAmount.CurrencyCode == "USD"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessAsync_computes_NetAmount_as_gross_minus_fees_when_toAmount_absent()
+    {
+        var handler = Substitute.For<TreasuryServiceOrchestrator.Application.ICommandHandler<ProcessPayoutStatusCommand, ProcessPayoutStatusResult>>();
+        var processor = new PayoutsWebhookTopicProcessor(handler);
+
+        // Real payout webhooks may omit `toAmount` (corrections header #3) — must not throw, and the
+        // fallback (gross minus fees) is computed here, not in the handler.
+        var payload = """{"payout":{"id":"redeem-1","status":"complete","amount":"100","fees":"1.50","currency":"USD"}}""";
+        await processor.ProcessAsync(payload, TestContext.Current.CancellationToken);
+
+        await handler.Received(1).HandleAsync(
+            Arg.Is<ProcessPayoutStatusCommand>(c => c.NetAmount.Amount == 98.50m),
             Arg.Any<CancellationToken>());
     }
 
@@ -7942,6 +8510,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.Redemptions;
+using TreasuryServiceOrchestrator.Application.Webhooks;
+using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
@@ -7955,19 +8525,26 @@ public sealed class PayoutsWebhookTopicProcessor(
         var payload = JsonSerializer.Deserialize<PayoutsPayload>(payloadJson)
             ?? throw new InvalidOperationException("payouts webhook payload deserialized to null.");
 
+        // `toAmount` is intentionally excluded from this check — real payout webhooks carry it
+        // optionally (corrections header #3); its absence must not throw.
         if (payload.Payout?.Id is null || payload.Payout.Status is null || payload.Payout.Amount is null ||
-            payload.Payout.Fees is null || payload.Payout.NetAmount is null || payload.Payout.Currency is null)
+            payload.Payout.Fees is null || payload.Payout.Currency is null)
         {
             throw new InvalidOperationException("payouts webhook payload missing required fields.");
         }
 
+        var currency = payload.Payout.Currency;
+        var gross = decimal.Parse(payload.Payout.Amount, CultureInfo.InvariantCulture);
+        var fees = decimal.Parse(payload.Payout.Fees, CultureInfo.InvariantCulture);
+        // `toAmount` is optional (corrections header #3) — fall back to gross minus fees when Circle omits it.
+        var netAmount = payload.Payout.ToAmount is null
+            ? gross - fees
+            : decimal.Parse(payload.Payout.ToAmount, CultureInfo.InvariantCulture);
+
         await decisionHandler.HandleAsync(
             new ProcessPayoutStatusCommand(
                 payload.Payout.Id, payload.Payout.Status,
-                decimal.Parse(payload.Payout.Amount, CultureInfo.InvariantCulture),
-                decimal.Parse(payload.Payout.Fees, CultureInfo.InvariantCulture),
-                decimal.Parse(payload.Payout.NetAmount, CultureInfo.InvariantCulture),
-                payload.Payout.Currency),
+                new Money(gross, currency), new Money(fees, currency), new Money(netAmount, currency)),
             cancellationToken);
     }
 
@@ -7991,8 +8568,10 @@ public sealed class PayoutsWebhookTopicProcessor(
         [JsonPropertyName("fees")]
         public string? Fees { get; init; }
 
-        [JsonPropertyName("netAmount")]
-        public string? NetAmount { get; init; }
+        // Optional — Circle's real `payouts` webhook may omit `toAmount` (corrections header #3);
+        // callers fall back to gross minus fees when absent.
+        [JsonPropertyName("toAmount")]
+        public string? ToAmount { get; init; }
 
         [JsonPropertyName("currency")]
         public string? Currency { get; init; }
@@ -8024,6 +8603,9 @@ public sealed class LinkedBankAccountRepository(TreasuryServiceOrchestratorDbCon
 
     public Task<LinkedBankAccount?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         dbContext.LinkedBankAccounts.SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+    public Task<LinkedBankAccount?> GetByCircleBankAccountIdAsync(string circleBankAccountId, CancellationToken cancellationToken) =>
+        dbContext.LinkedBankAccounts.SingleOrDefaultAsync(a => a.CircleBankAccountId == circleBankAccountId, cancellationToken);
 
     public async Task<IReadOnlyList<LinkedBankAccount>> ListAsync(CancellationToken cancellationToken) =>
         await dbContext.LinkedBankAccounts.ToListAsync(cancellationToken);
@@ -8124,6 +8706,8 @@ builder.Services.AddScoped<IRedeemRequestRepository, RedeemRequestRepository>();
 builder.Services.AddScoped<ICommandHandler<CreateLinkedBankAccountCommand, CreateLinkedBankAccountResult>, CreateLinkedBankAccountCommandHandler>();
 builder.Services.AddScoped<IQueryHandler<ListLinkedBankAccountsQuery, IReadOnlyList<LinkedBankAccount>>, ListLinkedBankAccountsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetLinkedBankAccountQuery, LinkedBankAccount>, GetLinkedBankAccountQueryHandler>();
+builder.Services.AddScoped<ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult>, ProcessLinkedBankAccountStatusCommandHandler>();
+builder.Services.AddScoped<IWebhookTopicProcessor, WireWebhookTopicProcessor>();
 builder.Services.AddScoped<ICommandHandler<CreateRedemptionCommand, CreateRedemptionResult>, CreateRedemptionCommandHandler>();
 builder.Services.AddScoped<IQueryHandler<ListRedemptionsQuery, IReadOnlyList<RedeemRequest>>, ListRedemptionsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetRedemptionQuery, RedeemRequest>, GetRedemptionQueryHandler>();
@@ -8135,18 +8719,19 @@ Remove the old `CreateRedeemCommand`/`Handler` registration and the `RedeemContr
 
 - [ ] **Step 28: Replace `RedeemController` with `RedemptionsController`, add `LinkedBankAccountsController`**
 
-Delete `src/TreasuryServiceOrchestrator.Api/Controllers/RedeemController.cs`.
+Delete `src/TreasuryServiceOrchestrator.Api/Ledger/RedeemController.cs`.
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/RedemptionsController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/RedemptionsController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Api.Tenancy;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.Redemptions;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -8157,18 +8742,18 @@ public sealed class RedemptionsController(
     IQueryHandler<ListRedemptionsQuery, IReadOnlyList<RedeemRequest>> listHandler,
     IQueryHandler<GetRedemptionQuery, RedeemRequest> getHandler) : ControllerBase
 {
-    public sealed record CreateRedemptionRequest(Guid LinkedBankAccountId, decimal GrossAmount, string TargetFiatCurrencyCode, string IdempotencyKey);
+    public sealed record CreateRedemptionRequest(Guid LinkedBankAccountId, decimal GrossAmount, string CurrencyCode, string IdempotencyKey);
 
     [HttpPost]
     public async Task<IActionResult> Create(
         string clientCompanyId, [FromBody] CreateRedemptionRequest request, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
+        var resolved = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
         var correlationId = HttpContext.TraceIdentifier;
 
         var result = await createHandler.HandleAsync(
             new CreateRedemptionCommand(
-                resolved, request.LinkedBankAccountId, request.GrossAmount, request.TargetFiatCurrencyCode,
+                resolved.ClientCompanyId, request.LinkedBankAccountId, new Money(request.GrossAmount, request.CurrencyCode),
                 request.IdempotencyKey, correlationId),
             cancellationToken);
 
@@ -8178,23 +8763,23 @@ public sealed class RedemptionsController(
     [HttpGet]
     public async Task<IActionResult> List(string clientCompanyId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
-        var result = await listHandler.HandleAsync(new ListRedemptionsQuery(resolved), cancellationToken);
+        var resolved = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
+        var result = await listHandler.HandleAsync(new ListRedemptionsQuery(resolved.ClientCompanyId), cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{redemptionId:guid}")]
     public async Task<IActionResult> Get(string clientCompanyId, Guid redemptionId, CancellationToken cancellationToken)
     {
-        var resolved = TenantScopeResolver.Resolve(caller, clientCompanyId)!;
-        var result = await getHandler.HandleAsync(new GetRedemptionQuery(resolved, redemptionId), cancellationToken);
+        var resolved = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, clientCompanyId);
+        var result = await getHandler.HandleAsync(new GetRedemptionQuery(resolved.ClientCompanyId, redemptionId), cancellationToken);
         return Ok(result);
     }
 }
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/LinkedBankAccountsController.cs
+// src/TreasuryServiceOrchestrator.Api/Ledger/LinkedBankAccountsController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
@@ -8202,7 +8787,7 @@ using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Ledger;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -8272,7 +8857,7 @@ Expected: `No changes`.
 
 - [ ] **Step 30: Update `CrossTenantRedeemIsolationTests.cs` for the new route**
 
-Modify `tests/TreasuryServiceOrchestrator.IntegrationTests/CrossTenantRedeemIsolationTests.cs` — replace every `PostAsJsonAsync("/api/v1/redeem", ...)` call with `PostAsJsonAsync("/api/v1/sub-accounts/acme-co/redemptions", ...)` (using whichever tenant the test's header sets), and replace the request body's field names (`UsdcAmount`/`TargetFiatCurrencyCode`) with `LinkedBankAccountId`/`GrossAmount`/`TargetFiatCurrencyCode` — seeding a `LinkedBankAccount` via `POST /api/v1/linked-bank-accounts` (Admin header) before each redemption POST, since a redemption now requires a real `LinkedBankAccountId`.
+Modify `tests/TreasuryServiceOrchestrator.IntegrationTests/CrossTenantRedeemIsolationTests.cs` — replace every `PostAsJsonAsync("/api/v1/redeem", ...)` call with `PostAsJsonAsync("/api/v1/sub-accounts/acme-co/redemptions", ...)` (using whichever tenant the test's header sets), and replace the request body's field names (`UsdcAmount`/`TargetFiatCurrencyCode`) with `LinkedBankAccountId`/`GrossAmount`/`CurrencyCode` — seeding a `LinkedBankAccount` via `POST /api/v1/linked-bank-accounts` (Admin header), then polling it `Pending` -> `Active` (verification is asynchronous via the `wire` webhook topic — corrections header #6) before each redemption POST, since a redemption now requires a real, `Active` `LinkedBankAccountId`.
 
 - [ ] **Step 31: Write the failing integration test, then run the full suite**
 
@@ -8316,11 +8901,24 @@ public class RedemptionsEndpointsTests(SqlServerTestDatabaseFixture fixture)
             BeneficiaryName = "Acme Co", AccountNumber = "000123456789", RoutingNumber = "021000021", BankName = "Chase",
         }, TestContext.Current.CancellationToken);
         var bank = await bankResponse.Content.ReadFromJsonAsync<LinkedBankAccountResponse>(TestContext.Current.CancellationToken);
+        Assert.Equal("Pending", bank!.Status);
+
+        // Verification is asynchronous via the `wire` webhook topic (corrections header #6) — poll
+        // Pending -> Active instead of asserting completion synchronously on create.
+        for (var attempt = 0; attempt < 10 && bank.Status != "Active"; attempt++)
+        {
+            bank = await adminClient.GetFromJsonAsync<LinkedBankAccountResponse>(
+                $"/api/v1/linked-bank-accounts/{bank.LinkedBankAccountId}", TestContext.Current.CancellationToken);
+            if (bank!.Status != "Active")
+            {
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+            }
+        }
         Assert.Equal("Active", bank!.Status);
 
         var createResponse = await client.PostAsJsonAsync("/api/v1/sub-accounts/acme-co/redemptions", new
         {
-            LinkedBankAccountId = bank.LinkedBankAccountId, GrossAmount = 100m, TargetFiatCurrencyCode = "USD", IdempotencyKey = "redeem-1",
+            LinkedBankAccountId = bank.LinkedBankAccountId, GrossAmount = 100m, CurrencyCode = "USDC", IdempotencyKey = "redeem-1",
         }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<CreateRedemptionResponse>(TestContext.Current.CancellationToken);
@@ -8376,43 +8974,43 @@ Adds the three admin-only "see everything" reads PRD §2.5 lists that no earlier
 Scope note: PRD §2.5's table also lists `/master-account/deposits`, `/master-account/wire-instructions`, and `/master-account/bank-accounts`. None of those has a backing entity anywhere in this plan (no Distributor-level deposit ledger, no `WireInstruction` entity was ever introduced), and §15.1 slice 8's own title is "**master-account summary**", not the full `/master-account/*` surface. Building them now would mean inventing unModeled entities with no consumer — deferred until a future phase actually needs them. `/master-account/bank-accounts` already has a real equivalent: Task 11's `GET /api/v1/linked-bank-accounts` (Admin-only, Distributor-level) — no second route is added for the same data.
 
 **Files:**
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountResult.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/SubAccountDetailsResult.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TransactionRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/ListAllTransactionsQuery.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Admin/GetMasterAccountSummaryQuery.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Admin/GetMasterAccountSummaryQueryHandler.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Api/Controllers/TransactionsController.cs` (new admin-only sibling route added in a new controller, see below)
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/AdminTransactionsController.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/MasterAccountController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Admin/AdminTransactionsController.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Admin/MasterAccountController.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ListSubAccountsQueryHandlerTests.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/ListSubAccounts/ListSubAccountsHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/Admin/GetMasterAccountSummaryQueryHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/AdminCrossTenantViewsTests.cs`
 
 **Interfaces:**
 - Consumes: `ISubAccountRepository.ListAsync`/`GetByClientCompanyIdAsync`, `IFundAccountRepository.GetByClientCompanyIdAsync`, `IBalanceSnapshotRepository.GetLatestAsync`, `ICallerContext`/`TenantScopeResolver.Resolve` (Tasks 1-2, 8).
-- Produces: `GetSubAccountResult` gains `Money? CurrentBalance`; `ITransactionRepository.ListAllAsync(string? clientCompanyId, TransactionType?, TransactionStatus?, DateTime?, DateTime?, int, int, ct)`; `IStablecoinGateway.GetMainWalletBalanceAsync(ct): Task<Money>`; `GetMasterAccountSummaryQuery`/`GetMasterAccountSummaryResult(Money MainWalletBalance, Money TotalSubAccountBalance, int SubAccountCount)`.
+- Produces: `SubAccountDetailsResult` gains `Money? CurrentBalance`; `ITransactionRepository.ListAllAsync(TransactionListFilter filter, ct)`; `IStablecoinGateway.GetMainWalletBalanceAsync(ct): Task<Money>`; `GetMasterAccountSummaryQuery`/`GetMasterAccountSummaryResult(Money MainWalletBalance, Money TotalSubAccountBalance, int SubAccountCount)`.
 
-- [ ] **Step 1: Write the failing test for balance-enriched `ListSubAccountsQueryHandler`**
+- [ ] **Step 1: Write the failing test for balance-enriched `ListSubAccountsHandler`**
 
 ```csharp
-// tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ListSubAccountsQueryHandlerTests.cs
+// tests/TreasuryServiceOrchestrator.UnitTests/Application/Compliance/ListSubAccounts/ListSubAccountsHandlerTests.cs
 using NSubstitute;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
+using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.SubAccounts;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
-namespace TreasuryServiceOrchestrator.UnitTests.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.UnitTests.Application.Compliance.ListSubAccounts;
 
-public class ListSubAccountsQueryHandlerTests
+public class ListSubAccountsHandlerTests
 {
     [Fact]
     public async Task Includes_current_balance_from_fund_account_when_present()
@@ -8427,9 +9025,9 @@ public class ListSubAccountsQueryHandlerTests
         };
         subAccounts.ListAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { subAccount });
         fundAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>())
-            .Returns(new FundAccount { Id = Guid.NewGuid(), ClientCompanyId = "acme-co", CurrencyCode = "USDC", Balance = 250m, UpdatedAtUtc = DateTime.UtcNow });
+            .Returns(new FundAccount { Id = Guid.NewGuid(), ClientCompanyId = "acme-co", Balance = new Money(250m, "USDC"), UpdatedAtUtc = DateTime.UtcNow });
 
-        var handler = new ListSubAccountsQueryHandler(subAccounts, fundAccounts);
+        var handler = new ListSubAccountsHandler(subAccounts, fundAccounts);
         var result = await handler.HandleAsync(new ListSubAccountsQuery(null), TestContext.Current.CancellationToken);
 
         Assert.Equal(250m, result.Single().CurrentBalance!.Amount);
@@ -8450,7 +9048,7 @@ public class ListSubAccountsQueryHandlerTests
         subAccounts.ListAsync(null, Arg.Any<CancellationToken>()).Returns(new[] { subAccount });
         fundAccounts.GetByClientCompanyIdAsync("acme-co", Arg.Any<CancellationToken>()).Returns((FundAccount?)null);
 
-        var handler = new ListSubAccountsQueryHandler(subAccounts, fundAccounts);
+        var handler = new ListSubAccountsHandler(subAccounts, fundAccounts);
         var result = await handler.HandleAsync(new ListSubAccountsQuery(null), TestContext.Current.CancellationToken);
 
         Assert.Null(result.Single().CurrentBalance);
@@ -8460,20 +9058,20 @@ public class ListSubAccountsQueryHandlerTests
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*ListSubAccountsQueryHandlerTests"`
-Expected: FAIL — build error, `ListSubAccountsQueryHandler` has no `IFundAccountRepository` constructor parameter and `GetSubAccountResult` has no `CurrentBalance`.
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*ListSubAccountsHandlerTests"`
+Expected: FAIL — build error, `ListSubAccountsHandler` has no `IFundAccountRepository` constructor parameter and `SubAccountDetailsResult` has no `CurrentBalance`.
 
-- [ ] **Step 3: Add `CurrentBalance` to `GetSubAccountResult` and populate it in `ListSubAccountsQueryHandler`**
+- [ ] **Step 3: Add `CurrentBalance` to `SubAccountDetailsResult` and populate it in `ListSubAccountsHandler`**
 
-Replace `src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountResult.cs` with:
+Replace `src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/SubAccountDetailsResult.cs` with:
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountResult.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/GetSubAccount/SubAccountDetailsResult.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 
-public sealed record GetSubAccountResult(
+public sealed record SubAccountDetailsResult(
     Guid SubAccountId,
     string ClientCompanyId,
     SubAccountLifecycleState LifecycleState,
@@ -8484,31 +9082,32 @@ public sealed record GetSubAccountResult(
     Money? CurrentBalance = null);
 ```
 
-The new parameter defaults to `null` so `GetSubAccountQueryHandler`'s existing single-tenant `Get` call site (already covered by `BalancesController` for that tenant) needs no change.
+The new parameter defaults to `null` so `GetSubAccountHandler`'s existing single-tenant `Get` call site (already covered by `BalancesController` for that tenant) needs no change.
 
-Replace `src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs` with:
+Replace `src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsHandler.cs` with:
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/ListSubAccounts/ListSubAccountsHandler.cs
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
-namespace TreasuryServiceOrchestrator.Application.SubAccounts;
+namespace TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 
-public sealed class ListSubAccountsQueryHandler(ISubAccountRepository subAccounts, IFundAccountRepository fundAccounts)
-    : IQueryHandler<ListSubAccountsQuery, IReadOnlyList<GetSubAccountResult>>
+public sealed class ListSubAccountsHandler(ISubAccountRepository subAccounts, IFundAccountRepository fundAccounts)
+    : IQueryHandler<ListSubAccountsQuery, IReadOnlyList<SubAccountDetailsResult>>
 {
-    public async Task<IReadOnlyList<GetSubAccountResult>> HandleAsync(
+    public async Task<IReadOnlyList<SubAccountDetailsResult>> HandleAsync(
         ListSubAccountsQuery query, CancellationToken cancellationToken = default)
     {
         var all = await subAccounts.ListAsync(query.StateFilter, cancellationToken);
-        var results = new List<GetSubAccountResult>(all.Count);
+        var results = new List<SubAccountDetailsResult>(all.Count);
 
         foreach (var s in all)
         {
             var fundAccount = await fundAccounts.GetByClientCompanyIdAsync(s.ClientCompanyId, cancellationToken);
-            results.Add(new GetSubAccountResult(
+            results.Add(new SubAccountDetailsResult(
                 s.Id, s.ClientCompanyId, s.LifecycleState, s.IsDisabled, s.CircleWalletId, null, null,
-                fundAccount is null ? null : new Domain.Money(fundAccount.Balance, fundAccount.CurrencyCode)));
+                fundAccount?.Balance));
         }
 
         return results;
@@ -8520,7 +9119,7 @@ One `GetByClientCompanyIdAsync` call per row — acceptable at Phase 1's demo/mo
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*ListSubAccountsQueryHandlerTests"`
+Run: `dotnet test tests/TreasuryServiceOrchestrator.UnitTests -- --filter-class "*ListSubAccountsHandlerTests"`
 Expected: PASS (2 tests).
 
 - [ ] **Step 5: Extend `ITransactionRepository` with `ListAllAsync` and add `ListAllTransactionsQuery`**
@@ -8528,15 +9127,7 @@ Expected: PASS (2 tests).
 Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs` (inside the existing interface):
 
 ```csharp
-    Task<IReadOnlyList<Transaction>> ListAllAsync(
-        string? clientCompanyId,
-        TransactionType? type,
-        TransactionStatus? status,
-        DateTime? fromUtc,
-        DateTime? toUtc,
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Transaction>> ListAllAsync(TransactionListFilter filter, CancellationToken cancellationToken = default);
 ```
 
 ```csharp
@@ -8546,20 +9137,18 @@ using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
 
-public sealed record ListAllTransactionsQuery(
-    string? ClientCompanyId, TransactionType? Type, TransactionStatus? Status,
-    DateTime? FromUtc, DateTime? ToUtc, int Page, int PageSize);
+public sealed record ListAllTransactionsQuery(TransactionListFilter Filter);
 
 public sealed class ListAllTransactionsQueryHandler(ITransactionRepository transactions)
     : IQueryHandler<ListAllTransactionsQuery, IReadOnlyList<Transaction>>
 {
     public async Task<IReadOnlyList<Transaction>> HandleAsync(
         ListAllTransactionsQuery query, CancellationToken cancellationToken = default) =>
-        await transactions.ListAllAsync(
-            query.ClientCompanyId, query.Type, query.Status, query.FromUtc, query.ToUtc,
-            query.Page, query.PageSize, cancellationToken);
+        await transactions.ListAllAsync(query.Filter, cancellationToken);
 }
 ```
+
+`TransactionListFilter` is the same record introduced in the Design-pass correction and used by `ITransactionRepository.ListAllAsync` throughout this task: `TransactionListFilter(string? ClientCompanyId, TransactionType? Type, TransactionStatus? Status, DateTime? FromUtc, DateTime? ToUtc, int Page, int PageSize)`, declared alongside `ITransactionRepository` in `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs`.
 
 `Transaction` carries no `HasQueryFilter` in `OnModelCreating` (unlike `RedeemRequest`) — Task 8 never scoped it with an EF global filter, so no `IgnoreQueryFilters()` is needed here; the tenant boundary for the tenant-facing `TransactionsController` (Task 8) is enforced entirely by `TenantScopeResolver` at the handler layer, same as this new admin path.
 
@@ -8569,36 +9158,35 @@ Append to `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Transactio
 
 ```csharp
     public async Task<IReadOnlyList<Transaction>> ListAllAsync(
-        string? clientCompanyId, TransactionType? type, TransactionStatus? status,
-        DateTime? fromUtc, DateTime? toUtc, int page, int pageSize, CancellationToken cancellationToken = default)
+        TransactionListFilter filter, CancellationToken cancellationToken = default)
     {
         var query = dbContext.Transactions.AsQueryable();
 
-        if (clientCompanyId is not null)
+        if (filter.ClientCompanyId is not null)
         {
-            query = query.Where(t => t.ClientCompanyId == clientCompanyId);
+            query = query.Where(t => t.ClientCompanyId == filter.ClientCompanyId);
         }
-        if (type is not null)
+        if (filter.Type is not null)
         {
-            query = query.Where(t => t.Type == type);
+            query = query.Where(t => t.Type == filter.Type);
         }
-        if (status is not null)
+        if (filter.Status is not null)
         {
-            query = query.Where(t => t.Status == status);
+            query = query.Where(t => t.Status == filter.Status);
         }
-        if (fromUtc is not null)
+        if (filter.FromUtc is not null)
         {
-            query = query.Where(t => t.CreatedAtUtc >= fromUtc);
+            query = query.Where(t => t.CreatedAtUtc >= filter.FromUtc);
         }
-        if (toUtc is not null)
+        if (filter.ToUtc is not null)
         {
-            query = query.Where(t => t.CreatedAtUtc <= toUtc);
+            query = query.Where(t => t.CreatedAtUtc <= filter.ToUtc);
         }
 
         return await query
             .OrderByDescending(t => t.CreatedAtUtc)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
             .ToListAsync(cancellationToken);
     }
 ```
@@ -8607,7 +9195,7 @@ Append to `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Transactio
 
 Add to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`: nothing new is needed — `Money` already crosses this boundary.
 
-Modify `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` — add:
+Modify `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IStablecoinGateway.cs` — add:
 
 ```csharp
 Task<Money> GetMainWalletBalanceAsync(CancellationToken cancellationToken);
@@ -8773,7 +9361,7 @@ Expected: PASS (2 tests).
 - [ ] **Step 12: Add `AdminTransactionsController` and `MasterAccountController`, wire DI**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/AdminTransactionsController.cs
+// src/TreasuryServiceOrchestrator.Api/Admin/AdminTransactionsController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
@@ -8782,7 +9370,7 @@ using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Admin;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -8805,9 +9393,9 @@ public sealed class AdminTransactionsController(
         var effectivePage = page <= 0 ? 1 : page;
         var effectivePageSize = pageSize <= 0 ? 20 : pageSize;
 
-        var result = await listAllHandler.HandleAsync(
-            new ListAllTransactionsQuery(clientCompanyId, type, status, fromUtc, toUtc, effectivePage, effectivePageSize),
-            cancellationToken);
+        var filter = new TransactionListFilter(
+            clientCompanyId, type, status, fromUtc, toUtc, effectivePage, effectivePageSize);
+        var result = await listAllHandler.HandleAsync(new ListAllTransactionsQuery(filter), cancellationToken);
 
         return Ok(result);
     }
@@ -8815,14 +9403,14 @@ public sealed class AdminTransactionsController(
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/MasterAccountController.cs
+// src/TreasuryServiceOrchestrator.Api/Admin/MasterAccountController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.Admin;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Admin;
 
 [ApiController]
 [ApiVersion("1.0")]
@@ -8852,7 +9440,7 @@ builder.Services.AddScoped<IQueryHandler<ListAllTransactionsQuery, IReadOnlyList
 builder.Services.AddScoped<IQueryHandler<GetMasterAccountSummaryQuery, GetMasterAccountSummaryResult>, GetMasterAccountSummaryQueryHandler>();
 ```
 
-(`ListSubAccountsQueryHandler`'s registration is unchanged — same interface, new constructor parameter resolved automatically by DI.)
+(`ListSubAccountsHandler`'s registration is unchanged — same interface, new constructor parameter resolved automatically by DI.)
 
 - [ ] **Step 13: Write the failing integration test, then run the full suite**
 
@@ -8951,13 +9539,13 @@ Per the PRD §15.1 demo script, the notification-worthy state changes are exactl
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Notifications/NotificationDispatchBackgroundService.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/NotificationOutboxRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ProcessExternalEntityDecisionHandler.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/ProcessExternalEntityDecision/ProcessExternalEntityDecisionHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/ProcessDepositCommandHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Recipients/ProcessRecipientDecisionHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Transfers/ProcessTransferStatusCommandHandler.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Redemptions/ProcessPayoutStatusCommandHandler.cs`
-- Create: `src/TreasuryServiceOrchestrator.Api/Controllers/InternalNotificationsStubController.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Api/Middleware/ClientCompanyIdMiddleware.cs`
+- Create: `src/TreasuryServiceOrchestrator.Api/Webhooks/InternalNotificationsStubController.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Api/Middleware/CallerIdentityMiddleware.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/appsettings.json`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/Notifications/NotificationDispatcherTests.cs`
@@ -9048,7 +9636,8 @@ namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Notifications;
 public class NotificationDispatcherTests
 {
     private static NotificationDispatcher NewDispatcher(
-        INotificationOutboxRepository outbox, INotificationSender sender, IUnitOfWork unitOfWork)
+        INotificationOutboxRepository outbox, INotificationSender sender, IUnitOfWork unitOfWork,
+        TimeProvider? timeProvider = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(outbox);
@@ -9060,7 +9649,7 @@ public class NotificationDispatcherTests
         {
             MaxBatchSize = 20, BaseBackoffMilliseconds = 1000, MaxBackoffMilliseconds = 60000,
         });
-        return new NotificationDispatcher(scopeFactory, options);
+        return new NotificationDispatcher(scopeFactory, options, timeProvider ?? TimeProvider.System);
     }
 
     [Fact]
@@ -9204,7 +9793,8 @@ using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Notifications;
 
-public sealed class NotificationDispatcher(IServiceScopeFactory scopeFactory, IOptions<NotificationDispatcherOptions> options)
+public sealed class NotificationDispatcher(
+    IServiceScopeFactory scopeFactory, IOptions<NotificationDispatcherOptions> options, TimeProvider timeProvider)
 {
     public async Task<int> DispatchDueBatchAsync(CancellationToken cancellationToken)
     {
@@ -9214,7 +9804,7 @@ public sealed class NotificationDispatcher(IServiceScopeFactory scopeFactory, IO
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var settings = options.Value;
 
-        var due = await outbox.GetDueBatchAsync(settings.MaxBatchSize, DateTime.UtcNow, cancellationToken);
+        var due = await outbox.GetDueBatchAsync(settings.MaxBatchSize, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
 
         foreach (var entry in due)
         {
@@ -9222,7 +9812,7 @@ public sealed class NotificationDispatcher(IServiceScopeFactory scopeFactory, IO
             if (delivered)
             {
                 entry.Status = Domain.NotificationDeliveryStatus.Delivered;
-                entry.DeliveredAtUtc = DateTime.UtcNow;
+                entry.DeliveredAtUtc = timeProvider.GetUtcNow().UtcDateTime;
             }
             else
             {
@@ -9230,7 +9820,7 @@ public sealed class NotificationDispatcher(IServiceScopeFactory scopeFactory, IO
                 var backoffMilliseconds = Math.Min(
                     settings.BaseBackoffMilliseconds * (1 << Math.Min(entry.AttemptCount, 10)),
                     settings.MaxBackoffMilliseconds);
-                entry.NextAttemptAtUtc = DateTime.UtcNow.AddMilliseconds(backoffMilliseconds);
+                entry.NextAttemptAtUtc = timeProvider.GetUtcNow().UtcDateTime.AddMilliseconds(backoffMilliseconds);
             }
         }
 
@@ -9333,7 +9923,7 @@ Expected: a regenerated `InitialCreate` with a `NotificationOutboxEntries` table
 
 - [ ] **Step 8: Wire the outbox write into the entity-decision handler**
 
-Modify `src/TreasuryServiceOrchestrator.Application/SubAccounts/ProcessExternalEntityDecisionHandler.cs` — add `INotificationOutboxRepository outbox` as a constructor parameter, and inside the `if (newStatus is EntityRegistrationStatus.Accepted or EntityRegistrationStatus.Rejected)` block (right after `subAccount.UpdatedAtUtc = DateTime.UtcNow;`), add:
+Modify `src/TreasuryServiceOrchestrator.Application/Compliance/ProcessExternalEntityDecision/ProcessExternalEntityDecisionHandler.cs` — add `INotificationOutboxRepository outbox` as a constructor parameter, and inside the `if (newStatus is EntityRegistrationStatus.Accepted or EntityRegistrationStatus.Rejected)` block (right after `subAccount.UpdatedAtUtc = DateTime.UtcNow;`), add:
 
 ```csharp
             await outbox.AddAsync(new NotificationOutboxEntry
@@ -9428,12 +10018,12 @@ All five sites add the `outbox.AddAsync` call **before** the handler's existing 
 - [ ] **Step 13: Add the stub receiver controller and the middleware bypass**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Api/Controllers/InternalNotificationsStubController.cs
+// src/TreasuryServiceOrchestrator.Api/Webhooks/InternalNotificationsStubController.cs
 using System.Text.Json;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 
-namespace TreasuryServiceOrchestrator.Api.Controllers;
+namespace TreasuryServiceOrchestrator.Api.Webhooks;
 
 [ApiController]
 [Route("internal/notifications")]
@@ -9450,13 +10040,56 @@ public sealed class InternalNotificationsStubController(ILogger<InternalNotifica
 
 This controller carries no `[ApiVersion]`/`api/v{version:apiVersion}` prefix — it stands in for an **external** internal service, not a versioned resource of this API.
 
-Modify `src/TreasuryServiceOrchestrator.Api/Middleware/ClientCompanyIdMiddleware.cs` — extend the bypass list:
+The shipped `src/TreasuryServiceOrchestrator.Api/Middleware/CallerIdentityMiddleware.cs` (Task 1) has no bypass mechanism at all yet — it unconditionally requires the `ClientCompanyId` header on every request, via a primary constructor `CallerIdentityMiddleware(RequestDelegate next)` with `HttpCallerContext`, `IOptions<CallerIdentityOptions>`, and `ISubAccountRepository` resolved as `InvokeAsync` method parameters. This task adds the first bypass entry. Modify `src/TreasuryServiceOrchestrator.Api/Middleware/CallerIdentityMiddleware.cs`:
 
 ```csharp
-private static readonly string[] BypassPaths = ["/health/live", "/health/ready", "/api/v1/webhooks/circle", "/internal/notifications"];
+public sealed class CallerIdentityMiddleware(RequestDelegate next)
+{
+    private const string HeaderName = "ClientCompanyId";
+    private static readonly string[] BypassPaths = ["/internal/notifications"];
+
+    public async Task InvokeAsync(
+        HttpContext context,
+        HttpCallerContext callerContext,
+        IOptions<CallerIdentityOptions> options,
+        ISubAccountRepository subAccountRepository)
+    {
+        if (BypassPaths.Any(path => context.Request.Path.StartsWithSegments(path)))
+        {
+            await next(context);
+            return;
+        }
+
+        if (!context.Request.Headers.TryGetValue(HeaderName, out var callerId) || string.IsNullOrWhiteSpace(callerId))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        var callerIdValue = callerId.ToString();
+
+        if (string.Equals(callerIdValue, options.Value.AdminCallerId, StringComparison.Ordinal))
+        {
+            callerContext.Set(callerIdValue, CallerRole.Admin);
+            await next(context);
+            return;
+        }
+
+        var subAccount = await subAccountRepository.GetByClientCompanyIdAsync(callerIdValue, context.RequestAborted);
+        if (subAccount is null)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        callerContext.Set(callerIdValue, CallerRole.SubAccount);
+
+        await next(context);
+    }
+}
 ```
 
-The stub receiver is not a registered `ClientCompanyId` caller — same reasoning as the Circle webhook endpoint bypass (authenticated by a different mechanism entirely; the real internal service will carry its own shared-secret auth in Phase 2, out of scope here).
+The stub receiver is not a registered `ClientCompanyId` caller, so its path is added to `BypassPaths` — authenticated by a different mechanism entirely; the real internal service will carry its own shared-secret auth in Phase 2, out of scope here. `BypassPaths` is a plain `static readonly string[]` field (no `KnownClientCompaniesRegistry` or other registry type exists in this middleware); later tasks needing a bypass (health checks, the Circle webhook endpoint) extend this same array.
 
 - [ ] **Step 14: Wire DI and configuration**
 
