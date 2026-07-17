@@ -16,4 +16,8 @@ public sealed class MockProviderOptions
     public decimal RedemptionFlatFeeAmount { get; set; } = 1.50m;
 
     public decimal MainWalletBalanceAmount { get; set; } = 10_000m;
+
+    /// <summary>Business-name suffix (case-insensitive) that deterministically triggers a
+    /// <c>Rejected</c> entity-registration outcome in <c>MockSubAccountGateway</c>.</summary>
+    public string RejectBusinessNameSuffix { get; set; } = "REJECTME";
 }
