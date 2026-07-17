@@ -37,6 +37,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TreasuryServiceOrchestrator.Api\TreasuryServiceOrchestrator.Api.csproj" />
     <ProjectReference Include="..\..\src\TreasuryServiceOrchestrator.Application\TreasuryServiceOrchestrator.Application.csproj" />
+    <ProjectReference Include="..\..\src\TreasuryServiceOrchestrator.Infrastructure\TreasuryServiceOrchestrator.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
