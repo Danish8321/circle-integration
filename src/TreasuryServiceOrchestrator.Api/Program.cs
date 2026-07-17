@@ -6,6 +6,7 @@ using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -38,7 +39,9 @@ builder.Services.AddScoped<CreateSubAccountHandler>();
 builder.Services.AddScoped<GetSubAccountHandler>();
 builder.Services.AddScoped<ListSubAccountsHandler>();
 builder.Services.AddScoped<SetSubAccountDisabledHandler>();
+builder.Services.AddScoped<ResubmitEntityRegistrationHandler>();
 builder.Services.AddScoped<IValidator<CreateSubAccountCommand>, CreateSubAccountValidator>();
+builder.Services.AddScoped<IValidator<ResubmitEntityRegistrationCommand>, ResubmitEntityRegistrationValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
