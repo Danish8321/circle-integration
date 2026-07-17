@@ -10,6 +10,7 @@ using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
+using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared;
@@ -38,6 +39,7 @@ builder.Services.Configure<CallerIdentityOptions>(
     builder.Configuration.GetSection(CallerIdentityOptions.SectionName));
 builder.Services.AddScoped<HttpCallerContext>();
 builder.Services.AddScoped<ICallerContext>(sp => sp.GetRequiredService<HttpCallerContext>());
+builder.Services.AddScoped<ISettableCallerContext>(sp => sp.GetRequiredService<HttpCallerContext>());
 
 builder.Services.AddScoped<ISubAccountRepository, SubAccountRepository>();
 builder.Services.AddScoped<IEntityRegistrationRepository, EntityRegistrationRepository>();
@@ -63,9 +65,21 @@ builder.Services.AddScoped<GenerateDepositAddressCommandHandler>();
 builder.Services.AddScoped<ListDepositAddressesQueryHandler>();
 builder.Services.AddScoped<IValidator<GenerateDepositAddressCommand>, GenerateDepositAddressCommandValidator>();
 
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<IBalanceSnapshotRepository, BalanceSnapshotRepository>();
+builder.Services.AddScoped<IFundAccountRepository, FundAccountRepository>();
+builder.Services.AddScoped<LedgerPostingService>();
+builder.Services.AddScoped<ListTransactionsQueryHandler>();
+builder.Services.AddScoped<GetTransactionQueryHandler>();
+builder.Services.AddScoped<GetCurrentBalanceQueryHandler>();
+builder.Services.AddScoped<GetBalanceHistoryQueryHandler>();
+builder.Services.AddScoped<ICommandHandler<ProcessDepositCommand, ProcessDepositResult>, ProcessDepositCommandHandler>();
+builder.Services.AddScoped<IValidator<ProcessDepositCommand>, ProcessDepositCommandValidator>();
+
 builder.Services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
 builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
 builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
+builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor>();
 builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));

@@ -2,7 +2,7 @@ using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Api.Middleware;
 
-public sealed class HttpCallerContext : ICallerContext
+public sealed class HttpCallerContext : ISettableCallerContext
 {
     public string CallerId { get; private set; } = string.Empty;
     public CallerRole Role { get; private set; }

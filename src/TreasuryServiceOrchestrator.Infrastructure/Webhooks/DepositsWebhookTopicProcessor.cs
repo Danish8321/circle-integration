@@ -3,6 +3,7 @@ using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -20,7 +21,8 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 /// </summary>
 public sealed class DepositsWebhookTopicProcessor(
     ISubAccountRepository subAccountRepository,
-    ICommandHandler<ProcessDepositCommand, ProcessDepositResult> processDepositHandler)
+    ICommandHandler<ProcessDepositCommand, ProcessDepositResult> processDepositHandler,
+    ISettableCallerContext callerContext)
     : IWebhookTopicProcessor
 {
     public string Topic => "deposits";
@@ -42,6 +44,12 @@ public sealed class DepositsWebhookTopicProcessor(
         var subAccount = await subAccountRepository.GetByCircleWalletIdAsync(deposit.WalletId, cancellationToken)
             ?? throw new DepositSourceNotResolvedException(
                 $"Unable to resolve deposit source: no SubAccount found for CircleWalletId '{deposit.WalletId}'.");
+
+        // The webhook route is authenticated by SNS signature verification, not the
+        // ClientCompanyId header (CallerIdentityMiddleware bypasses it) — establish the
+        // resolved tenant here so ProcessDepositCommandHandler's ICallerContext read
+        // (CLAUDE.md invariant 7) resolves to the deposit's owning tenant.
+        callerContext.Set(subAccount.ClientCompanyId, CallerRole.SubAccount);
 
         var command = new ProcessDepositCommand(
             subAccount.Id,

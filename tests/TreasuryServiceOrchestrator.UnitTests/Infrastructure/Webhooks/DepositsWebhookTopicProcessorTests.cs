@@ -3,6 +3,7 @@ using Moq;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
@@ -18,9 +19,10 @@ public sealed class DepositsWebhookTopicProcessorTests
 {
     private readonly Mock<ISubAccountRepository> subAccountRepository = new();
     private readonly Mock<ICommandHandler<ProcessDepositCommand, ProcessDepositResult>> processDepositHandler = new();
+    private readonly Mock<ISettableCallerContext> callerContext = new();
 
     private DepositsWebhookTopicProcessor CreateSut() =>
-        new(subAccountRepository.Object, processDepositHandler.Object);
+        new(subAccountRepository.Object, processDepositHandler.Object, callerContext.Object);
 
     private static SubAccount ActiveSubAccount(string circleWalletId)
     {
@@ -63,6 +65,7 @@ public sealed class DepositsWebhookTopicProcessorTests
 
         await CreateSut().ProcessAsync(payload, TestContext.Current.CancellationToken);
 
+        callerContext.Verify(x => x.Set("client-1", CallerRole.SubAccount), Times.Once);
         processDepositHandler.Verify(
             x => x.HandleAsync(
                 It.Is<ProcessDepositCommand>(cmd =>

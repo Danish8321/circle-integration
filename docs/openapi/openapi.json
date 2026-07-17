@@ -37,6 +37,95 @@
         }
       }
     },
+    "/v1/sub-accounts/{subAccountId}/balances/history": {
+      "get": {
+        "tags": [
+          "BalanceHistory"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BalanceSnapshotResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BalanceSnapshotResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BalanceSnapshotResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/balances": {
+      "get": {
+        "tags": [
+          "Balances"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/deposit-addresses": {
       "get": {
         "tags": [
@@ -137,6 +226,104 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DepositAddressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/transactions/{transactionId}": {
+      "get": {
+        "tags": [
+          "TransactionDetail"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "transactionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/transactions": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
                 }
               }
             }
@@ -414,6 +601,59 @@
   },
   "components": {
     "schemas": {
+      "BalanceResponse": {
+        "required": [
+          "clientCompanyId",
+          "balance",
+          "asOfUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "balance": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "asOfUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BalanceSnapshotReason": {
+        "type": "integer"
+      },
+      "BalanceSnapshotResponse": {
+        "required": [
+          "balanceSnapshotId",
+          "subAccountId",
+          "balance",
+          "reason",
+          "capturedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "balanceSnapshotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "balance": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/BalanceSnapshotReason"
+          },
+          "capturedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CircleSnsEnvelopeRequest": {
         "type": "object",
         "properties": {
@@ -542,6 +782,9 @@
           }
         }
       },
+      "DepositSourceType": {
+        "type": "integer"
+      },
       "GenerateDepositAddressRequest": {
         "required": [
           "chain",
@@ -553,6 +796,26 @@
             "type": "string"
           },
           "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "Money": {
+        "required": [
+          "amount",
+          "currencyCode"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currencyCode": {
             "type": "string"
           }
         }
@@ -704,6 +967,77 @@
             ]
           }
         }
+      },
+      "TransactionResponse": {
+        "required": [
+          "transactionId",
+          "subAccountId",
+          "type",
+          "status",
+          "amount",
+          "providerReferenceId",
+          "depositSourceType",
+          "failureReason",
+          "correlationId",
+          "createdAtUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TransactionType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TransactionStatus"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "providerReferenceId": {
+            "type": "string"
+          },
+          "depositSourceType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DepositSourceType"
+              }
+            ]
+          },
+          "failureReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TransactionStatus": {
+        "type": "integer"
+      },
+      "TransactionType": {
+        "type": "integer"
       }
     }
   },
@@ -712,7 +1046,19 @@
       "name": "CircleWebhooks"
     },
     {
+      "name": "BalanceHistory"
+    },
+    {
+      "name": "Balances"
+    },
+    {
       "name": "DepositAddresses"
+    },
+    {
+      "name": "TransactionDetail"
+    },
+    {
+      "name": "Transactions"
     },
     {
       "name": "SubAccounts"
