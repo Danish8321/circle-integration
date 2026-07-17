@@ -4,7 +4,7 @@
 
 ## Decision
 
-Identifiers that cross the Domain/Application boundary use provider-agnostic names — e.g. `ProviderWalletId`, not `CircleWalletId`. The literal provider name ("Circle") is confined to the Infrastructure tier: type names like `CircleSubAccountGateway`, `CircleMintGateway`, and the `Infrastructure/Circle/` namespace.
+Identifiers that cross the Domain/Application boundary use provider-agnostic names — e.g. `ProviderWalletId`, not `CircleWalletId`. The literal provider name ("Circle") is confined to the Infrastructure tier: type names like `CircleSubAccountGateway`, `CircleMintGateway`, and the `Infrastructure/Providers/Circle/` namespace (flat convention, no per-module subfolder — see `Phase_3_Circle_Integration_Plan.md`'s Module Boundaries note).
 
 ## Rationale
 

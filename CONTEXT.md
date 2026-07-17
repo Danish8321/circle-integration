@@ -32,7 +32,7 @@ Read alongside `docs/adr/`. Terms below are canonical — don't drift to a synon
 
 ## Provider abstraction naming
 
-Provider-facing identifiers that cross the Domain/Application boundary use **provider-agnostic** names (`ProviderWalletId`, not `CircleWalletId`); the literal provider name ("Circle") is confined to the Infrastructure tier (`CircleSubAccountGateway`, `CircleMintGateway`, `Infrastructure/Circle/`). See `docs/adr/0005-provider-agnostic-naming.md`.
+Provider-facing identifiers that cross the Domain/Application boundary use **provider-agnostic** names (`ProviderWalletId`, not `CircleWalletId`); the literal provider name ("Circle") is confined to the Infrastructure tier (`CircleSubAccountGateway`, `CircleMintGateway`, `Infrastructure/Providers/Circle/` — flat convention, no per-module subfolder). See `docs/adr/0005-provider-agnostic-naming.md`.
 
 ## Lifecycle states
 
