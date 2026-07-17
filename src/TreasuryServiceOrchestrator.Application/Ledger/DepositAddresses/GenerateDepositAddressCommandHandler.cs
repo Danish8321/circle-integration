@@ -34,12 +34,12 @@ public sealed class GenerateDepositAddressCommandHandler(
             idempotencyKey,
             command,
             unitOfWork,
-            () => GenerateAsync(command, cancellationToken),
+            () => GenerateAsync(command, idempotencyKey, cancellationToken),
             cancellationToken);
     }
 
     private async Task<GenerateDepositAddressResult> GenerateAsync(
-        GenerateDepositAddressCommand command, CancellationToken cancellationToken)
+        GenerateDepositAddressCommand command, string idempotencyKey, CancellationToken cancellationToken)
     {
         // Local dedup on (SubAccountId, Chain, Currency) is separate from the idempotency key:
         // reuse an existing address without calling the gateway.
@@ -51,7 +51,7 @@ public sealed class GenerateDepositAddressCommandHandler(
         }
 
         var gatewayResult = await gateway.GenerateDepositAddressAsync(
-            new GenerateDepositAddressGatewayRequest(command.Chain, command.Currency, callerContext.CallerId),
+            new GenerateDepositAddressGatewayRequest(command.Chain, command.Currency, idempotencyKey),
             cancellationToken);
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;

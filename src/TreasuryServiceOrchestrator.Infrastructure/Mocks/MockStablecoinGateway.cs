@@ -1,18 +1,39 @@
+using Microsoft.Extensions.Options;
+
+using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 
 /// <summary>
 /// Mock implementation of <see cref="IStablecoinGateway"/> (docs/features/02-mock-mode.md §3.4).
-/// Deliberately empty as of ticket 02: <see cref="IStablecoinGateway"/> currently has no members
-/// (ticket 01 shipped no Ledger money-moving use cases). Holds in-memory state once a
-/// money-moving method is added, so it must stay registered as a singleton, matching
-/// <see cref="MockSubAccountGateway"/>. Tickets 03/05/06/07 each extend this class alongside
-/// their corresponding <see cref="IStablecoinGateway"/> additions.
+/// Ticket 03.5 extends it with <see cref="GenerateDepositAddressAsync"/>; later tickets
+/// (05/06/07) extend it further alongside their corresponding <see cref="IStablecoinGateway"/>
+/// additions. Holds no state as of this ticket (deposit addresses are permanent per (chain,
+/// currency) and dedup is owned by the Application-tier repository, not the gateway), so no
+/// singleton lifetime requirement yet — matches <see cref="MockSubAccountGateway"/>'s
+/// registration convention regardless.
 /// </summary>
-public sealed class MockStablecoinGateway : IStablecoinGateway
+public sealed class MockStablecoinGateway(
+    IOptions<MockProviderOptions> options,
+    IMockRandomSource randomSource) : IStablecoinGateway
 {
     public Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
-        GenerateDepositAddressGatewayRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException("Ticket 03.5 implements this.");
+        GenerateDepositAddressGatewayRequest request, CancellationToken ct = default)
+    {
+        MaybeThrowProviderUnavailable();
+
+        var address = $"0x{randomSource.NewGuid():N}";
+
+        return Task.FromResult(new GeneratedDepositAddress(
+            address, request.Chain, request.Currency, $"mock-addr-{randomSource.NewGuid()}"));
+    }
+
+    private void MaybeThrowProviderUnavailable()
+    {
+        if (randomSource.NextDouble() < options.Value.FailureInjectionRate)
+        {
+            throw new ProviderUnavailableException("Mock provider simulated failure injection.");
+        }
+    }
 }
