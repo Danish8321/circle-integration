@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
+using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Compliance;
 
@@ -11,8 +13,42 @@ namespace TreasuryServiceOrchestrator.Api.Compliance;
 public sealed class SubAccountsController(
     CreateSubAccountHandler createSubAccountHandler,
     GetSubAccountHandler getSubAccountHandler,
+    ListSubAccountsHandler listSubAccountsHandler,
     ICallerContext callerContext) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<SubAccountResponse>>> ListSubAccounts(
+        [FromQuery] string? state, CancellationToken cancellationToken)
+    {
+        SubAccountLifecycleState? lifecycleState = null;
+        if (state is not null)
+        {
+            if (!Enum.TryParse<SubAccountLifecycleState>(state, ignoreCase: true, out var parsed))
+            {
+                throw new FluentValidation.ValidationException($"Unknown lifecycle state '{state}'.");
+            }
+
+            lifecycleState = parsed;
+        }
+
+        // No requested tenant: Admin resolves to AllTenants; a SubAccount caller
+        // resolves to SingleTenant, which the handler rejects (403 centrally).
+        var scope = TenantScopeResolver.Resolve(callerContext, null);
+
+        var results = await listSubAccountsHandler.HandleAsync(
+            new ListSubAccountsQuery(scope, lifecycleState, HttpContext.TraceIdentifier),
+            cancellationToken);
+
+        return Ok(results.Select(result => new SubAccountResponse(
+            result.SubAccountId,
+            result.ClientCompanyId,
+            result.LifecycleState,
+            result.IsDisabled,
+            result.CircleWalletId,
+            result.LatestRegistrationStatus,
+            result.RegistrationRejectionReason)).ToList());
+    }
+
     [HttpGet("{clientCompanyId}")]
     public async Task<ActionResult<SubAccountResponse>> GetSubAccount(
         string clientCompanyId, CancellationToken cancellationToken)

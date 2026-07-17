@@ -15,13 +15,6 @@ public sealed class GetSubAccountHandler(
 
         var registration = await entityRegistrations.GetLatestForSubAccountAsync(subAccount.Id, cancellationToken);
 
-        return new SubAccountDetailsResult(
-            subAccount.Id,
-            subAccount.ClientCompanyId,
-            subAccount.LifecycleState.ToString(),
-            subAccount.IsDisabled,
-            subAccount.CircleWalletId,
-            registration?.Status.ToString(),
-            registration?.RejectionReason);
+        return SubAccountDetailsMapper.Map(subAccount, registration);
     }
 }
