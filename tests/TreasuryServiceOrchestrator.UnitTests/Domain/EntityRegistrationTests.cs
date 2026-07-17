@@ -45,4 +45,36 @@ public sealed class EntityRegistrationTests
     {
         Assert.Throws<ArgumentException>(() => CreateValid(businessName: businessName));
     }
+
+    [Fact]
+    public void Reject_FromPending_SetsRejectedStatusReasonAndUpdatedAt()
+    {
+        var registration = CreateValid();
+        var laterUtc = NowUtc.AddHours(1);
+
+        registration.Reject("Documents illegible.", laterUtc);
+
+        Assert.Equal(EntityRegistrationStatus.Rejected, registration.Status);
+        Assert.Equal("Documents illegible.", registration.RejectionReason);
+        Assert.Equal(laterUtc, registration.UpdatedAtUtc);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Reject_WithBlankReason_Throws(string reason)
+    {
+        var registration = CreateValid();
+
+        Assert.Throws<ArgumentException>(() => registration.Reject(reason, NowUtc));
+    }
+
+    [Fact]
+    public void Reject_WhenAlreadyRejected_Throws()
+    {
+        var registration = CreateValid();
+        registration.Reject("Documents illegible.", NowUtc);
+
+        Assert.Throws<InvalidOperationException>(() => registration.Reject("Again.", NowUtc));
+    }
 }

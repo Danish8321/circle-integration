@@ -75,4 +75,22 @@ public class EntityRegistration
             UpdatedAtUtc = nowUtc,
         };
     }
+
+    public void Reject(string reason, DateTime nowUtc)
+    {
+        if (Status != EntityRegistrationStatus.Pending)
+        {
+            throw new InvalidOperationException(
+                $"Cannot reject from status {Status}; expected {EntityRegistrationStatus.Pending}.");
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException("Reason is required.", nameof(reason));
+        }
+
+        Status = EntityRegistrationStatus.Rejected;
+        RejectionReason = reason;
+        UpdatedAtUtc = nowUtc;
+    }
 }

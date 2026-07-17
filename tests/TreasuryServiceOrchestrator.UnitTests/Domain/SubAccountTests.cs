@@ -52,4 +52,94 @@ public sealed class SubAccountTests
 
         Assert.Throws<ArgumentException>(() => subAccount.BeginCompliance(" "));
     }
+
+    [Fact]
+    public void MarkRejected_FromPendingCompliance_TransitionsToRejected()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.BeginCompliance("wallet-123");
+
+        subAccount.MarkRejected();
+
+        Assert.Equal(SubAccountLifecycleState.Rejected, subAccount.LifecycleState);
+    }
+
+    [Fact]
+    public void MarkRejected_FromCreated_Throws()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+
+        Assert.Throws<InvalidOperationException>(() => subAccount.MarkRejected());
+    }
+
+    [Fact]
+    public void MarkRejected_FromRejected_Throws()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.BeginCompliance("wallet-123");
+        subAccount.MarkRejected();
+
+        Assert.Throws<InvalidOperationException>(() => subAccount.MarkRejected());
+    }
+
+    [Fact]
+    public void SetDisabled_True_SetsIsDisabled()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+
+        subAccount.SetDisabled(true);
+
+        Assert.True(subAccount.IsDisabled);
+    }
+
+    [Fact]
+    public void SetDisabled_TrueTwice_IsIdempotent()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+
+        subAccount.SetDisabled(true);
+        subAccount.SetDisabled(true);
+
+        Assert.True(subAccount.IsDisabled);
+    }
+
+    [Fact]
+    public void SetDisabled_FalseAfterTrue_ClearsIsDisabled()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.SetDisabled(true);
+
+        subAccount.SetDisabled(false);
+
+        Assert.False(subAccount.IsDisabled);
+    }
+
+    [Fact]
+    public void ResubmitCompliance_FromRejected_TransitionsToPendingCompliance()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.BeginCompliance("wallet-123");
+        subAccount.MarkRejected();
+
+        subAccount.ResubmitCompliance();
+
+        Assert.Equal(SubAccountLifecycleState.PendingCompliance, subAccount.LifecycleState);
+    }
+
+    [Fact]
+    public void ResubmitCompliance_FromCreated_Throws()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+
+        Assert.Throws<InvalidOperationException>(() => subAccount.ResubmitCompliance());
+    }
+
+    [Fact]
+    public void ResubmitCompliance_FromPendingCompliance_Throws()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.BeginCompliance("wallet-123");
+
+        Assert.Throws<InvalidOperationException>(() => subAccount.ResubmitCompliance());
+    }
 }

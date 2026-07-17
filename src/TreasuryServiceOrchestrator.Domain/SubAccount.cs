@@ -46,4 +46,31 @@ public class SubAccount
         CircleWalletId = circleWalletId;
         LifecycleState = SubAccountLifecycleState.PendingCompliance;
     }
+
+    public void MarkRejected()
+    {
+        if (LifecycleState != SubAccountLifecycleState.PendingCompliance)
+        {
+            throw new InvalidOperationException(
+                $"Cannot mark rejected from state {LifecycleState}; expected {SubAccountLifecycleState.PendingCompliance}.");
+        }
+
+        LifecycleState = SubAccountLifecycleState.Rejected;
+    }
+
+    public void SetDisabled(bool disabled)
+    {
+        IsDisabled = disabled;
+    }
+
+    public void ResubmitCompliance()
+    {
+        if (LifecycleState != SubAccountLifecycleState.Rejected)
+        {
+            throw new InvalidOperationException(
+                $"Cannot resubmit compliance from state {LifecycleState}; expected {SubAccountLifecycleState.Rejected}.");
+        }
+
+        LifecycleState = SubAccountLifecycleState.PendingCompliance;
+    }
 }
