@@ -100,6 +100,8 @@ builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicP
 builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, AddressBookRecipientsWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, TransfersWebhookTopicProcessor>();
+builder.Services.AddScoped<IWebhookTopicProcessor, WireWebhookTopicProcessor>();
+builder.Services.AddScoped<IWebhookTopicProcessor, PayoutsWebhookTopicProcessor>();
 builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
