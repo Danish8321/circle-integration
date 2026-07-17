@@ -10,4 +10,9 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 /// <see cref="MockSubAccountGateway"/>. Tickets 03/05/06/07 each extend this class alongside
 /// their corresponding <see cref="IStablecoinGateway"/> additions.
 /// </summary>
-public sealed class MockStablecoinGateway : IStablecoinGateway;
+public sealed class MockStablecoinGateway : IStablecoinGateway
+{
+    public Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
+        GenerateDepositAddressGatewayRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException("Ticket 03.5 implements this.");
+}

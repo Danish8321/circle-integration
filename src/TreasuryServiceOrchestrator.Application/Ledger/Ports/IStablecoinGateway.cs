@@ -7,4 +7,8 @@ namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 /// Tickets 03/05/06/07 each extend this interface with their own new methods as those slices
 /// land; <c>MockStablecoinGateway</c>/<c>CircleMintGateway</c> grow alongside it.
 /// </summary>
-public interface IStablecoinGateway;
+public interface IStablecoinGateway
+{
+    Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
+        GenerateDepositAddressGatewayRequest request, CancellationToken ct = default);
+}
