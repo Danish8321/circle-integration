@@ -31,4 +31,12 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
         return new GeneratedDepositAddress(
             envelope.Data.Address, envelope.Data.Chain, envelope.Data.Currency, ProviderAddressId: null);
     }
+
+    public Task<RegisteredRecipient> RegisterRecipientAsync(
+        RegisterRecipientGatewayRequest request, CancellationToken ct = default)
+    {
+        // Real implementation lands alongside ticket 05.5's mock logic; stubbed for now.
+        throw new NotSupportedException(
+            "CircleMintGateway.RegisterRecipientAsync is not implemented yet (ticket 05.5).");
+    }
 }

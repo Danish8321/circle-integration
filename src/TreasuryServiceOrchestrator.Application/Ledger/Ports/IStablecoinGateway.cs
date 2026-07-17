@@ -11,4 +11,7 @@ public interface IStablecoinGateway
 {
     Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
         GenerateDepositAddressGatewayRequest request, CancellationToken ct = default);
+
+    Task<RegisteredRecipient> RegisterRecipientAsync(
+        RegisterRecipientGatewayRequest request, CancellationToken ct = default);
 }

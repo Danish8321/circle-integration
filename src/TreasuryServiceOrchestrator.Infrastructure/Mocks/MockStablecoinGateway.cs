@@ -29,6 +29,15 @@ public sealed class MockStablecoinGateway(
             address, request.Chain, request.Currency, $"mock-addr-{randomSource.NewGuid()}"));
     }
 
+    public Task<RegisteredRecipient> RegisterRecipientAsync(
+        RegisterRecipientGatewayRequest request, CancellationToken ct = default)
+    {
+        // Real mock logic lands in ticket 05.5; stubbed for now, matching how
+        // GenerateDepositAddressAsync was stubbed ahead of ticket 03.5.
+        throw new NotSupportedException(
+            "MockStablecoinGateway.RegisterRecipientAsync is not implemented yet (ticket 05.5).");
+    }
+
     private void MaybeThrowProviderUnavailable()
     {
         if (randomSource.NextDouble() < options.Value.FailureInjectionRate)
