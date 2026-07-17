@@ -17,12 +17,19 @@ public sealed class CreateSubAccountHandler(
     ISubAccountRepository subAccounts,
     IEntityRegistrationRepository entityRegistrations,
     IValidator<CreateSubAccountCommand> validator,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ICallerContext callerContext)
     : ICommandHandler<CreateSubAccountCommand, CreateSubAccountResult>
 {
     public async Task<CreateSubAccountResult> HandleAsync(
         CreateSubAccountCommand command, CancellationToken cancellationToken = default)
     {
+        // Sub-account creation is Admin-only regardless of the requested target tenant.
+        if (!callerContext.IsAdmin)
+        {
+            throw new TenantForbiddenException();
+        }
+
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
         {

@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Api.Compliance;
 
 [ApiController]
-[Route("sub-accounts")]
+[Route("v1/sub-accounts")]
 public sealed class SubAccountsController(
     CreateSubAccountHandler createSubAccountHandler, ICallerContext callerContext) : ControllerBase
 {
@@ -15,18 +16,16 @@ public sealed class SubAccountsController(
         [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
         CancellationToken cancellationToken)
     {
-        if (!callerContext.IsAdmin)
-        {
-            return Problem(
-                title: "Only Admin may create sub-accounts.",
-                statusCode: StatusCodes.Status403Forbidden);
-        }
+        // Request validation guarantees a non-empty ClientCompanyId, so the resolved
+        // scope is always SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(
+            callerContext, request.ClientCompanyId);
 
         var correlationId = HttpContext.TraceIdentifier;
 
         var result = await createSubAccountHandler.HandleAsync(
             new CreateSubAccountCommand(
-                request.ClientCompanyId,
+                scope.ClientCompanyId,
                 request.BusinessName,
                 request.BusinessUniqueIdentifier,
                 request.IdentifierIssuingCountryCode,

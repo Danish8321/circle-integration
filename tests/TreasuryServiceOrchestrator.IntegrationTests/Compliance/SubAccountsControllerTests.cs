@@ -33,7 +33,7 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
         client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
 
         var response = await client.PostAsJsonAsync(
-            "sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
+            "v1/sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<CreateSubAccountResponse>(
@@ -49,7 +49,7 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(
-            "sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
+            "v1/sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -62,7 +62,21 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
         client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
 
         var response = await client.PostAsJsonAsync(
-            "sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
+            "v1/sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task CreateSubAccount_AsNonAdminCallerForOwnClientCompanyId_ReturnsForbiddenProblemDetails()
+    {
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("ClientCompanyId", "client-x");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
+
+        var response = await client.PostAsJsonAsync(
+            "v1/sub-accounts", ValidRequest("client-x"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -76,7 +90,7 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
         var invalidRequest = ValidRequest($"client-{Guid.NewGuid():N}") with { BusinessName = "" };
 
         var response = await client.PostAsJsonAsync(
-            "sub-accounts", invalidRequest, TestContext.Current.CancellationToken);
+            "v1/sub-accounts", invalidRequest, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -89,13 +103,13 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
 
         client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
         var first = await client.PostAsJsonAsync(
-            "sub-accounts", ValidRequest(clientCompanyId), TestContext.Current.CancellationToken);
+            "v1/sub-accounts", ValidRequest(clientCompanyId), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
         client.DefaultRequestHeaders.Remove("Idempotency-Key");
         client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
         var second = await client.PostAsJsonAsync(
-            "sub-accounts", ValidRequest(clientCompanyId), TestContext.Current.CancellationToken);
+            "v1/sub-accounts", ValidRequest(clientCompanyId), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }

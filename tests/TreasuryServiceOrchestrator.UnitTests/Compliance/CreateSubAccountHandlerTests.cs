@@ -17,6 +17,7 @@ public sealed class CreateSubAccountHandlerTests
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<ISubAccountRepository> subAccounts = new();
     private readonly Mock<IEntityRegistrationRepository> entityRegistrations = new();
+    private readonly Mock<ICallerContext> callerContext = new();
     private readonly CreateSubAccountHandler handler;
 
     public CreateSubAccountHandlerTests()
@@ -25,6 +26,9 @@ public sealed class CreateSubAccountHandlerTests
             .Setup(x => x.TryGetCachedResultJsonAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
+        callerContext.Setup(x => x.CallerId).Returns("apiso-admin");
+        callerContext.Setup(x => x.Role).Returns(CallerRole.Admin);
+        callerContext.Setup(x => x.IsAdmin).Returns(true);
 
         handler = new CreateSubAccountHandler(
             gateway.Object,
@@ -34,7 +38,8 @@ public sealed class CreateSubAccountHandlerTests
             subAccounts.Object,
             entityRegistrations.Object,
             new CreateSubAccountValidator(),
-            TimeProvider.System);
+            TimeProvider.System,
+            callerContext.Object);
     }
 
     private static CreateSubAccountCommand ValidCommand() => new(
@@ -102,6 +107,21 @@ public sealed class CreateSubAccountHandlerTests
         var result = await handler.HandleAsync(ValidCommand(), TestContext.Current.CancellationToken);
 
         result.CircleWalletId.Should().Be("wallet-cached");
+        gateway.Verify(
+            x => x.CreateExternalEntityAsync(It.IsAny<CreateExternalEntityGatewayRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithNonAdminCaller_ThrowsTenantForbiddenWithoutCallingGateway()
+    {
+        callerContext.Setup(x => x.CallerId).Returns("client-1");
+        callerContext.Setup(x => x.Role).Returns(CallerRole.SubAccount);
+        callerContext.Setup(x => x.IsAdmin).Returns(false);
+
+        var act = () => handler.HandleAsync(ValidCommand());
+
+        await act.Should().ThrowAsync<TenantForbiddenException>();
         gateway.Verify(
             x => x.CreateExternalEntityAsync(It.IsAny<CreateExternalEntityGatewayRequest>(), It.IsAny<CancellationToken>()),
             Times.Never);
