@@ -10,6 +10,16 @@ Source of truth: https://developers.circle.com/llms.txt lists every current
 page path. Re-check that index before trusting any page here as current —
 Circle's docs site restructures without redirects for old crawl paths.
 
+**Re-verification pass 2026-07-17:** 26 factual claims used in `docs/PRD.md`
+(endpoint paths, request/response shapes, webhook topics/lifecycles) checked
+directly against live OpenAPI specs (`https://developers.circle.com/openapi/
+{institutional,account}.yaml`) and live prose pages — 0 discrepancies found,
+2 minor "could not fully verify" items noted inline in PRD.md near their
+claims (§7.1 recipient-approval region-universality, §10 webhook-subscription
+body-shape schema-level confirmation). This pass did not re-walk every page
+in this mirror one by one — it targeted only the claims actually cited in
+our docs. Don't read "0 discrepancies" as "every page here is current."
+
 ## Overview
 
 - [Circle Mint](circle-mint.md) — landing page: mint/redeem USDC and EURC overview

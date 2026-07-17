@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Approved draft v1.0 |
 | **Date** | 2026-07-12 |
-| **Provider facts source** | Circle Mint developer documentation (Institutional API), verified against the live site 2026-07-07 |
+| **Provider facts source** | Circle Mint developer documentation (Institutional API), verified against the live site 2026-07-07, re-verified full pass 2026-07-17 (26 claims across endpoints, request/response shapes, and webhook topics checked against live OpenAPI specs and docs — 0 discrepancies found) |
 
 ---
 
@@ -281,6 +281,8 @@ Outbound on-chain transfers are a **two-stage workflow**. The product models bot
 
 > Provider status literals (verified 2026-07-17): Circle's REST response and webhook payloads use **differing vocabularies** — REST documents `pending_verification | verification_succeeded | active`; the webhook page documents `pending | inactive | active | denied` (`inactive` = delayed-withdrawals holding period). The product maps any not-yet-`active`, not-`denied` provider literal to `PendingApproval`; `denied` maps to `Denied`; only `active` maps to `Active`. Unknown literals are treated as still-pending and logged, never crash the processor.
 
+> **Manual-approval-requirement caveat (re-verified 2026-07-17):** the mechanism itself (recipient addresses require verification before use) is confirmed live. Its "always manual, always via Console" framing is corroborated for Circle Mint France specifically; a single page stating this as an unconditional rule for every Circle Mint tenant/region wasn't found. Our own account is US-only (§1.1), so this is unlikely to matter in practice, but treat the "always manual" claim as **region-typical, not contractually guaranteed** — don't build reconciliation logic that would break silently if a region auto-approves.
+
 ### 7.2 Stage B — transfer execution
 
 | Operation | Access | Notes |
@@ -400,7 +402,7 @@ The provider exposes only **current** balance per wallet plus per-wallet activit
 
 ## 10. Cross-cutting: Webhook Processing
 
-Circle Mint delivers notifications on the **v1 (SNS-based) scheme**: subscriptions are created via `POST /v1/notifications/subscriptions`, endpoint ownership is confirmed via an SNS handshake, and message authenticity is verified via the SNS signature (`Signature` + `SigningCertURL`, canonical-message verification). The **v2 ECDSA / `X-Circle-Signature` scheme documented for Circle's newer product lines does not apply** to Circle Mint and must not be implemented for it.
+Circle Mint delivers notifications on the **v1 (SNS-based) scheme**: subscriptions are created via `POST /v1/notifications/subscriptions`, endpoint ownership is confirmed via an SNS handshake, and message authenticity is verified via the SNS signature (`Signature` + `SigningCertURL`, canonical-message verification). The **v2 ECDSA / `X-Circle-Signature` scheme documented for Circle's newer product lines does not apply** to Circle Mint and must not be implemented for it. Re-verified 2026-07-17 against live docs — confirmed distinct from the Web3 Services `/v2/notifications/subscriptions` path used by Wallets/Contracts (different product line, easy to conflate by path similarity). Body shape (`endpoint` URL, optional `notificationTypes` filter) is corroborated by prose docs; the raw OpenAPI schema for this path wasn't directly pulled during re-verification, so treat the exact field list as prose-sourced, not YAML-confirmed, if it becomes load-bearing.
 
 Requirements:
 
