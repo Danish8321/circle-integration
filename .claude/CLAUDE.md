@@ -2,15 +2,16 @@
 
 @CONTEXT.md
 
-Greenfield: no code yet. Rules below come from `docs/PRD.md`, `docs/Phase_1_Feature_Slices.md`
-(B0.5 module-boundaries decision, 2026-07-16), `docs/Phase_3_Circle_Integration_Plan.md`.
-Items marked **(assumed)** aren't nailed down in docs — tighten/replace once real code lands.
+Greenfield: no code yet. Rules below come from `docs/README.md` and the feature files it
+indexes under `docs/features/` (B0.5 module-boundaries decision, 2026-07-16, see
+`docs/adr/0001-module-boundaries.md`). Items marked **(assumed)** aren't nailed down in docs —
+tighten/replace once real code lands.
 
 ## Stack
 
-.NET 10 / C# 14, ASP.NET Core **Controllers** (Phase_1_Feature_Slices.md Global Constraints:
-`[ApiController]`), EF Core 10, SQL Server (LocalDB dev). No Angular (or any) client in this
-repo — API-only.
+.NET 10 / C# 14, ASP.NET Core **Controllers** (`[ApiController]`, see the Api-tier design in
+each `docs/features/*.md` file), EF Core 10, SQL Server (LocalDB dev). No Angular (or any)
+client in this repo — API-only.
 
 ## Tiers & layout
 
@@ -40,36 +41,40 @@ method bag in a shared service class.
 1. No repository abstraction over `DbContext` — Infrastructure ports wrap use-case-shaped
    queries, not a generic `IRepository<T>`. (architecture decision, B0.5)
 2. `TimeProvider`, never `DateTime.Now`/`DateTime.UtcNow` directly. (standard Clean practice —
-   testability of the lifecycle/reconciliation timers in PRD §3.2, §11.4)
+   testability of the lifecycle/reconciliation timers, see `docs/features/05-reliability-and-error-handling.md`)
 3. `IHttpClientFactory`, never `new HttpClient()` — Circle gateways need pooled/resilient
-   handlers. (PRD §11.3 provider resilience: timeouts, retry+backoff, circuit breaker)
+   handlers. (provider resilience: timeouts, retry+backoff, circuit breaker — see
+   `docs/features/05-reliability-and-error-handling.md`)
 4. `CancellationToken` threaded through every async path; every handler signature is
-   `HandleAsync(TCmd cmd, CancellationToken ct = default)`. (Phase_1_Feature_Slices.md Global
-   Constraints — xUnit1051 is a build error)
+   `HandleAsync(TCmd cmd, CancellationToken ct = default)`. (global constraint — xUnit1051 is a
+   build error)
 5. Domain entities never leak past the Application boundary into an API response — Api maps
-   Application DTOs, never serializes a Domain/EF entity. (Clean layering + PRD §11.2 stable
-   RFC 7807 error contract implies stable response shapes, not leaky entities)
+   Application DTOs, never serializes a Domain/EF entity. (Clean layering + stable RFC 7807
+   error contract implies stable response shapes, not leaky entities — see
+   `docs/features/05-reliability-and-error-handling.md`)
 6. Every endpoint has a validation filter — no controller hand-rolls validation inline.
-   (Phase_1_Feature_Slices.md: FluentValidation, RFC 7807 `ProblemDetails` only error contract,
-   controllers must not catch domain exceptions themselves)
+   (FluentValidation, RFC 7807 `ProblemDetails` only error contract, controllers must not catch
+   domain exceptions themselves — see `docs/features/05-reliability-and-error-handling.md`)
 7. Tenant identity (`ClientCompanyId`) always comes from `ICallerContext`/`ITenantContext`,
    never a route or body parameter; cross-tenant access must be structurally impossible at the
-   data-access layer. (PRD §2.2, §2.4)
+   data-access layer. (see `docs/features/01-tenancy-and-authorization.md`)
 8. Admin never impersonates a tenant — authenticates as itself, names target scope explicitly;
-   all-tenant access is itself audited. (PRD §2.4)
+   all-tenant access is itself audited. (see `docs/features/01-tenancy-and-authorization.md`)
 9. Mock mode must be structurally impossible to enable in Production — hard environment check
-   at startup, not config alone. (PRD §13, Phase_1_Feature_Slices.md Global Constraints)
+   at startup, not config alone. (see `docs/features/02-mock-mode.md`)
 10. `Money(decimal Amount, string CurrencyCode)` is the only monetary type crossing the
-    Domain/Application boundary; no floating-point money anywhere. (Phase_1_Feature_Slices.md
-    Global Constraints; PRD §14 Data integrity)
+    Domain/Application boundary; no floating-point money anywhere. (global constraint, see
+    `docs/features/04-ledger-and-balances.md`)
 11. Every mutating handler follows reserve → gateway/state-transition → complete, two
     `SaveChangesAsync` calls, idempotency key required on every mutating consumer operation and
-    forwarded to the provider on money-moving calls. (PRD §11.1; Phase_1_Feature_Slices.md
-    Global Constraints)
+    forwarded to the provider on money-moving calls. (see
+    `docs/features/05-reliability-and-error-handling.md`)
 12. Outbound transfer commands must not carry Travel Rule originator name/address fields on
     `POST /v1/businessAccount/transfers` — no such request field exists; Travel Rule is
-    satisfied structurally via account-on-file identity + recipient verification. (PRD §7.1,
-    §7.3, verified against live Circle docs 2026-07-16 — see `circle_travel_rule_fix` memory)
+    satisfied structurally via account-on-file identity + recipient verification. (verified
+    against live Circle docs 2026-07-16, re-verified 2026-07-17 — see
+    `docs/features/10-outbound-transfers-and-recipients.md` and the `circle_travel_rule_fix`
+    memory)
 
 ## Testing strategy per tier
 

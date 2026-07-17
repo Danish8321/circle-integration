@@ -22,7 +22,8 @@ Read alongside `docs/adr/`. Terms below are canonical — don't drift to a synon
 - **Transaction** — a row in the local ledger for every deposit, transfer, or redemption. `TransactionType` is `Deposit | Transfer | Redemption` — there is no separate `Mint` type; a fiat-wire deposit that the provider settles by minting USDC is still recorded as `Deposit` (see `docs/adr/0003-transaction-type-mint-folded-into-deposit.md`).
 - **Redemption net** — the amount actually wired out: provider-reported when available, otherwise gross minus fees. Ledger always records all three (gross, fees, net); "net" is never absent in our model even when the provider omits it.
 - **BalanceSnapshot** — a point-in-time balance per wallet/`FundAccount`, taken on a schedule and after every ledger mutation.
-- **WebhookEvent** — a durably stored provider notification (raw payload, signature-verification result, dedup key, processing status).
+- **WebhookInboxEntry** — a durably stored provider notification (raw payload, dedup key `CircleEventId`, `Attempts`/`LastError`, processing status). Renamed from the earlier glossary term "WebhookEvent" to match the shipped `Application.Webhooks` type (2026-07-17 grilling session) — `WebhookEvent`/`IncomingWebhookEvent` now names only the transient dispatch record passed into `WebhookProcessor.HandleAsync`, not the persisted row.
+- **Dead-lettered** (webhook) — a `WebhookInboxEntry` whose `Attempts` has reached the configured retry ceiling without a `Processed` outcome; a state for manual triage, not a separate status value on the entry (`ProcessingResult` stays `"Failed"` — dead-letter is a derived read, `Attempts >= threshold`, not a new enum member).
 - **NotificationOutboxEntry** — a pending outbound notification to the internal consumer service, written in the same DB transaction as the state change it announces.
 - **AuditRecord** — an immutable, append-only record of every state-changing action.
 
@@ -44,10 +45,11 @@ Provider-facing identifiers that cross the Domain/Application boundary use **pro
 
 ## Gateways (ports, Application tier)
 
-Two gateway ports, not one — confirmed in `docs/Phase_1_Feature_Slices.md`, not ambiguous:
+Two gateway ports, not one — confirmed in `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`
+and `docs/features/07-sub-account-and-entity-registration.md`, not ambiguous:
 
-- **`ISubAccountGateway`** (`Application.Compliance.Ports`) — entity/registration/recipient provider operations (`CircleSubAccountGateway` / `MockSubAccountGateway`).
-- **`IStablecoinGateway`** (`Application.Ledger.Ports`) — money-moving provider operations: transfers, redemptions, transfer/redemption status, and deposit listing (`ListRecentDepositsAsync`) — implemented by `CircleMintGateway` / `MockStablecoinGateway`. See `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`.
+- **`ISubAccountGateway`** (`Application.Compliance.Ports`) — entity/registration provider operations only (`CircleSubAccountGateway` / `MockSubAccountGateway`).
+- **`IStablecoinGateway`** (`Application.Ledger.Ports`) — money-moving provider operations: transfers, redemptions, transfer/redemption status, deposit-address generation (`GenerateDepositAddressAsync`), recipient registration (`RegisterRecipientAsync`), and deposit listing (`ListRecentDepositsAsync`) — implemented by `CircleMintGateway` / `MockStablecoinGateway`. Recipients and deposit addresses are Ledger-module entities (ADR 0001), not Compliance, so their gateway calls live here, not on `ISubAccountGateway`. See `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`.
 
 ## Modules (B0.5 architecture decision)
 
