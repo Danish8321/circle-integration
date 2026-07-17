@@ -1,4 +1,12 @@
-Status: open
+Status: resolved
+
+## Solidified 2026-07-17 grilling
+
+No separate spec file (source is `docs/README.md` §5's demo script, already the ticket's own
+scope statement) and no new design ambiguity — this ticket composes tickets 01-09's already-
+solidified shapes into one acceptance test. Nothing to ratify beyond what those tickets already
+decided; DoD's "reconcile against actual signatures" note is an implementation-time task, not an
+open design question.
 
 Source: `docs/README.md` §5 (demo script) (old source `docs/Phase_1_Feature_Slices.md` Task 14,
 deleted 2026-07-17 — superseded by the per-feature doc restructure).
