@@ -1,0 +1,3 @@
+# The OpenAPI contract is emitted LF by the build-time GetDocument tool.
+# Pin it LF so contract.sh's diff gate is deterministic under core.autocrlf.
+docs/openapi/*.json text eol=lf

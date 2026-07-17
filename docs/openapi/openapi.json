@@ -4,11 +4,6 @@
     "title": "TreasuryServiceOrchestrator.Api | v1",
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://localhost/"
-    }
-  ],
   "paths": {
     "/v1/sub-accounts": {
       "get": {
@@ -81,7 +76,7 @@
                 "$ref": "#/components/schemas/CreateSubAccountRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateSubAccountRequest"
               }
@@ -186,7 +181,7 @@
                 "$ref": "#/components/schemas/ResubmitEntityRegistrationRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ResubmitEntityRegistrationRequest"
               }
@@ -245,7 +240,7 @@
                 "$ref": "#/components/schemas/SetSubAccountDisabledRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/SetSubAccountDisabledRequest"
               }
