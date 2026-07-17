@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
+using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
@@ -14,6 +15,7 @@ public sealed class SubAccountsController(
     CreateSubAccountHandler createSubAccountHandler,
     GetSubAccountHandler getSubAccountHandler,
     ListSubAccountsHandler listSubAccountsHandler,
+    SetSubAccountDisabledHandler setSubAccountDisabledHandler,
     ICallerContext callerContext) : ControllerBase
 {
     [HttpGet]
@@ -104,5 +106,24 @@ public sealed class SubAccountsController(
             new { result.SubAccountId },
             new CreateSubAccountResponse(
                 result.SubAccountId, result.ClientCompanyId, result.CircleWalletId, result.LifecycleState.ToString()));
+    }
+
+    [HttpPut("{clientCompanyId}/disabled")]
+    public async Task<ActionResult<SetSubAccountDisabledResponse>> SetSubAccountDisabled(
+        string clientCompanyId,
+        [FromBody] SetSubAccountDisabledRequest request,
+        CancellationToken cancellationToken)
+    {
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(callerContext, clientCompanyId);
+
+        var result = await setSubAccountDisabledHandler.HandleAsync(
+            new SetSubAccountDisabledCommand(
+                scope.ClientCompanyId, request.Disabled, HttpContext.TraceIdentifier),
+            cancellationToken);
+
+        return Ok(new SetSubAccountDisabledResponse(
+            result.SubAccountId, result.ClientCompanyId, result.IsDisabled));
     }
 }
