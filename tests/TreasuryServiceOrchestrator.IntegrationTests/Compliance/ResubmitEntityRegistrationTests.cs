@@ -139,7 +139,8 @@ public sealed class ResubmitEntityRegistrationTests(TreasuryServiceOrchestratorA
     {
         var clientCompanyId = await CreateSubAccountAsAdminAsync();
         await RejectRegistrationAsync(clientCompanyId);
-        using var client = CreateClientFor("some-other-client");
+        var otherClientCompanyId = await CreateSubAccountAsAdminAsync();
+        using var client = CreateClientFor(otherClientCompanyId);
 
         var response = await PostResubmitAsync(client, clientCompanyId);
 

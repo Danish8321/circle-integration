@@ -68,6 +68,8 @@ These override any contradicting snippet below, same authority as the doc-grilli
 5. **`SupportedChainsOptions` wraps, never inherits, `List<string>` (Task 7).** Inheriting `List` leaks the whole mutable list surface as interface. Shape: options class holding the configured list, exposing `bool IsSupported(string chain)` (case-insensitive) — validators consume that one method.
 6. **Gateway DTO renamed `GeneratedDepositAddress` (Task 7).** Two types named `GenerateDepositAddressResult` in sibling namespaces is pure interface tax; the Ports-namespace gateway DTO takes the new name, the Application command result keeps the old one.
 7. **Doc drift vs shipped code (all tasks).** Code as committed uses `ISubAccountGateway` (not Task 0's `ICircleSubAccountGateway`), module-first layout `Application/Compliance/...` (not `Application/SubAccounts/`), `Application.Shared.Ports` (not `Application.Ports.GatewayDtos`), and no `ITenantContext`. Where a snippet's path or type name conflicts with the committed tree, the tree and the B0.5 module boundaries win.
+8. **Mocking library is Moq, not NSubstitute (all test snippets, doc-grilling 2026-07-17).** Every test code sample below written against `Substitute.For<T>()` / `sub.Method(...).Returns(...)` / `received.Method(...)` uses NSubstitute syntax. `Directory.Packages.props` and `tests/TreasuryServiceOrchestrator.UnitTests.csproj` reference **Moq** (matches `CLAUDE.md`'s Application-tier testing row: "Moq (mock ports)") — NSubstitute is not a dependency anywhere in the solution. Translate before implementing: `Substitute.For<T>()` → `new Mock<T>()` (use `.Object` for the instance), `sub.Method(x).Returns(y)` → `mock.Setup(s => s.Method(x)).ReturnsAsync(y)` (or `.Returns(y)` for sync), `sub.Received().Method(x)` → `mock.Verify(s => s.Method(x), Times.Once)`. None of these snippets compile as literally pasted.
+9. **Caller-identity registry check is `ISubAccountRepository`-backed, not a static allow-list (Task 1, security fix 2026-07-17).** Task 1 below designs `KnownClientCompaniesRegistry`/`KnownClientCompaniesOptions` — a separately-configured list of known caller ids. What's actually shipped in `CallerIdentityMiddleware` closes the PRD §2.2 "registry of known callers" requirement by querying `ISubAccountRepository.GetByClientCompanyIdAsync` directly against persisted `SubAccount` rows: any non-admin `ClientCompanyId` header with no matching `SubAccount` row gets a 401. This is a deliberate supersession, not just doc drift — a `SubAccount` row is the actual source of truth for "is this a known tenant," and a second, separately-maintained config list would just be a second place that can drift from it. Task 1's registry/role-enum shape below is superseded by this; its `ICallerContext`/`CallerRole` design still matches what shipped.
 
 ---
 
@@ -2039,7 +2041,7 @@ git commit -m "feat: durable webhook inbox with dedup and per-topic processor di
 
 ---
 
-### Task 6: Mock provider gateway + simulated webhook emitter (PRD §13)
+## Task 6: Mock provider gateway + simulated webhook emitter (PRD §13)
 
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
@@ -2764,7 +2766,7 @@ Adds "generate a permanent deposit address for a sub-account on a given (chain, 
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/ListDepositAddressesQuery.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/ListDepositAddressesQueryHandler.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/DepositAddressRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleSubAccountGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Delete + regenerate: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Migrations/*` (`InitialCreate`)
@@ -2992,7 +2994,7 @@ public interface ISubAccountGateway
 
 - [ ] **Step 5: Implement the new gateway method on both `CircleSubAccountGateway` and `MockSubAccountGateway`**
 
-Add to `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleSubAccountGateway.cs` (inside the existing `CircleSubAccountGateway` class, after `GetExternalEntityAsync`):
+Add to `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs` (inside the existing `CircleSubAccountGateway` class, after `GetExternalEntityAsync`):
 ```csharp
     public Task<GenerateDepositAddressResult> GenerateDepositAddressAsync(
         GenerateDepositAddressGatewayRequest request, CancellationToken cancellationToken)
@@ -4488,7 +4490,7 @@ git commit -m "feat: ledger Transaction/BalanceSnapshot model, wire deposits web
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRecipientRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleSubAccountGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Recipients/RegisterRecipientCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Recipients/RegisterRecipientResult.cs`
@@ -4696,7 +4698,7 @@ Add to `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccount
 
 - [ ] **Step 6: Implement the new gateway method on both `CircleSubAccountGateway` and `MockSubAccountGateway`**
 
-Add to `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleSubAccountGateway.cs` (inside the existing `CircleSubAccountGateway` class, after `GenerateDepositAddressAsync`):
+Add to `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs` (inside the existing `CircleSubAccountGateway` class, after `GenerateDepositAddressAsync`):
 ```csharp
     public Task<RegisterRecipientGatewayResult> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken cancellationToken)
@@ -5597,7 +5599,7 @@ git commit -m "feat: recipient registration/list/get, addressBookRecipients webh
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransferRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` (add `CreateTransferAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs` (add `CreateTransferGatewayRequest`/`CreateTransferGatewayResult`)
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs` (stub `CreateTransferAsync`)
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` (stub `CreateTransferAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs` (mock `CreateTransferAsync`)
 - Create: `src/TreasuryServiceOrchestrator.Application/Transfers/CreateTransferCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Transfers/CreateTransferCommandValidator.cs`
@@ -5864,7 +5866,7 @@ Task<CreateTransferGatewayResult> CreateTransferAsync(
 
 - [ ] **Step 9: Stub `CreateTransferAsync` on `CircleMintGateway`**
 
-Modify `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs` — add:
+Modify `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` — add:
 
 ```csharp
 public Task<CreateTransferGatewayResult> CreateTransferAsync(
@@ -6828,7 +6830,7 @@ Reworks `RedeemRequest` to carry gross/fees/net separately (Circle's Institution
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRedeemRequestRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/CreateLinkedBankAccountCommand.cs`
@@ -7002,7 +7004,7 @@ public interface IStablecoinGateway
 
 - [ ] **Step 4: Rework `CircleMintGateway.RedeemAsync` and stub `CreateLinkedBankAccountAsync`**
 
-Modify `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs` — replace the existing `RedeemAsync` method with:
+Modify `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` — replace the existing `RedeemAsync` method with:
 
 ```csharp
 public Task<GatewayRedeemResult> RedeemAsync(RedeemGatewayRequest request, CancellationToken cancellationToken) =>
@@ -8381,7 +8383,7 @@ Scope note: PRD §2.5's table also lists `/master-account/deposits`, `/master-ac
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/ListAllTransactionsQuery.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Admin/GetMasterAccountSummaryQuery.cs`
@@ -8611,7 +8613,7 @@ Modify `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGate
 Task<Money> GetMainWalletBalanceAsync(CancellationToken cancellationToken);
 ```
 
-Modify `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs` — add:
+Modify `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs` — add:
 
 ```csharp
 public Task<Money> GetMainWalletBalanceAsync(CancellationToken cancellationToken) =>

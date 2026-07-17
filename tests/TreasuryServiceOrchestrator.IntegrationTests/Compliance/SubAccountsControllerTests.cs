@@ -1,12 +1,23 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Api.Compliance;
+using TreasuryServiceOrchestrator.Domain;
+using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests.Compliance;
 
 public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFactory factory)
     : IClassFixture<TreasuryServiceOrchestratorApiFactory>
 {
+    private async Task SeedRegisteredCallerAsync(string clientCompanyId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<TreasuryServiceOrchestratorDbContext>();
+        dbContext.SubAccounts.Add(SubAccount.Create(clientCompanyId, DateTime.UtcNow));
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
     private static CreateSubAccountRequest ValidRequest(string clientCompanyId) => new(
         ClientCompanyId: clientCompanyId,
         BusinessName: "Acme Inc",
@@ -57,8 +68,11 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
     [Fact]
     public async Task CreateSubAccount_AsNonAdminCaller_ReturnsForbiddenProblemDetails()
     {
+        var clientCompanyId = $"client-{Guid.NewGuid():N}";
+        await SeedRegisteredCallerAsync(clientCompanyId);
+
         using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add("ClientCompanyId", "some-other-client");
+        client.DefaultRequestHeaders.Add("ClientCompanyId", clientCompanyId);
         client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
 
         var response = await client.PostAsJsonAsync(
@@ -71,12 +85,15 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
     [Fact]
     public async Task CreateSubAccount_AsNonAdminCallerForOwnClientCompanyId_ReturnsForbiddenProblemDetails()
     {
+        var clientCompanyId = $"client-{Guid.NewGuid():N}";
+        await SeedRegisteredCallerAsync(clientCompanyId);
+
         using var client = factory.CreateClient();
-        client.DefaultRequestHeaders.Add("ClientCompanyId", "client-x");
+        client.DefaultRequestHeaders.Add("ClientCompanyId", clientCompanyId);
         client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
 
         var response = await client.PostAsJsonAsync(
-            "v1/sub-accounts", ValidRequest("client-x"), TestContext.Current.CancellationToken);
+            "v1/sub-accounts", ValidRequest(clientCompanyId), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);

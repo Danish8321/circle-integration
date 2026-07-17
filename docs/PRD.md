@@ -469,7 +469,7 @@ Because deposit crediting is **webhook-driven**, a silently missed webhook means
 - **Immutable audit record** for every state-changing action: who (`ClientCompanyId` + user-identity header), what (operation + resource), when, before/after state, correlation id, provider reference ids. Audit records are append-only and cannot be modified or deleted through any API.
 - **Retention**: 7 years (financial-records standard).
 - **Correlation ids** flow from consumer request through provider calls, webhook processing, and audit records.
-- **Travel Rule**: crypto payouts carry mandatory originator name and address (FinCEN Travel Rule); requests without them are rejected at validation.
+- **Travel Rule**: satisfied structurally via account-on-file identity + recipient verification, not a per-call request field — see §7.3's correction (2026-07-16). `POST /v1/businessAccount/transfers` (the endpoint this product calls) carries no originator name/address fields; only the separate, product-unused `POST /v1/payouts` endpoint has them (§7.3, Appendix B).
 - **PII**: entity registration details and bank data are encrypted at rest; secrets (provider API keys) live in a managed secret store with rotation support, never in configuration files.
 
 ---

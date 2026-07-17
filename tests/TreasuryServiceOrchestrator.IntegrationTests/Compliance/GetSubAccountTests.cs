@@ -63,7 +63,8 @@ public sealed class GetSubAccountTests(TreasuryServiceOrchestratorApiFactory fac
     public async Task GetSubAccount_AsOtherTenantCaller_ReturnsForbiddenProblemDetails()
     {
         var clientCompanyId = await CreateSubAccountAsAdminAsync();
-        using var client = CreateClientFor("some-other-client");
+        var otherClientCompanyId = await CreateSubAccountAsAdminAsync();
+        using var client = CreateClientFor(otherClientCompanyId);
 
         var response = await client.GetAsync(
             $"v1/sub-accounts/{clientCompanyId}", TestContext.Current.CancellationToken);

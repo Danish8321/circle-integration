@@ -12,7 +12,7 @@
 
 ## Module Boundaries
 
-Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `CircleSubAccountGateway`/entity-registration/wire-instruction concerns belong under `Compliance`, `CircleMintGateway`/transfer/redemption/balance concerns under `Ledger`, `CircleErrorTranslator` and SNS webhook verification under `Webhooks`. File paths below written as `Infrastructure/Circle/*.cs` mean "under the owning module's `Infrastructure/<Module>/Circle/` subfolder" — confirm actual Phase 1 placement with `Grep` before adding, per this file's existing "check first" convention.
+Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `CircleSubAccountGateway`/entity-registration/wire-instruction concerns belong under `Compliance`, `CircleMintGateway`/transfer/redemption/balance concerns under `Ledger`, `CircleErrorTranslator` and SNS webhook verification under `Webhooks` — but this is an *Application/Domain* namespace split (ADR 0001), not an Infrastructure one. `Infrastructure` stays flat, no per-module subfolder (confirmed against `.claude/rules`'s tier table and Task 0's actual scaffold). File paths below written as `Infrastructure/Circle/*.cs` mean `Infrastructure/Providers/Circle/*.cs` — the flat convention Task 0 already established and Phase 1's `CircleSubAccountGateway.cs` already lives at (corrected 2026-07-17, doc-grilling).
 
 ## Global Constraints
 
@@ -28,8 +28,8 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 ## Task 1: Circle HTTP client foundation
 
 **Files:**
-- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleClientOptions.cs`
-- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleHttpClientRegistration.cs` (or extend existing `Program.cs` DI section directly — check whether Phase 1 already created a `Circle/` DI-registration convention before adding a new file)
+- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleClientOptions.cs`
+- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleHttpClientRegistration.cs` (or extend existing `Program.cs` DI section directly — check whether Phase 1 already created a `Circle/` DI-registration convention before adding a new file)
 - Modify: `src/TreasuryServiceOrchestrator.Api/appsettings.json` (add `Circle` section: `BaseUrl`, `ApiKeySecretName`, timeouts)
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
 
@@ -46,7 +46,7 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 ## Task 2: `CircleSubAccountGateway` — real implementation
 
 **Files:**
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleSubAccountGateway.cs` (replaces Phase 1's fake-success stub bodies one method at a time)
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs` (replaces Phase 1's fake-success stub bodies one method at a time)
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/CircleSubAccountGatewayTests.cs` (recorded-response tests — see note below)
 
 **Provider mapping (PRD Appendix B):**
@@ -70,7 +70,7 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 ## Task 3: `CircleMintGateway` (`IStablecoinGateway`) — real implementation
 
 **Files:**
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleMintGateway.cs`
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/CircleMintGatewayTests.cs`
 
 **Provider mapping:**
@@ -108,7 +108,7 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 ## Task 5: SNS v1 webhook subscription + handshake
 
 **Files:**
-- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleWebhookSubscriptionService.cs`
+- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleWebhookSubscriptionService.cs`
 - Create: `src/TreasuryServiceOrchestrator.Api/Controllers/CircleWebhookSubscriptionConfirmationController.cs` (or extend the existing webhook-inbox controller from Phase 1 Task 5 — check first)
 - Test: `tests/TreasuryServiceOrchestrator.IntegrationTests/CircleWebhookSubscriptionTests.cs`
 
@@ -142,8 +142,8 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 ## Task 7: Circle error-code → PRD taxonomy mapping (`CircleErrorTranslator`)
 
 **Files:**
-- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleErrorTranslator.cs`
-- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/Circle/CircleErrorTranslatorTests.cs`
+- Create: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleErrorTranslator.cs`
+- Test: `tests/TreasuryServiceOrchestrator.UnitTests/Infrastructure/Providers/Circle/CircleErrorTranslatorTests.cs`
 
 **Why this task exists:** identified during doc-grilling — PRD §11.2 defines `validation | not-found | tenant-forbidden | conflict | provider-rejected | provider-unavailable`, but no doc maps Circle's actual synchronous codes (`error-codes.md`) onto it. Phase 1's mock gateway invents its own errors, so this was invisible until real HTTP calls arrive.
 
@@ -173,7 +173,7 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 
 **Files:**
 - Create/modify: wherever Phase 1 already established secret-store access (check `Grep -rn "SecretClient\|IConfiguration.*Secret\|KeyVault"` across `src/` first — do not introduce a second secrets mechanism if one already exists for another credential).
-- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleHttpClientRegistration.cs` (Task 1) — replace the placeholder key source.
+- Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleHttpClientRegistration.cs` (Task 1) — replace the placeholder key source.
 
 **Scope:**
 - Circle API keys have no enforced rotation cadence *unless* mTLS is enabled (see Task 9 decision) — in which case keys expire at 180 days and must be rotated before then (`rotate-mtls-api-key.md`). Either way, PRD §12/§14 requires the key live in a managed secret store, never in config files, with rotation support.
