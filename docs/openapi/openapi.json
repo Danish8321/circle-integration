@@ -233,6 +233,162 @@
         }
       }
     },
+    "/v1/sub-accounts/{subAccountId}/recipients/{recipientId}": {
+      "get": {
+        "tags": [
+          "RecipientDetail"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "recipientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/recipients": {
+      "get": {
+        "tags": [
+          "Recipients"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "RegisterRecipient"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRecipientRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRecipientRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRecipientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/transactions/{transactionId}": {
       "get": {
         "tags": [
@@ -820,6 +976,73 @@
           }
         }
       },
+      "RecipientResponse": {
+        "required": [
+          "id",
+          "subAccountId",
+          "chain",
+          "address",
+          "label",
+          "circleRecipientId",
+          "status",
+          "createdAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chain": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "circleRecipientId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/RecipientStatus"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RecipientStatus": {
+        "type": "integer"
+      },
+      "RegisterRecipientRequest": {
+        "required": [
+          "chain",
+          "address",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "chain": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
       "ResubmitEntityRegistrationRequest": {
         "required": [
           "businessName",
@@ -1053,6 +1276,15 @@
     },
     {
       "name": "DepositAddresses"
+    },
+    {
+      "name": "RecipientDetail"
+    },
+    {
+      "name": "Recipients"
+    },
+    {
+      "name": "RegisterRecipient"
     },
     {
       "name": "TransactionDetail"

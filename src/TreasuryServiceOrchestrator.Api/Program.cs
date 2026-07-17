@@ -13,6 +13,7 @@ using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -65,6 +66,14 @@ builder.Services.AddScoped<GenerateDepositAddressCommandHandler>();
 builder.Services.AddScoped<ListDepositAddressesQueryHandler>();
 builder.Services.AddScoped<IValidator<GenerateDepositAddressCommand>, GenerateDepositAddressCommandValidator>();
 
+builder.Services.AddScoped<IRecipientRepository, RecipientRepository>();
+builder.Services.AddScoped<RegisterRecipientCommandHandler>();
+builder.Services.AddScoped<ListRecipientsQueryHandler>();
+builder.Services.AddScoped<GetRecipientQueryHandler>();
+builder.Services.AddScoped<
+    ICommandHandler<ProcessRecipientDecisionCommand, ProcessRecipientDecisionResult>, ProcessRecipientDecisionHandler>();
+builder.Services.AddScoped<IValidator<RegisterRecipientCommand>, RegisterRecipientCommandValidator>();
+
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<IBalanceSnapshotRepository, BalanceSnapshotRepository>();
 builder.Services.AddScoped<IFundAccountRepository, FundAccountRepository>();
@@ -80,6 +89,7 @@ builder.Services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
 builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
 builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor>();
+builder.Services.AddScoped<IWebhookTopicProcessor, AddressBookRecipientsWebhookTopicProcessor>();
 builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));

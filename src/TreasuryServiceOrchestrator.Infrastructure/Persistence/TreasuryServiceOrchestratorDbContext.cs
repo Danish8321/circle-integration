@@ -16,6 +16,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<BalanceSnapshot> BalanceSnapshots => Set<BalanceSnapshot>();
     public DbSet<FundAccount> FundAccounts => Set<FundAccount>();
+    public DbSet<Recipient> Recipients => Set<Recipient>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -114,6 +115,19 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
                 balance.Property(x => x.Amount).HasColumnName("Balance").HasPrecision(28, 8);
                 balance.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
             });
+        });
+
+        modelBuilder.Entity<Recipient>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.Chain).IsRequired().HasMaxLength(32);
+            entity.Property(x => x.Address).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.Label).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.CircleRecipientId).HasMaxLength(64);
+            entity.Property(x => x.DenialReason).HasMaxLength(500);
+            entity.HasIndex(x => x.CircleRecipientId);
+            entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
         });
     }
 }
