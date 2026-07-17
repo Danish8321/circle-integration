@@ -81,18 +81,82 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
         return new CreatedTransfer(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
     }
 
-    public Task<CreatedRedeem> RedeemAsync(
-        RedeemGatewayRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "CircleMintGateway.RedeemAsync is implemented in ticket 07.6.");
+    public async Task<CreatedRedeem> RedeemAsync(
+        RedeemGatewayRequest request, CancellationToken ct = default)
+    {
+        // docs/features/11-redemption-and-payouts.md §7 — `source` is always set explicitly,
+        // never omitted (CLAUDE.md invariant 12 hazard family: an omitted source silently
+        // debits the Distributor's Master Account wallet instead of the sub-account's).
+        var circleRequest = new RedeemCircleRequest
+        {
+            IdempotencyKey = request.IdempotencyKey,
+            Source = new RedeemCircleSource { Id = request.SourceWalletId },
+            Destination = new RedeemCircleDestination { Id = request.DestinationBankAccountId },
+        };
 
-    public Task<CreatedLinkedBankAccount> CreateLinkedBankAccountAsync(
-        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "CircleMintGateway.CreateLinkedBankAccountAsync is implemented in ticket 07.6.");
+        using var response = await httpClient.PostAsJsonAsync(
+            "v1/businessAccount/payouts", circleRequest, ct);
+        response.EnsureSuccessStatusCode();
 
-    public Task<WireInstructions> GetWireInstructionsAsync(
-        string circleBankAccountId, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "CircleMintGateway.GetWireInstructionsAsync is implemented in ticket 07.6.");
+        var envelope = await response.Content.ReadFromJsonAsync<RedeemCircleEnvelope>(ct)
+            ?? throw new InvalidOperationException("Circle returned an empty redeem response.");
+
+        return new CreatedRedeem(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
+    }
+
+    public async Task<CreatedLinkedBankAccount> CreateLinkedBankAccountAsync(
+        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default)
+    {
+        var circleRequest = new CreateLinkedBankAccountCircleRequest
+        {
+            IdempotencyKey = request.IdempotencyKey,
+            AccountNumber = request.AccountNumber,
+            RoutingNumber = request.RoutingNumber,
+            BillingDetails = new CreateLinkedBankAccountCircleBillingDetails
+            {
+                Name = request.BillingName,
+                City = request.BillingCity,
+                Country = request.BillingCountry,
+                Line1 = request.BillingLine1,
+                PostalCode = request.BillingPostalCode,
+                Line2 = request.BillingLine2,
+                District = request.BillingDistrict,
+            },
+            BankAddress = new CreateLinkedBankAccountCircleBankAddress
+            {
+                Country = request.BankAddressCountry,
+                BankName = request.BankAddressBankName,
+            },
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            "v1/businessAccount/banks/wires", circleRequest, ct);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content.ReadFromJsonAsync<CreateLinkedBankAccountCircleEnvelope>(ct)
+            ?? throw new InvalidOperationException("Circle returned an empty wire bank account response.");
+
+        return new CreatedLinkedBankAccount(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
+    }
+
+    public async Task<WireInstructions> GetWireInstructionsAsync(
+        string circleBankAccountId, CancellationToken ct = default)
+    {
+        using var response = await httpClient.GetAsync(
+            $"v1/businessAccount/banks/wires/{circleBankAccountId}/instructions", ct);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content.ReadFromJsonAsync<WireInstructionsCircleEnvelope>(ct)
+            ?? throw new InvalidOperationException("Circle returned an empty wire instructions response.");
+
+        return new WireInstructions(
+            envelope.Data.TrackingRef,
+            envelope.Data.Beneficiary.Name,
+            envelope.Data.Beneficiary.Address,
+            envelope.Data.BeneficiaryBank.Name,
+            envelope.Data.BeneficiaryBank.SwiftCode,
+            envelope.Data.BeneficiaryBank.RoutingNumber,
+            envelope.Data.BeneficiaryBank.AccountNumber,
+            envelope.Data.BeneficiaryBank.Currency);
+    }
 }

@@ -109,19 +109,76 @@ public sealed class MockStablecoinGateway(
     }
 
     public Task<CreatedRedeem> RedeemAsync(
-        RedeemGatewayRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "MockStablecoinGateway.RedeemAsync is implemented in ticket 07.6.");
+        RedeemGatewayRequest request, CancellationToken ct = default)
+    {
+        MaybeThrowProviderUnavailable();
+
+        var circleRedeemId = $"redeem-{randomSource.NewGuid():N}";
+
+        // Pure 1:1, no fee simulation (ticket 07.6) — fees/net are computed only at the
+        // payouts-webhook mapping edge, never here.
+        var envelope = new PayoutsWebhookEnvelope
+        {
+            Payout = new PayoutsWebhookPayout
+            {
+                Id = circleRedeemId,
+                Status = "complete",
+                Amount = request.GrossAmount.Amount.ToString(CultureInfo.InvariantCulture),
+                Fees = "0",
+                ToAmount = request.GrossAmount.Amount.ToString(CultureInfo.InvariantCulture),
+                Currency = request.GrossAmount.CurrencyCode,
+            },
+        };
+
+        webhookScheduler.Schedule(
+            "payouts",
+            JsonSerializer.Serialize(envelope),
+            TimeSpan.FromMilliseconds(options.Value.WebhookDelayMilliseconds));
+
+        return Task.FromResult(new CreatedRedeem(circleRedeemId, "pending"));
+    }
 
     public Task<CreatedLinkedBankAccount> CreateLinkedBankAccountAsync(
-        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "MockStablecoinGateway.CreateLinkedBankAccountAsync is implemented in ticket 07.6.");
+        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default)
+    {
+        MaybeThrowProviderUnavailable();
+
+        var circleBankAccountId = $"bank-account-{randomSource.NewGuid():N}";
+
+        var envelope = new WireWebhookEnvelope
+        {
+            Wire = new WireWebhookBankAccount
+            {
+                Id = circleBankAccountId,
+                Status = "complete",
+            },
+        };
+
+        webhookScheduler.Schedule(
+            "wire",
+            JsonSerializer.Serialize(envelope),
+            TimeSpan.FromMilliseconds(options.Value.WebhookDelayMilliseconds));
+
+        return Task.FromResult(new CreatedLinkedBankAccount(circleBankAccountId, "pending"));
+    }
 
     public Task<WireInstructions> GetWireInstructionsAsync(
-        string circleBankAccountId, CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "MockStablecoinGateway.GetWireInstructionsAsync is implemented in ticket 07.6.");
+        string circleBankAccountId, CancellationToken ct = default)
+    {
+        MaybeThrowProviderUnavailable();
+
+        var trackingRef = $"MOCK{circleBankAccountId[..Math.Min(10, circleBankAccountId.Length)].ToUpperInvariant()}";
+
+        return Task.FromResult(new WireInstructions(
+            trackingRef,
+            "Mock Beneficiary",
+            "1 Mock Street, Mock City",
+            "Mock Bank",
+            "MOCKUS33",
+            "021000021",
+            "****1234",
+            "USD"));
+    }
 
     private void MaybeThrowProviderUnavailable()
     {

@@ -31,6 +31,30 @@ public sealed class MockStablecoinGatewayTests
             Amount: new global::TreasuryServiceOrchestrator.Domain.Money(100m, "USDC"),
             IdempotencyKey: "transfer:sub-1:1");
 
+    private static RedeemGatewayRequest CreateRedeemRequest() =>
+        new(
+            IdempotencyKey: "redeem:sub-1:1",
+            SourceWalletId: "wallet-1",
+            DestinationBankAccountId: "bank-account-1",
+            GrossAmount: new Money(500m, "USD"));
+
+    private static CreateLinkedBankAccountGatewayRequest CreateLinkedBankAccountRequest() =>
+        new(
+            IdempotencyKey: "linked-bank-account:1",
+            BeneficiaryName: "Acme Corp",
+            AccountNumber: "123456789",
+            RoutingNumber: "021000021",
+            BankName: "Test Bank",
+            BillingName: "Acme Corp",
+            BillingCity: "New York",
+            BillingCountry: "US",
+            BillingLine1: "123 Main St",
+            BillingPostalCode: "10001",
+            BillingLine2: null,
+            BillingDistrict: null,
+            BankAddressCountry: "US",
+            BankAddressBankName: "Test Bank");
+
     private static MockStablecoinGateway CreateSut(
         double failureInjectionRate = 0.0,
         IMockRandomSource? randomSource = null,
@@ -198,5 +222,81 @@ public sealed class MockStablecoinGatewayTests
         var outcome = scheduler.Scheduled[1];
         var outcomeEnvelope = JsonSerializer.Deserialize<TransfersWebhookEnvelope>(outcome.PayloadJson)!;
         outcomeEnvelope.Transfer!.Status.Should().Be("failed");
+    }
+
+    [Fact]
+    public async Task RedeemAsync_FailureInjectionRateZero_ReturnsPendingAndSchedulesOnePayoutsWebhook()
+    {
+        var scheduler = new CapturingScheduler();
+        var sut = CreateSut(scheduler: scheduler);
+
+        var result = await sut.RedeemAsync(CreateRedeemRequest(), TestContext.Current.CancellationToken);
+
+        result.Status.Should().Be("pending");
+
+        scheduler.Scheduled.Should().ContainSingle();
+        var scheduled = scheduler.Scheduled[0];
+        scheduled.Topic.Should().Be("payouts");
+        scheduled.Delay.Should().Be(TimeSpan.FromMilliseconds(200));
+
+        var envelope = JsonSerializer.Deserialize<PayoutsWebhookEnvelope>(scheduled.PayloadJson)!;
+        envelope.Payout!.Id.Should().Be(result.CircleRedeemId);
+        envelope.Payout.Status.Should().Be("complete");
+        envelope.Payout.Amount.Should().Be("500");
+        envelope.Payout.Fees.Should().Be("0");
+        envelope.Payout.ToAmount.Should().Be("500");
+        envelope.Payout.Currency.Should().Be("USD");
+    }
+
+    [Fact]
+    public async Task RedeemAsync_FailureInjectionRateOne_ThrowsProviderUnavailable()
+    {
+        var sut = CreateSut(failureInjectionRate: 1.0);
+
+        var act = () => sut.RedeemAsync(CreateRedeemRequest(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ProviderUnavailableException>();
+    }
+
+    [Fact]
+    public async Task CreateLinkedBankAccountAsync_FailureInjectionRateZero_ReturnsPendingAndSchedulesCompleteWireWebhook()
+    {
+        var scheduler = new CapturingScheduler();
+        var sut = CreateSut(scheduler: scheduler);
+
+        var result = await sut.CreateLinkedBankAccountAsync(
+            CreateLinkedBankAccountRequest(), TestContext.Current.CancellationToken);
+
+        result.Status.Should().Be("pending");
+
+        scheduler.Scheduled.Should().ContainSingle();
+        var scheduled = scheduler.Scheduled[0];
+        scheduled.Topic.Should().Be("wire");
+        scheduled.Delay.Should().Be(TimeSpan.FromMilliseconds(200));
+
+        var envelope = JsonSerializer.Deserialize<WireWebhookEnvelope>(scheduled.PayloadJson)!;
+        envelope.Wire!.Id.Should().Be(result.CircleBankAccountId);
+        envelope.Wire.Status.Should().Be("complete");
+    }
+
+    [Fact]
+    public async Task CreateLinkedBankAccountAsync_FailureInjectionRateOne_ThrowsProviderUnavailable()
+    {
+        var sut = CreateSut(failureInjectionRate: 1.0);
+
+        var act = () => sut.CreateLinkedBankAccountAsync(
+            CreateLinkedBankAccountRequest(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<ProviderUnavailableException>();
+    }
+
+    [Fact]
+    public async Task GetWireInstructionsAsync_ReturnsDeterministicSyntheticResult()
+    {
+        var sut = CreateSut();
+
+        var result = await sut.GetWireInstructionsAsync("bank-account-abcdefghij", TestContext.Current.CancellationToken);
+
+        result.TrackingRef.Should().Be("MOCKBANK-ACCOU");
     }
 }
