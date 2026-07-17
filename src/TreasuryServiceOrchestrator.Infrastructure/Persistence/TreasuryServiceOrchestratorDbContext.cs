@@ -12,6 +12,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<WebhookInboxEntry> WebhookInboxEntries => Set<WebhookInboxEntry>();
+    public DbSet<DepositAddress> DepositAddresses => Set<DepositAddress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +56,16 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.CircleEventId).IsRequired().HasMaxLength(128);
             entity.HasIndex(x => x.CircleEventId).IsUnique();
             entity.Property(x => x.ProcessingResult).HasMaxLength(16);
+        });
+
+        modelBuilder.Entity<DepositAddress>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Chain).IsRequired().HasMaxLength(32);
+            entity.Property(x => x.Currency).IsRequired().HasMaxLength(16);
+            entity.Property(x => x.Address).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.CircleAddressId).HasMaxLength(64);
+            entity.HasIndex(x => new { x.SubAccountId, x.Chain, x.Currency }).IsUnique();
         });
     }
 }
