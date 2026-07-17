@@ -1,4 +1,11 @@
-Status: open
+Status: resolved
+
+## Solidified 2026-07-17 grilling
+
+Spec `docs/features/12-admin-cross-tenant-views.md` is exhaustive — all design points already
+closed in its own §5 (real `GetMainWalletBalanceAsync` implementation vs. Task-12-snippet's `0m`
+stub, Moq vs. NSubstitute, shipped-vs-snippet `SubAccountDetailsResult` shape drift, three
+`/master-account/*` sub-routes confirmed out of scope). No new ambiguity found this pass.
 
 Source: `docs/features/12-admin-cross-tenant-views.md` (old source `docs/Phase_1_Feature_Slices.md`
 Task 12, deleted 2026-07-17 — superseded by the per-feature doc restructure).
