@@ -84,7 +84,7 @@ method bag in a shared service class.
 - `check.sh [$FILE]` — build (warnings-as-errors + analyzers) the owning `.csproj`; non-zero = blocked.
 - `test-fast.sh [$SCOPE]` — unit tests only, under 60s.
 - `test-full.sh` — integration + e2e against Testcontainers SQL Server, may be slow.
-- `contract.sh` — emit OpenAPI doc, regenerate Angular client, diff generated dir (stubbed until Angular project exists).
+- `contract.sh` — emit OpenAPI doc (build-time, in-process via `Microsoft.Extensions.ApiDescription.Server`; no running server/loopback), regenerate Angular client, diff generated dir (client step stubbed until Angular project exists).
 - `e2e.sh [$SPEC]` — Playwright against `run.sh` (stubbed until a client/flow exists).
 - `format.sh $FILE` — `dotnet format` in place, always exits 0.
 - `run.sh` — start the full stack locally (API only today; extend once Infrastructure needs a real DB).
