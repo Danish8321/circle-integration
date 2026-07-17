@@ -2,5 +2,4 @@ bin/
 obj/
 *.user
 .vs/
-.scratch/
 docs/circle-mint-docs/graphify-out/cache/
