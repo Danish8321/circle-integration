@@ -1,0 +1,45 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+csharp_new_line_before_open_brace = all
+csharp_indent_case_contents = true
+csharp_style_namespace_declarations = file_scoped:error
+
+[*.{csproj,props,targets}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+# --- Analyzer severities: enforced at build time via TreatWarningsAsErrors, not IDE-only hints ---
+
+[*.cs]
+# MA0004 (ConfigureAwait) targets library code guarding against SynchronizationContext deadlocks.
+# ASP.NET Core has no SynchronizationContext since .NET Core — the rule is noise on Api/Infrastructure
+# host code. Domain/Application libraries should still favor ConfigureAwait(false); enforce there only.
+dotnet_diagnostic.MA0004.severity = none
+
+# S6966 (await RunAsync instead of Run) — kept as error; Program.cs must await the host lifetime.
+dotnet_diagnostic.S6966.severity = error
+
+# S2094 (empty class) — kept as error; no placeholder/empty types survive a commit.
+dotnet_diagnostic.S2094.severity = error
+
+# CA1716 (namespace/identifier collides with a reserved keyword in another .NET language,
+# e.g. VB's `Shared`) — this repo has no VB.NET consumers, so the interop concern doesn't
+# apply, and B0.5 already named an Application module "Shared". Suppressed repo-wide rather
+# than fought file-by-file.
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1707 (underscores in identifiers) — test methods use the Given_When_Then / Method_Scenario_Result
+# naming convention for readability; scoped to tests/ only, production code still forbids underscores.
+[tests/**.cs]
+dotnet_diagnostic.CA1707.severity = none

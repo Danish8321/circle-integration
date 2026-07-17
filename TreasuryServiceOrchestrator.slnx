@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TreasuryServiceOrchestrator.Api/TreasuryServiceOrchestrator.Api.csproj" />
+    <Project Path="src/TreasuryServiceOrchestrator.Application/TreasuryServiceOrchestrator.Application.csproj" />
+    <Project Path="src/TreasuryServiceOrchestrator.Domain/TreasuryServiceOrchestrator.Domain.csproj" />
+    <Project Path="src/TreasuryServiceOrchestrator.Infrastructure/TreasuryServiceOrchestrator.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TreasuryServiceOrchestrator.ArchitectureTests/TreasuryServiceOrchestrator.ArchitectureTests.csproj" />
+    <Project Path="tests/TreasuryServiceOrchestrator.IntegrationTests/TreasuryServiceOrchestrator.IntegrationTests.csproj" />
+    <Project Path="tests/TreasuryServiceOrchestrator.UnitTests/TreasuryServiceOrchestrator.UnitTests.csproj" />
+  </Folder>
+</Solution>

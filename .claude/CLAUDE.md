@@ -1,5 +1,7 @@
 # TreasuryServiceOrchestrator — tech layer
 
+@CONTEXT.md
+
 Greenfield: no code yet. Rules below come from `docs/PRD.md`, `docs/Phase_1_Feature_Slices.md`
 (B0.5 module-boundaries decision, 2026-07-16), `docs/Phase_3_Circle_Integration_Plan.md`.
 Items marked **(assumed)** aren't nailed down in docs — tighten/replace once real code lands.

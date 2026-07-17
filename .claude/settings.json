@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sh .claude/scripts/format.sh:*)",
+      "Bash(sh .claude/scripts/check.sh:*)",
+      "Bash(sh .claude/scripts/test-fast.sh:*)",
+      "Bash(sh .claude/scripts/test-full.sh:*)",
+      "Bash(sh .claude/scripts/contract.sh:*)",
+      "Bash(sh .claude/scripts/schema.sh verify:*)",
+      "Bash(sh .claude/scripts/run.sh:*)",
+      "Bash(sh .claude/scripts/e2e.sh:*)"
+    ],
+    "ask": [
+      "Bash(dotnet add package:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(sh .claude/scripts/schema.sh new:*)",
+      "Bash(sh .claude/scripts/schema.sh apply:*)",
+      "Bash(dotnet tool run dotnet-ef database update:*)"
+    ]
+  }
+}
