@@ -6,16 +6,24 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5068/"
+      "url": "http://localhost/"
     }
   ],
   "paths": {
-    "/WeatherForecast": {
+    "/v1/sub-accounts": {
       "get": {
         "tags": [
-          "WeatherForecast"
+          "SubAccounts"
         ],
-        "operationId": "GetWeatherForecast",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -24,7 +32,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/WeatherForecast"
+                    "$ref": "#/components/schemas/SubAccountResponse"
                   }
                 }
               },
@@ -32,7 +40,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/WeatherForecast"
+                    "$ref": "#/components/schemas/SubAccountResponse"
                   }
                 }
               },
@@ -40,8 +48,228 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/WeatherForecast"
+                    "$ref": "#/components/schemas/SubAccountResponse"
                   }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SubAccounts"
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubAccountRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubAccountRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSubAccountResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSubAccountResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSubAccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{clientCompanyId}": {
+      "get": {
+        "tags": [
+          "SubAccounts"
+        ],
+        "parameters": [
+          {
+            "name": "clientCompanyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubAccountResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubAccountResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubAccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{clientCompanyId}/registrations": {
+      "post": {
+        "tags": [
+          "SubAccounts"
+        ],
+        "parameters": [
+          {
+            "name": "clientCompanyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResubmitEntityRegistrationRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResubmitEntityRegistrationRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/ResubmitEntityRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResubmitEntityRegistrationResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResubmitEntityRegistrationResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResubmitEntityRegistrationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{clientCompanyId}/disabled": {
+      "put": {
+        "tags": [
+          "SubAccounts"
+        ],
+        "parameters": [
+          {
+            "name": "clientCompanyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSubAccountDisabledRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSubAccountDisabledRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSubAccountDisabledRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetSubAccountDisabledResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetSubAccountDisabledResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetSubAccountDisabledResponse"
                 }
               }
             }
@@ -52,30 +280,218 @@
   },
   "components": {
     "schemas": {
-      "WeatherForecast": {
+      "CreateSubAccountRequest": {
+        "required": [
+          "clientCompanyId",
+          "businessName",
+          "businessUniqueIdentifier",
+          "identifierIssuingCountryCode",
+          "country",
+          "state",
+          "city",
+          "postcode",
+          "streetName",
+          "buildingNumber"
+        ],
         "type": "object",
         "properties": {
-          "date": {
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "businessName": {
+            "type": "string"
+          },
+          "businessUniqueIdentifier": {
+            "type": "string"
+          },
+          "identifierIssuingCountryCode": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": "string"
+          },
+          "streetName": {
+            "type": "string"
+          },
+          "buildingNumber": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateSubAccountResponse": {
+        "required": [
+          "subAccountId",
+          "clientCompanyId",
+          "circleWalletId",
+          "lifecycleState"
+        ],
+        "type": "object",
+        "properties": {
+          "subAccountId": {
             "type": "string",
-            "format": "date"
+            "format": "uuid"
           },
-          "temperatureC": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "circleWalletId": {
+            "type": "string"
+          },
+          "lifecycleState": {
+            "type": "string"
+          }
+        }
+      },
+      "ResubmitEntityRegistrationRequest": {
+        "required": [
+          "businessName",
+          "businessUniqueIdentifier",
+          "identifierIssuingCountryCode",
+          "country",
+          "state",
+          "city",
+          "postcode",
+          "streetName",
+          "buildingNumber"
+        ],
+        "type": "object",
+        "properties": {
+          "businessName": {
+            "type": "string"
+          },
+          "businessUniqueIdentifier": {
+            "type": "string"
+          },
+          "identifierIssuingCountryCode": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": "string"
+          },
+          "streetName": {
+            "type": "string"
+          },
+          "buildingNumber": {
+            "type": "string"
+          }
+        }
+      },
+      "ResubmitEntityRegistrationResponse": {
+        "required": [
+          "subAccountId",
+          "clientCompanyId",
+          "registrationId",
+          "lifecycleState",
+          "registrationStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "registrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lifecycleState": {
+            "type": "string"
+          },
+          "registrationStatus": {
+            "type": "string"
+          }
+        }
+      },
+      "SetSubAccountDisabledRequest": {
+        "required": [
+          "disabled"
+        ],
+        "type": "object",
+        "properties": {
+          "disabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SetSubAccountDisabledResponse": {
+        "required": [
+          "subAccountId",
+          "clientCompanyId",
+          "isDisabled"
+        ],
+        "type": "object",
+        "properties": {
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "isDisabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SubAccountResponse": {
+        "required": [
+          "subAccountId",
+          "clientCompanyId",
+          "lifecycleState",
+          "isDisabled",
+          "circleWalletId",
+          "latestRegistrationStatus",
+          "registrationRejectionReason"
+        ],
+        "type": "object",
+        "properties": {
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "lifecycleState": {
+            "type": "string"
+          },
+          "isDisabled": {
+            "type": "boolean"
+          },
+          "circleWalletId": {
             "type": [
-              "integer",
+              "null",
               "string"
-            ],
-            "format": "int32"
+            ]
           },
-          "temperatureF": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
+          "latestRegistrationStatus": {
             "type": [
-              "integer",
+              "null",
               "string"
-            ],
-            "format": "int32"
+            ]
           },
-          "summary": {
+          "registrationRejectionReason": {
             "type": [
               "null",
               "string"
@@ -87,7 +503,7 @@
   },
   "tags": [
     {
-      "name": "WeatherForecast"
+      "name": "SubAccounts"
     }
   ]
 }
