@@ -212,6 +212,7 @@ The entity-scoped `trackingRef` is the routing mechanism for institutional fundi
 | List / get wire bank accounts | `GET /v1/businessAccount/banks/wires`, `GET /v1/businessAccount/banks/wires/{id}` |
 | Distributor wire instructions | `GET /v1/businessAccount/banks/wires/{id}/instructions` |
 | Entity-scoped wire instructions | `GET /v1/businessAccount/banks/wires/{id}/instructions?walletId={entity walletId}` |
+| Bank-account verification events | `wire` webhook topic (`pending → complete | failed`, added 2026-07-17) |
 
 ---
 
@@ -230,10 +231,12 @@ The entity-scoped `trackingRef` is the routing mechanism for institutional fundi
 
 ### 6.2 Deposit crediting workflow
 
-Two funding paths converge on the same webhook-driven credit:
+Two funding paths converge on the same webhook-driven credit, but arrive on **different webhook topics** (verified against live Circle docs 2026-07-17):
 
-- **Fiat wire**: end client wires fiat quoting the entity-scoped `trackingRef` (§5); the provider mints the equivalent USDC into the entity wallet.
-- **On-chain**: sender transfers USDC to an entity deposit address.
+- **Fiat wire**: end client wires fiat quoting the entity-scoped `trackingRef` (§5); the provider mints the equivalent USDC into the entity wallet. Observed on the **`deposits`** topic and listed via `GET /v1/businessAccount/deposits` (that endpoint returns fiat wire deposits **only** — its `type` filter accepts only `wire`).
+- **On-chain**: sender transfers USDC to an entity deposit address. Observed on the **`transfers`** topic (direction blockchain → wallet; the `transfers` topic fires for transfers in either direction) and listed via `GET /v1/businessAccount/transfers` filtered to the entity wallet as destination. There is **no** on-chain record in the `deposits` endpoint or topic.
+
+Both paths produce the same local ledger effect: a `Deposit` transaction with `DepositSourceType` `Wire` or `OnChain` respectively.
 
 ```mermaid
 sequenceDiagram
@@ -243,7 +246,7 @@ sequenceDiagram
     participant P as Consumer app / Portal
     X->>C: wire fiat (trackingRef) or on-chain USDC (deposit address)
     Note over C: settlement / confirmations
-    C--)T: webhook deposits { destination.id = walletId, status }
+    C--)T: webhook deposits (fiat) or transfers (on-chain, destination = walletId)
     T->>T: verify, dedup, persist event,<br/>credit local ledger, snapshot balance, audit
     P->>T: List deposits / Get balance
     T-->>P: credited deposit, updated balance
@@ -255,10 +258,12 @@ Deposit status mirrors the provider: `pending → complete | failed`. A deposit 
 
 | Product operation | Circle endpoint |
 |---|---|
-| Generate deposit address | `POST /v1/businessAccount/wallets/addresses/deposit` (body `walletId`) |
+| Generate deposit address | `POST /v1/businessAccount/wallets/addresses/deposit?walletId=…` (`walletId` is a **query param** — corrected 2026-07-17; omitting it targets the Master Account wallet) |
 | List deposit addresses | `GET /v1/businessAccount/wallets/addresses/deposit?walletId=…` |
-| List deposits | `GET /v1/businessAccount/deposits?walletId=…` |
-| Deposit settlement events | `deposits` webhook topic |
+| List fiat (wire) deposits | `GET /v1/businessAccount/deposits?walletId=…` (fiat wire only) |
+| List on-chain deposits | `GET /v1/businessAccount/transfers?destinationWalletId=…` (incoming direction) |
+| Fiat deposit settlement events | `deposits` webhook topic |
+| On-chain deposit settlement events | `transfers` webhook topic (blockchain → wallet direction) |
 
 ---
 
@@ -272,7 +277,9 @@ Outbound on-chain transfers are a **two-stage workflow**. The product models bot
 
 1. Caller registers a destination blockchain address as a **recipient** for the sub-account.
 2. The provider requires the address to be **manually approved by an account administrator in the Circle Mint Console** — an out-of-band human step.
-3. Approval is signaled by the `addressBookRecipients` webhook (`active` status); the API exposes recipient status (`pending_approval → active | denied`) so consumers can wait/poll.
+3. Approval is signaled by the `addressBookRecipients` webhook (`active` status); the API exposes recipient status (product states `PendingApproval → Active | Denied`) so consumers can wait/poll.
+
+> Provider status literals (verified 2026-07-17): Circle's REST response and webhook payloads use **differing vocabularies** — REST documents `pending_verification | verification_succeeded | active`; the webhook page documents `pending | inactive | active | denied` (`inactive` = delayed-withdrawals holding period). The product maps any not-yet-`active`, not-`denied` provider literal to `PendingApproval`; `denied` maps to `Denied`; only `active` maps to `Active`. Unknown literals are treated as still-pending and logged, never crash the processor.
 
 ### 7.2 Stage B — transfer execution
 
@@ -281,7 +288,7 @@ Outbound on-chain transfers are a **two-stage workflow**. The product models bot
 | Register recipient address | Admin, owning SubAccount | Stage A step 1. |
 | List / get recipients | Admin, owning SubAccount | Includes approval status. |
 | Create outbound transfer | Admin, owning SubAccount | Idempotent (caller-supplied idempotency key). Source = sub-account's wallet; destination must be an `active` recipient. Rejected if sub-account not `Active` or recipient not approved. |
-| List / get transfers | Admin, owning SubAccount | Local ledger; status via `transfers` webhook: `pending → complete | failed`. |
+| List / get transfers | Admin, owning SubAccount | Local ledger; status via `transfers` webhook. Provider emits `pending → running → complete | failed` (one event per transition, verified 2026-07-17); the product maps `running` → `Pending` (no-op transition), so the consumer-facing state machine stays `Pending → Complete | Failed`. |
 
 There is no provider-supported cancel for a submitted transfer.
 
@@ -297,7 +304,7 @@ sequenceDiagram
     H->>C: approve address in Mint Console (out-of-band)
     C--)T: webhook addressBookRecipients { active }
     P->>T: Create transfer (idempotency key)
-    T->>C: POST /v1/businessAccount/transfers { source: wallet(walletId), destination: addressId }
+    T->>C: POST /v1/businessAccount/transfers { source: wallet(walletId), destination: { type: verified_blockchain, addressId } }
     C--)T: webhook transfers { complete | failed }
     T->>T: ledger update, snapshot, audit
 ```
@@ -308,11 +315,13 @@ sequenceDiagram
 |---|---|
 | Register recipient | `POST /v1/businessAccount/wallets/addresses/recipient` |
 | Recipient approval events | `addressBookRecipients` webhook topic |
-| Create transfer | `POST /v1/businessAccount/transfers` (`source.type: wallet`, `source.id: walletId`) |
+| Create transfer | `POST /v1/businessAccount/transfers` (`source.type: wallet`, `source.id: walletId`; `destination: { type: "verified_blockchain", addressId }` — verified 2026-07-17) |
 | List transfers | `GET /v1/businessAccount/transfers?walletId=…` (or `sourceWalletId`/`destinationWalletId`) |
 | Transfer status events | `transfers` webhook topic |
 
 Travel Rule note (verified against live Circle docs 2026-07-16): Travel Rule applies to `POST /v1/businessAccount/transfers` too, not only `POST /v1/payouts` — Circle's own reference describes coverage as "Stablecoin Payouts and the third-party transfers booked through the Circle Mint Core API." But `POST /v1/businessAccount/transfers` carries **no originator identity fields in its request body** (`source` is just `{ id, type: "wallet" }`; `identities` appears only in the response). Compliance is satisfied structurally, not per-call: the Distributor's identity on file plus the recipient-verification step (§7.1's Mint Console approval) is what Circle's Travel Rule engine consumes. The product must not attempt to submit originator name/address on `CreateTransfer` — there is no field for it.
+
+**`source` omission hazard (verified 2026-07-17):** `source` is *optional* on both `POST /v1/businessAccount/transfers` and `POST /v1/businessAccount/payouts` — omitting it debits the **Distributor's primary (Master Account) wallet**. The gateway must therefore set `source` explicitly on every call; a request built without it silently spends Distributor funds instead of the sub-account's. This is a hard invariant with a dedicated test, not a convention.
 
 ---
 
@@ -327,7 +336,7 @@ Redeem USDC from a sub-account's wallet back to fiat, paid by wire to a verified
 | Create redemption | Admin, owning SubAccount | Idempotent. Source = sub-account wallet; destination = verified LinkedBankAccount. Rejected if sub-account not `Active`. |
 | List / get redemptions | Admin, owning SubAccount | Status via `payouts` webhook: `pending → complete | failed`. |
 
-**Fee handling is explicit.** The provider deducts its Institutional Direct flat fee at the point of redemption, so the settled `toAmount` is net of fees and differs from the requested `amount`. The ledger records all three figures from the payout event — gross `amount`, `fees`, and net `toAmount` — and history/reporting queries expose them separately.
+**Fee handling is explicit.** The provider deducts its Institutional Direct flat fee at the point of redemption, so the settled net differs from the requested `amount`. The ledger always records three figures — gross, fees, net — and history/reporting queries expose them separately. **`toAmount` is optional on the payout resource** (verified 2026-07-17: Circle's reference marks it optional, "used when requesting currency exchange", though the institutional how-to shows it on a plain redemption): net is taken from `toAmount` when present, otherwise **computed as `amount − fees`**. The ledger shape is invariant; only the source of the net figure varies.
 
 There is no provider-supported cancel once a redemption is submitted.
 
@@ -395,7 +404,7 @@ Circle Mint delivers notifications on the **v1 (SNS-based) scheme**: subscriptio
 
 Requirements:
 
-1. **Subscribed topics**: `externalEntities`, `deposits`, `transfers`, `payouts`, `addressBookRecipients`.
+1. **Processed topics**: `externalEntities`, `deposits`, `transfers`, `payouts`, `addressBookRecipients`, and `wire` (linked-bank-account verification lifecycle `pending → complete | failed` — added 2026-07-17; without it the product never learns a LinkedBankAccount became usable). Note the v1 subscription itself has no topic filter — it delivers *all* account events; topic selection is application-side dispatch, and unhandled topics are stored + acknowledged, not errors.
 2. **Signature verification** on every delivery; unverifiable messages are rejected and logged.
 3. **Deduplication** by provider event id — deliveries are at-least-once.
 4. **Durable event store**: every delivery persisted with raw payload, verification result, and processing status before side effects run.
@@ -448,7 +457,7 @@ Outbound provider calls run with timeouts, bounded retry with backoff (idempoten
 
 Because deposit crediting is **webhook-driven**, a silently missed webhook means funds settle at the provider with no ledger record — a ledger-vs-custody drift that is unacceptable for client money. A scheduled reconciliation job therefore:
 
-1. Lists recent provider-side deposits, transfers, and payouts per wallet.
+1. Lists recent provider-side deposits, transfers, and payouts per wallet. Deposit coverage requires **two** listing calls per wallet (verified 2026-07-17): `GET /v1/businessAccount/deposits?walletId=…` for fiat wire deposits, and `GET /v1/businessAccount/transfers` filtered to the wallet as destination for on-chain deposits — the deposits endpoint carries no on-chain records.
 2. Cross-checks each against the local ledger.
 3. Credits/updates late (self-heals) where the provider record is unambiguous, and **alerts** on any mismatch it cannot resolve (amount/status divergence, unknown wallet).
 4. Also serves as the fallback for missed `externalEntities` decisions (polls pending registrations past a staleness threshold).
@@ -584,7 +593,7 @@ In scope (all of it must work together, not as isolated endpoints):
 | List external entities | `GET /v1/externalEntities` | filter `businessUniqueIdentifier` |
 | Entity wire instructions | `GET /v1/businessAccount/banks/wires/{id}/instructions?walletId=…` | query |
 | Create wire bank account | `POST /v1/businessAccount/banks/wires` | n/a |
-| Generate deposit address | `POST /v1/businessAccount/wallets/addresses/deposit` | body |
+| Generate deposit address | `POST /v1/businessAccount/wallets/addresses/deposit?walletId=…` | query (corrected 2026-07-17; omitted = Master Account) |
 | List deposit addresses | `GET /v1/businessAccount/wallets/addresses/deposit?walletId=…` | query |
 | Register recipient address | `POST /v1/businessAccount/wallets/addresses/recipient` | n/a |
 | Create transfer | `POST /v1/businessAccount/transfers` | body (`source.id`) |

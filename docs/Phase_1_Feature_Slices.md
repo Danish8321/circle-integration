@@ -8,6 +8,20 @@
 
 **Tech Stack:** .NET 10, ASP.NET Core Controllers, EF Core 10 (SQL Server / LocalDB), FluentValidation, xUnit v3 on Microsoft Testing Platform, Serilog, OpenTelemetry (optional).
 
+## Module Boundaries (decided 2026-07-16)
+
+Application/Domain code is organized into four named module sub-namespaces, not a flat `Application/Ports` bag:
+
+| Module | Owns | PRD sections |
+|---|---|---|
+| `Compliance` | SubAccount, EntityRegistration lifecycle | §3, §4 |
+| `Ledger` | Wallet, DepositAddress, Transaction, BalanceSnapshot, transfers, redemptions, balances | §6, §7, §8, §9 |
+| `Webhooks` | Durable inbox, dedup, per-topic processors, notification outbox | §10, §10.1 |
+| `Admin` | Cross-tenant/master-account read views | §2.5 |
+| `Shared` | Cross-cutting auth (`ICallerContext`, `TenantScopeResolver`), cross-module provider port (`IStablecoinGateway`), shared config (`SupportedChainsOptions`) | n/a |
+
+Every task below that says `Application/Ports/*.cs` or a flat `Application/Ledger/*.cs` path means "place under `Application/<Module>/Ports/*.cs` or `Application/<Module>/*.cs` per the table above" — e.g. `ISubAccountGateway.cs`/`ISubAccountRepository.cs` → `Application/Compliance/Ports/`, `ITransactionRepository.cs`/`ProcessDepositCommand` → `Application/Ledger/Ports/` and `Application/Ledger/`. Where a type is shared across modules (e.g. `GatewayDtos.cs` if it holds both compliance and ledger DTOs), split it per-module rather than keeping one shared file. Full modular-monolith isolation (separate persistence/deployment per module) is explicitly **not** adopted — see `architecture_module_boundaries` decision; this is namespace/folder discipline only, still one deployable, one `DbContext`.
+
 ## Global Constraints
 
 - `net10.0`, `Nullable=enable`, `TreatWarningsAsErrors=true` (`Directory.Build.props`) — never override per-project.
@@ -26,6 +40,21 @@
 - Outbound transfer commands must **not** attempt to carry FinCEN Travel Rule originator name/address fields — `POST /v1/businessAccount/transfers` has no such request field (PRD §7.3, verified against live Circle docs 2026-07-16); Travel Rule compliance for transfers is satisfied structurally via account-on-file identity + recipient verification (§7.1), not per-call data.
 - `dotnet build` must show 0 warnings and `dotnet test` must be fully green after every task's commit.
 
+## Corrections from doc-grilling 2026-07-17 (verified against live Circle docs)
+
+These override any contradicting snippet below. Where Phase 1 code already exists, each is a defect to fix, not just a doc change.
+
+1. **Recipient status literals (Task 9).** `pending_approval` is an invented literal — Circle's REST enum is `pending_verification | verification_succeeded | active`; its webhook vocabulary is `pending | inactive | active | denied`. The status mapper must **not throw on unknown literals**: map `active` → `Active`, `denied` → `Denied`, anything else → `PendingApproval` (log it). Mock gateway/emitter should use the real literals (`pending_verification` on create, webhook `active`/`denied` on decision).
+2. **Transfer `running` status (Tasks 6, 10).** Real `transfers` webhooks emit one event per transition: `pending → running → complete | failed`. Mapper already handles `running` (maps to `Pending` per PRD §7.2 — product state machine unchanged); the mock emitter must simulate the `running` intermediate event and support a `failed` outcome so the no-op transition is actually exercised.
+3. **Payout net field (Tasks 6, 11).** The real field is **`toAmount`** (not `netAmount`) and it is **optional**. Webhook payload DTO: rename to `ToAmount`, make it nullable, and never throw when absent — net = `toAmount` when present, else computed `amount − fees` (PRD §8). `ProcessPayoutStatusCommand` keeps a non-nullable net, computed at the mapping edge.
+4. **Transfer destination shape (Task 10 gateway DTO).** Real request body: `destination: { type: "verified_blockchain", addressId: <recipient UUID> }`. `CreateTransferGatewayRequest.DestinationRecipientId` carries what becomes `addressId` — record this so Phase 3's real client doesn't guess.
+5. **On-chain deposits arrive on the `transfers` topic, not `deposits` (Tasks 6, 8).** Circle's `deposits` topic/endpoint is **fiat wire only**; the invented `sourceType` discriminator on the deposits payload does not exist. Correct model: `deposits` webhook → fiat wire deposit (`DepositSourceType.Wire`); `transfers` webhook with `destination` = one of our wallets → on-chain deposit (`DepositSourceType.OnChain`) — the transfers processor must branch on direction: incoming = deposit credit via `ProcessDepositCommand`, outgoing = transfer status update. Mock emitter must emit each on its real topic. (Also fixes the unspecified mock `deposits`-topic emission the Task 14 E2E depends on.)
+6. **`wire` webhook topic missing (Task 11).** Linked-bank-account verification is **asynchronous** — the claim that Circle's create endpoint completes verification synchronously is wrong. Real lifecycle arrives on the `wire` topic (`pending → complete | failed`). Add a `wire` topic processor updating `LinkedBankAccountStatus`; mock gateway returns `pending` on create and the emitter schedules the `complete`/`failed` `wire` webhook.
+7. **Webhook payload DTOs must match real Circle notification shapes (decided 2026-07-17, all webhook tasks).** The plan's flat payload DTOs (e.g. `CircleDepositWebhookPayload(..., string SourceType, decimal Amount, string Currency)`) are invented. Real deliveries are an SNS `Notification` whose `Message` string contains Circle's envelope `{ clientId, notificationType, version, <resource>: {...} }` with nested money objects carrying **string** amounts (`{"amount": "1000.00", "currency": "USD"}`). The inbox unwraps `Message`; per-topic processors deserialize the real envelope/resource shapes; the mock emitter emits exactly those shapes. This is what makes Phase 3's "pipeline reused unchanged" claim true — see `docs/adr/0007-mock-emits-real-provider-shapes.md`.
+8. **`DepositSourceType` members are `Wire | OnChain` (decided 2026-07-17).** `Wire` matches Circle's own literal (`source.type: "wire"`); any `FiatWire` spelling in snippets below is superseded.
+9. **Deposit-address generation needs an idempotency key after all (Task 7).** The real `POST /v1/businessAccount/wallets/addresses/deposit` **requires** a body `idempotencyKey` (UUID v4; `walletId` is a query param — verified 2026-07-17). Task 7's find-or-create alone can't survive a crash between the provider call and the local save (retry would mint a second provider address). Fix: `GenerateDepositAddressGatewayRequest` gains `string IdempotencyKey`; the handler reserves a generated key in the existing idempotency table (keyed by `(SubAccountId, Chain, Currency)`-derived scope) before the gateway call and reuses it on retry — the same reserve → call → complete pattern as every other mutating handler, just with a system-generated key instead of a caller-supplied one. The `(SubAccountId, Chain, Currency)` unique index stays as the local dedup.
+10. **Chain allow-list cross-check is now done (Task 7 note).** Live chain enum (verified 2026-07-17): `ALGO, APTOS, ARB, ARC, AVAX, BASE, BTC, CELO, CODEX, ETH, HBAR, HYPEREVM, INK, LINEA, NEAR, NOBLE, OP, PLUME, PAH, POLY, SEI, SOL, SONIC, SUI, UNI, WORLDCHAIN, XDC, XLM, XRP, ZKS, ZKSYNC` (`ARC` sandbox-only). Default `["ETH"]` is valid; the allow-list mechanism stands.
+
 ---
 
 ## Task 1: Caller registry with roles (Admin | SubAccount)
@@ -35,7 +64,7 @@ Replaces the flat `KnownClientCompaniesOptions : List<string>` / `KnownClientCom
 **Files:**
 - Modify: `src/TreasuryServiceOrchestrator.Api/Middleware/KnownClientCompaniesRegistry.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Middleware/ClientCompanyIdMiddleware.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/ICallerContext.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/ICallerContext.cs`
 - Create: `src/TreasuryServiceOrchestrator.Api/Middleware/HttpCallerContext.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/Program.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Api/appsettings.json`
@@ -168,8 +197,8 @@ Expected: PASS (4 tests)
 - [ ] **Step 5: Add `ICallerContext` port**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/ICallerContext.cs
-namespace TreasuryServiceOrchestrator.Application.Ports;
+// src/TreasuryServiceOrchestrator.Application/Shared/Ports/ICallerContext.cs
+namespace TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 public enum CallerRole
 {
@@ -185,7 +214,7 @@ public interface ICallerContext
 }
 ```
 
-Note: `Application` cannot reference `Api`, so `CallerRole` is declared independently in `Application.Ports` (mirroring the existing `Api.Middleware.CallerRole`); `HttpCallerContext` maps one to the other.
+Note: `Application` cannot reference `Api`, so `CallerRole` is declared independently in `Application.Shared.Ports` (mirroring the existing `Api.Middleware.CallerRole`); `HttpCallerContext` maps one to the other.
 
 - [ ] **Step 6: Rewrite the middleware to resolve and store the caller**
 
@@ -225,7 +254,7 @@ public sealed class ClientCompanyIdMiddleware(RequestDelegate next)
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Api/Middleware/HttpCallerContext.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Api.Middleware;
 
@@ -349,7 +378,7 @@ git commit -m "feat: structured caller registry with Admin/SubAccount roles"
 Gives every handler a single way to resolve "which tenant does this request actually operate on" (PRD §2.4), and replaces ad-hoc controller try/catch with a global `IExceptionHandler` mapping domain exceptions to `ProblemDetails`.
 
 **Files:**
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/TenantScopeResolver.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Shared/TenantScopeResolver.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/TreasuryDomainException.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/TenantForbiddenException.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Exceptions/NotFoundException.cs`
@@ -372,7 +401,8 @@ Gives every handler a single way to resolve "which tenant does this request actu
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/TenantScopeResolverTests.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using Xunit;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application;
@@ -488,10 +518,10 @@ public sealed class ProviderUnavailableException(string message) : TreasuryDomai
 - [ ] **Step 4: Add `TenantScopeResolver`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/TenantScopeResolver.cs
+// src/TreasuryServiceOrchestrator.Application/Shared/TenantScopeResolver.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Shared;
 
 public static class TenantScopeResolver
 {
@@ -645,7 +675,7 @@ Splits business/address data off `SubAccount` into a new `EntityRegistration` en
 - Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountCommandHandler.cs`
 - Rename+Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/SubAccountComplianceStateMapper.cs` → `EntityRegistrationStatusMapper.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ProcessExternalEntityDecisionHandler.cs` (rename decision target to `EntityRegistration`, cascade to `SubAccount.LifecycleState`)
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/IEntityRegistrationRepository.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/IEntityRegistrationRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/EntityRegistrationRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TreasuryServiceOrchestratorDbContext.cs`
 - Delete + regenerate: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Migrations/*` (`InitialCreate`)
@@ -740,10 +770,10 @@ public class SubAccount
 - [ ] **Step 4: Add `IEntityRegistrationRepository` and its EF implementation**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/IEntityRegistrationRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Compliance/Ports/IEntityRegistrationRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 public interface IEntityRegistrationRepository
 {
@@ -756,7 +786,7 @@ public interface IEntityRegistrationRepository
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/EntityRegistrationRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -783,7 +813,7 @@ public sealed class EntityRegistrationRepository(TreasuryServiceOrchestratorDbCo
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/CreateSubAccountCommandHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using FluentValidation;
 
@@ -923,7 +953,7 @@ Delete `SubAccountComplianceStateMapper.cs`.
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/ProcessExternalEntityDecisionHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.SubAccounts;
@@ -1032,7 +1062,7 @@ Reworks `SubAccountsController` per PRD §4.1: **create is Admin-only** (targets
 - Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/SetSubAccountDisabledCommandHandler.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommandHandler.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/ISubAccountRepository.cs` (add `ListAsync`)
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountRepository.cs` (add `ListAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/SubAccountRepository.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/GetSubAccountQueryHandlerTests.cs`
 - Test: `tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ResubmitEntityRegistrationCommandHandlerTests.cs`
@@ -1047,7 +1077,7 @@ Reworks `SubAccountsController` per PRD §4.1: **create is Admin-only** (targets
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/GetSubAccountQueryHandlerTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.SubAccounts;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -1104,7 +1134,7 @@ public class GetSubAccountQueryHandlerTests
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ResubmitEntityRegistrationCommandHandlerTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.SubAccounts;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -1171,7 +1201,7 @@ public sealed record GetSubAccountResult(
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.SubAccounts;
 
@@ -1204,7 +1234,7 @@ public sealed record ListSubAccountsQuery(SubAccountLifecycleState? StateFilter)
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.SubAccounts;
 
@@ -1240,7 +1270,7 @@ public sealed record SetSubAccountDisabledCommand(string ResolvedClientCompanyId
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/SetSubAccountDisabledCommandHandler.cs
 using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.SubAccounts;
 
@@ -1283,7 +1313,7 @@ public sealed record ResubmitEntityRegistrationCommand(
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/ResubmitEntityRegistrationCommandHandler.cs
 using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.SubAccounts;
@@ -1353,7 +1383,8 @@ public sealed class ResubmitEntityRegistrationCommandHandler(
 // src/TreasuryServiceOrchestrator.Api/Controllers/SubAccountsController.cs
 using Asp.Versioning;
 using TreasuryServiceOrchestrator.Application;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.SubAccounts;
 using Microsoft.AspNetCore.Mvc;
 
@@ -1478,7 +1509,7 @@ git commit -m "feat: admin-only sub-account create, get/list/disable/enable/resu
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/WebhookInboxEntry.cs` (delete; superseded by the Application-layer type below)
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookInboxEntry.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookProcessingStatus.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/IWebhookInboxRepository.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/IWebhookInboxRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/WebhookInboxRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/IWebhookTopicProcessor.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/IncomingWebhookEvent.cs`
@@ -1500,7 +1531,7 @@ git commit -m "feat: admin-only sub-account create, get/list/disable/enable/resu
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Webhooks/WebhookProcessorTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using Xunit;
 
@@ -1618,10 +1649,10 @@ public enum WebhookProcessingStatus
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/IWebhookInboxRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/IWebhookInboxRepository.cs
 using TreasuryServiceOrchestrator.Application.Webhooks;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 public interface IWebhookInboxRepository
 {
@@ -1653,7 +1684,7 @@ public sealed record IncomingWebhookEvent(string Topic, string ProviderEventId, 
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Webhooks/WebhookProcessor.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.Webhooks;
 
@@ -1715,7 +1746,7 @@ Expected: PASS (4 tests).
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/WebhookInboxRepository.cs
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -2481,7 +2512,7 @@ internal sealed class SystemRandomSource : IMockRandomSource
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 
@@ -2535,7 +2566,7 @@ public sealed class MockSubAccountGateway(
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
@@ -2642,7 +2673,8 @@ In `src/TreasuryServiceOrchestrator.Api/appsettings.Development.json`, add (Phas
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using Xunit;
 
@@ -2707,10 +2739,10 @@ Adds "generate a permanent deposit address for a sub-account on a given (chain, 
 
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Domain/DepositAddress.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/IDepositAddressRepository.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/SupportedChainsOptions.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/ISubAccountGateway.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IDepositAddressRepository.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Shared/SupportedChainsOptions.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressResult.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressCommandValidator.cs`
@@ -2741,7 +2773,9 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -2890,17 +2924,17 @@ public class DepositAddress
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/SupportedChainsOptions.cs
-namespace TreasuryServiceOrchestrator.Application.Ports;
+// src/TreasuryServiceOrchestrator.Application/Shared/SupportedChainsOptions.cs
+namespace TreasuryServiceOrchestrator.Application.Shared;
 
 public sealed class SupportedChainsOptions : List<string>;
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/IDepositAddressRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IDepositAddressRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface IDepositAddressRepository
 {
@@ -2912,7 +2946,7 @@ public interface IDepositAddressRepository
 
 - [ ] **Step 4: Extend gateway DTOs and `ISubAccountGateway`**
 
-Append to `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`:
+Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`:
 ```csharp
 public sealed record GenerateDepositAddressGatewayRequest(
     string WalletId,
@@ -2926,8 +2960,8 @@ public sealed record GenerateDepositAddressResult(
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/ISubAccountGateway.cs
-namespace TreasuryServiceOrchestrator.Application.Ports;
+// src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs
+namespace TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 public interface ISubAccountGateway
 {
@@ -3005,7 +3039,7 @@ public sealed record GenerateDepositAddressResult(
 // src/TreasuryServiceOrchestrator.Application/DepositAddresses/GenerateDepositAddressCommandValidator.cs
 using FluentValidation;
 using Microsoft.Extensions.Options;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
 
 namespace TreasuryServiceOrchestrator.Application.DepositAddresses;
 
@@ -3033,7 +3067,8 @@ public sealed class GenerateDepositAddressCommandValidator : AbstractValidator<G
 using System.Text.Json;
 using FluentValidation;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.DepositAddresses;
@@ -3107,7 +3142,8 @@ Expected: PASS (5 tests)
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -3166,7 +3202,8 @@ public sealed record ListDepositAddressesQuery(string ResolvedClientCompanyId);
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/DepositAddresses/ListDepositAddressesQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.DepositAddresses;
@@ -3195,7 +3232,7 @@ Expected: PASS (2 tests)
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/DepositAddressRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -3256,7 +3293,8 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.DepositAddresses;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Api.Controllers;
 
@@ -3387,9 +3425,9 @@ Supersedes the pre-existing `Deposit` entity and `ProcessDepositCommandHandler` 
 - Create: `src/TreasuryServiceOrchestrator.Domain/Transaction.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/BalanceSnapshotReason.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/BalanceSnapshot.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/ITransactionRepository.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/IBalanceSnapshotRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/IDepositAddressRepository.cs` (add `FindByAddressAsync`)
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IBalanceSnapshotRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IDepositAddressRepository.cs` (add `FindByAddressAsync`)
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/ProcessDepositCommand.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/ProcessDepositResult.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/ProcessDepositCommandValidator.cs`
@@ -3520,10 +3558,10 @@ public class BalanceSnapshot
 - [ ] **Step 3: Add repository ports**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/ITransactionRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface ITransactionRepository
 {
@@ -3544,10 +3582,10 @@ public interface ITransactionRepository
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/IBalanceSnapshotRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IBalanceSnapshotRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface IBalanceSnapshotRepository
 {
@@ -3559,7 +3597,7 @@ public interface IBalanceSnapshotRepository
 }
 ```
 
-Append to `src/TreasuryServiceOrchestrator.Application/Ports/IDepositAddressRepository.cs` (inside the existing interface):
+Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IDepositAddressRepository.cs` (inside the existing interface):
 ```csharp
     Task<DepositAddress?> FindByAddressAsync(string address, CancellationToken cancellationToken = default);
 ```
@@ -3570,7 +3608,8 @@ Append to `src/TreasuryServiceOrchestrator.Application/Ports/IDepositAddressRepo
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Ledger/ProcessDepositCommandHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -3750,7 +3789,8 @@ public sealed class DepositSourceNotResolvedException(string? walletId, string? 
 using System.Text.Json;
 using FluentValidation;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -3881,7 +3921,8 @@ Expected: PASS (4 tests)
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -3931,7 +3972,7 @@ public class ListTransactionsQueryHandlerTests
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Ledger/GetCurrentBalanceQueryHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -3982,7 +4023,8 @@ public sealed record ListTransactionsQuery(
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Ledger/ListTransactionsQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -4013,7 +4055,8 @@ public sealed record GetTransactionQuery(string ResolvedClientCompanyId, Guid Tr
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Ledger/GetTransactionQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -4046,7 +4089,7 @@ public sealed record GetCurrentBalanceQuery(string ResolvedClientCompanyId);
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Ledger/GetCurrentBalanceQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -4076,7 +4119,8 @@ public sealed record GetBalanceHistoryQuery(string ResolvedClientCompanyId, Date
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Ledger/GetBalanceHistoryQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -4104,7 +4148,7 @@ Expected: PASS (3 tests)
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TransactionRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -4139,7 +4183,7 @@ public sealed class TransactionRepository(TreasuryServiceOrchestratorDbContext d
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/BalanceSnapshotRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -4249,7 +4293,8 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Controllers;
@@ -4297,7 +4342,8 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Controllers;
@@ -4425,9 +4471,9 @@ git commit -m "feat: ledger Transaction/BalanceSnapshot model, wire deposits web
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Domain/RecipientStatus.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/Recipient.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/IRecipientRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/ISubAccountGateway.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRecipientRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleSubAccountGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockSubAccountGateway.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Recipients/RegisterRecipientCommand.cs`
@@ -4465,7 +4511,8 @@ using System.Text.Json;
 using FluentValidation;
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Recipients;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -4598,10 +4645,10 @@ public class Recipient
 - [ ] **Step 4: Add `IRecipientRepository`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/IRecipientRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRecipientRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface IRecipientRepository
 {
@@ -4614,7 +4661,7 @@ public interface IRecipientRepository
 
 - [ ] **Step 5: Extend gateway DTOs and `ISubAccountGateway`**
 
-Append to `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`:
+Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`:
 ```csharp
 public sealed record RegisterRecipientGatewayRequest(
     string WalletId,
@@ -4627,7 +4674,7 @@ public sealed record RegisterRecipientGatewayResult(
     string Status);
 ```
 
-Add to `src/TreasuryServiceOrchestrator.Application/Ports/ISubAccountGateway.cs` (inside the existing `ISubAccountGateway` interface, after `GenerateDepositAddressAsync`):
+Add to `src/TreasuryServiceOrchestrator.Application/Compliance/Ports/ISubAccountGateway.cs` (inside the existing `ISubAccountGateway` interface, after `GenerateDepositAddressAsync`):
 ```csharp
     Task<RegisterRecipientGatewayResult> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken cancellationToken);
@@ -4733,7 +4780,8 @@ public sealed class RegisterRecipientCommandValidator : AbstractValidator<Regist
 using System.Text.Json;
 using FluentValidation;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Recipients;
@@ -4810,7 +4858,8 @@ Expected: PASS (4 tests)
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Recipients/ListRecipientsQueryHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Recipients;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -4861,7 +4910,7 @@ public class ListRecipientsQueryHandlerTests
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Recipients/GetRecipientQueryHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Recipients;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -4914,7 +4963,8 @@ public sealed record ListRecipientsQuery(string ResolvedClientCompanyId);
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Recipients/ListRecipientsQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Recipients;
@@ -4942,7 +4992,7 @@ public sealed record GetRecipientQuery(string ResolvedClientCompanyId, Guid Reci
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Recipients/GetRecipientQueryHandler.cs
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Recipients;
@@ -4965,7 +5015,7 @@ Expected: PASS (4 tests)
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Recipients/ProcessRecipientDecisionHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Recipients;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -5115,7 +5165,7 @@ public sealed record ProcessRecipientDecisionResult(Guid RecipientId, RecipientS
 // src/TreasuryServiceOrchestrator.Application/Recipients/ProcessRecipientDecisionHandler.cs
 using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Recipients;
@@ -5330,7 +5380,7 @@ Expected: PASS (3 tests) — Step 6's implementation already satisfies this; no 
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/RecipientRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -5382,7 +5432,8 @@ No new gateway DI registration is needed — `RegisterRecipientAsync` was added 
 // src/TreasuryServiceOrchestrator.Api/Controllers/RecipientsController.cs
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Recipients;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -5529,9 +5580,9 @@ git commit -m "feat: recipient registration/list/get, addressBookRecipients webh
 
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Domain/Transfer.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/ITransferRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/IStablecoinGateway.cs` (add `CreateTransferAsync`)
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs` (add `CreateTransferGatewayRequest`/`CreateTransferGatewayResult`)
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransferRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` (add `CreateTransferAsync`)
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs` (add `CreateTransferGatewayRequest`/`CreateTransferGatewayResult`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs` (stub `CreateTransferAsync`)
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs` (mock `CreateTransferAsync`)
 - Create: `src/TreasuryServiceOrchestrator.Application/Transfers/CreateTransferCommand.cs`
@@ -5629,7 +5680,9 @@ Expected: PASS
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Transfers/CreateTransferCommandHandlerTests.cs
 using System.Text.Json;
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Transfers;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -5760,10 +5813,10 @@ Expected: FAIL — build error, `ITransferRepository`, `CreateTransferCommand`, 
 - [ ] **Step 7: Create `ITransferRepository`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/ITransferRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransferRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface ITransferRepository
 {
@@ -5779,7 +5832,7 @@ public interface ITransferRepository
 
 - [ ] **Step 8: Extend `IStablecoinGateway` and `GatewayDtos.cs` with the transfer-creation shape**
 
-Append to `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`:
+Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`:
 
 ```csharp
 public sealed record CreateTransferGatewayRequest(
@@ -5788,7 +5841,7 @@ public sealed record CreateTransferGatewayRequest(
 public sealed record CreateTransferGatewayResult(string CircleTransferId, string Status);
 ```
 
-Modify `src/TreasuryServiceOrchestrator.Application/Ports/IStablecoinGateway.cs` — add:
+Modify `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` — add:
 
 ```csharp
 Task<CreateTransferGatewayResult> CreateTransferAsync(
@@ -5844,7 +5897,9 @@ public sealed class CreateTransferCommandValidator : AbstractValidator<CreateTra
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Transfers/CreateTransferCommandHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Transfers;
@@ -5981,7 +6036,7 @@ public class MockStablecoinGatewayTransferTests
         });
         var gateway = new MockStablecoinGateway(options, scheduler, new FixedRandomSource(0.01));
 
-        await Assert.ThrowsAsync<TreasuryServiceOrchestrator.Application.Ports.ProviderUnavailableException>(() =>
+        await Assert.ThrowsAsync<TreasuryServiceOrchestrator.Application.Exceptions.ProviderUnavailableException>(() =>
             gateway.CreateTransferAsync(
                 new CreateTransferGatewayRequest("key-2", "wallet-1", "recipient-1", new TreasuryServiceOrchestrator.Domain.Money(100m, "USDC")),
                 TestContext.Current.CancellationToken));
@@ -6035,7 +6090,8 @@ Expected: PASS
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Transfers/ListTransfersQueryHandlerTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Transfers;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -6077,7 +6133,7 @@ public class ListTransfersQueryHandlerTests
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Transfers/GetTransferQueryHandlerTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Transfers;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -6136,7 +6192,8 @@ public sealed record ListTransfersQuery(string ResolvedClientCompanyId);
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Transfers/ListTransfersQueryHandler.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Transfers;
@@ -6164,7 +6221,7 @@ public sealed record GetTransferQuery(string ResolvedClientCompanyId, Guid Trans
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Transfers/GetTransferQueryHandler.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Transfers;
@@ -6188,7 +6245,7 @@ Expected: PASS
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Transfers/ProcessTransferStatusCommandHandlerTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Transfers;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -6343,7 +6400,7 @@ internal static class TransferStatusMapper
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Transfers/ProcessTransferStatusCommandHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Transfers;
@@ -6530,7 +6587,7 @@ Expected: PASS
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TransferRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -6753,10 +6810,10 @@ Reworks `RedeemRequest` to carry gross/fees/net separately (Circle's Institution
 - Modify: `src/TreasuryServiceOrchestrator.Domain/RedeemRequest.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/LinkedBankAccount.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/LinkedBankAccountStatus.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/ILinkedBankAccountRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/IRedeemRequestRepository.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/IStablecoinGateway.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ILinkedBankAccountRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRedeemRequestRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
@@ -6853,10 +6910,10 @@ public class LinkedBankAccount
 - [ ] **Step 2: Add `ILinkedBankAccountRepository` and rework `IRedeemRequestRepository`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/ILinkedBankAccountRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ILinkedBankAccountRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface ILinkedBankAccountRepository
 {
@@ -6868,13 +6925,13 @@ public interface ILinkedBankAccountRepository
 }
 ```
 
-Replace `src/TreasuryServiceOrchestrator.Application/Ports/IRedeemRequestRepository.cs` with:
+Replace `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRedeemRequestRepository.cs` with:
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/IRedeemRequestRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Ledger/Ports/IRedeemRequestRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 public interface IRedeemRequestRepository
 {
@@ -6892,7 +6949,7 @@ This drops the old unscoped `GetByIdAsync(Guid, ct)` — every caller must now p
 
 - [ ] **Step 3: Rework `GatewayDtos.cs` and `IStablecoinGateway`**
 
-Replace the existing `RedeemGatewayRequest`/`GatewayRedeemResult` records in `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs` with:
+Replace the existing `RedeemGatewayRequest`/`GatewayRedeemResult` records in `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs` with:
 
 ```csharp
 public sealed record RedeemGatewayRequest(
@@ -6908,10 +6965,10 @@ public sealed record CreateLinkedBankAccountGatewayResult(string CircleBankAccou
 
 (Leave `TransferStatusResult` and the `ExternalEntity*` DTOs untouched.)
 
-Replace `src/TreasuryServiceOrchestrator.Application/Ports/IStablecoinGateway.cs` with:
+Replace `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` with:
 
 ```csharp
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 public interface IStablecoinGateway
 {
@@ -7005,7 +7062,7 @@ public class MockStablecoinGatewayRedeemTests
         });
         var gateway = new MockStablecoinGateway(options, scheduler, new FixedRandomSource(0.01));
 
-        await Assert.ThrowsAsync<TreasuryServiceOrchestrator.Application.Ports.ProviderUnavailableException>(() =>
+        await Assert.ThrowsAsync<TreasuryServiceOrchestrator.Application.Exceptions.ProviderUnavailableException>(() =>
             gateway.RedeemAsync(
                 new RedeemGatewayRequest("key-2", "wallet-1", "bank-account-1", new Money(100m, "USDC")),
                 TestContext.Current.CancellationToken));
@@ -7048,7 +7105,7 @@ Replace `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGate
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
@@ -7128,7 +7185,7 @@ public sealed class MockStablecoinGateway(
 }
 ```
 
-`CreateLinkedBankAccountAsync` completes synchronously (no webhook) — unlike deposits/transfers/redemptions, linking a bank account has no async provider-side verification step in this mock; Circle's real endpoint is likewise synchronous for this call.
+~~`CreateLinkedBankAccountAsync` completes synchronously (no webhook)~~ **Corrected 2026-07-17:** wrong — Circle's bank-account verification is asynchronous, delivered on the `wire` webhook topic (`pending → complete | failed`). The mock gateway returns `pending` on create and the emitter schedules a `wire` webhook for the decision. See correction 6 in the header block.
 
 - [ ] **Step 9: Run tests to verify they pass**
 
@@ -7141,7 +7198,8 @@ Expected: PASS (3 tests).
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/LinkedBankAccounts/CreateLinkedBankAccountCommandHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -7215,7 +7273,8 @@ public sealed class CreateLinkedBankAccountCommandValidator : AbstractValidator<
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/CreateLinkedBankAccountCommandHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
@@ -7282,7 +7341,7 @@ public sealed class CreateLinkedBankAccountCommandHandler(
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/ListLinkedBankAccountsQuery.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
@@ -7300,7 +7359,7 @@ public sealed class ListLinkedBankAccountsQueryHandler(ILinkedBankAccountReposit
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/LinkedBankAccounts/GetLinkedBankAccountQuery.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.LinkedBankAccounts;
@@ -7329,7 +7388,9 @@ Delete `src/TreasuryServiceOrchestrator.Application/Redeem/CreateRedeemCommand.c
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Redemptions/CreateRedemptionCommandHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Redemptions;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -7492,7 +7553,9 @@ public sealed class CreateRedemptionCommandValidator : AbstractValidator<CreateR
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Redemptions/CreateRedemptionCommandHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Redemptions;
@@ -7585,7 +7648,8 @@ Expected: PASS (3 tests).
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Redemptions/ListRedemptionsQuery.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Redemptions;
@@ -7607,7 +7671,7 @@ public sealed class ListRedemptionsQueryHandler(ISubAccountRepository subAccount
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Redemptions/GetRedemptionQuery.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Redemptions;
@@ -7629,7 +7693,7 @@ public sealed class GetRedemptionQueryHandler(IRedeemRequestRepository redeemReq
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Redemptions/ProcessPayoutStatusCommandHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Redemptions;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -7731,7 +7795,7 @@ public sealed record ProcessPayoutStatusResult(Guid RedemptionId, TransferStatus
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Redemptions/ProcessPayoutStatusCommandHandler.cs
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Transfers;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -7930,7 +7994,7 @@ Expected: PASS (3 tests).
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/LinkedBankAccountRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -7955,7 +8019,7 @@ Replace `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/RedeemReques
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/RedeemRequestRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -8298,11 +8362,11 @@ Scope note: PRD §2.5's table also lists `/master-account/deposits`, `/master-ac
 **Files:**
 - Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/GetSubAccountResult.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/ITransactionRepository.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/TransactionRepository.cs`
 - Create: `src/TreasuryServiceOrchestrator.Application/Ledger/ListAllTransactionsQuery.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`
-- Modify: `src/TreasuryServiceOrchestrator.Application/Ports/IStablecoinGateway.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`
+- Modify: `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Circle/CircleMintGateway.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockProviderOptions.cs`
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGateway.cs`
@@ -8325,7 +8389,7 @@ Scope note: PRD §2.5's table also lists `/master-account/deposits`, `/master-ac
 ```csharp
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/SubAccounts/ListSubAccountsQueryHandlerTests.cs
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.SubAccounts;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
@@ -8410,7 +8474,7 @@ Replace `src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccounts
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/SubAccounts/ListSubAccountsQueryHandler.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.SubAccounts;
 
@@ -8445,7 +8509,7 @@ Expected: PASS (2 tests).
 
 - [ ] **Step 5: Extend `ITransactionRepository` with `ListAllAsync` and add `ListAllTransactionsQuery`**
 
-Append to `src/TreasuryServiceOrchestrator.Application/Ports/ITransactionRepository.cs` (inside the existing interface):
+Append to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/ITransactionRepository.cs` (inside the existing interface):
 
 ```csharp
     Task<IReadOnlyList<Transaction>> ListAllAsync(
@@ -8461,7 +8525,7 @@ Append to `src/TreasuryServiceOrchestrator.Application/Ports/ITransactionReposit
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Ledger/ListAllTransactionsQuery.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -8525,9 +8589,9 @@ Append to `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/Transactio
 
 - [ ] **Step 7: Add `GetMainWalletBalanceAsync` to `IStablecoinGateway`, `CircleMintGateway`, and `MockStablecoinGateway`**
 
-Add to `src/TreasuryServiceOrchestrator.Application/Ports/GatewayDtos.cs`: nothing new is needed — `Money` already crosses this boundary.
+Add to `src/TreasuryServiceOrchestrator.Application/Ledger/Ports/GatewayDtos.cs`: nothing new is needed — `Money` already crosses this boundary.
 
-Modify `src/TreasuryServiceOrchestrator.Application/Ports/IStablecoinGateway.cs` — add:
+Modify `src/TreasuryServiceOrchestrator.Application/Shared/Ports/IStablecoinGateway.cs` — add:
 
 ```csharp
 Task<Money> GetMainWalletBalanceAsync(CancellationToken cancellationToken);
@@ -8561,7 +8625,9 @@ Modify `src/TreasuryServiceOrchestrator.Infrastructure/Mocks/MockStablecoinGatew
 // tests/TreasuryServiceOrchestrator.UnitTests/Application/Admin/GetMasterAccountSummaryQueryHandlerTests.cs
 using NSubstitute;
 using TreasuryServiceOrchestrator.Application.Admin;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using Xunit;
 
@@ -8654,7 +8720,9 @@ public sealed record GetMasterAccountSummaryResult(Money MainWalletBalance, Mone
 
 ```csharp
 // src/TreasuryServiceOrchestrator.Application/Admin/GetMasterAccountSummaryQueryHandler.cs
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Admin;
@@ -8695,7 +8763,7 @@ using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Controllers;
@@ -8859,8 +8927,8 @@ Per the PRD §15.1 demo script, the notification-worthy state changes are exactl
 **Files:**
 - Create: `src/TreasuryServiceOrchestrator.Domain/NotificationDeliveryStatus.cs`
 - Create: `src/TreasuryServiceOrchestrator.Domain/NotificationOutboxEntry.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/INotificationOutboxRepository.cs`
-- Create: `src/TreasuryServiceOrchestrator.Application/Ports/INotificationSender.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/INotificationOutboxRepository.cs`
+- Create: `src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/INotificationSender.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Notifications/NotificationDispatcherOptions.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Notifications/HttpNotificationSender.cs`
 - Create: `src/TreasuryServiceOrchestrator.Infrastructure/Notifications/NotificationDispatcher.cs`
@@ -8921,10 +8989,10 @@ Delivery is at-least-once (PRD §10.1 requirement 5) — there is no `Failed`/de
 - [ ] **Step 2: Add `INotificationOutboxRepository` and `INotificationSender`**
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/INotificationOutboxRepository.cs
+// src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/INotificationOutboxRepository.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 public interface INotificationOutboxRepository
 {
@@ -8936,10 +9004,10 @@ public interface INotificationOutboxRepository
 ```
 
 ```csharp
-// src/TreasuryServiceOrchestrator.Application/Ports/INotificationSender.cs
+// src/TreasuryServiceOrchestrator.Application/Webhooks/Ports/INotificationSender.cs
 using TreasuryServiceOrchestrator.Domain;
 
-namespace TreasuryServiceOrchestrator.Application.Ports;
+namespace TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 public interface INotificationSender
 {
@@ -8954,7 +9022,7 @@ public interface INotificationSender
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Notifications;
 using Xunit;
@@ -9069,7 +9137,7 @@ public sealed class NotificationDispatcherOptions
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Notifications;
@@ -9116,7 +9184,7 @@ public sealed class HttpNotificationSender(HttpClient httpClient, IOptions<Notif
 // src/TreasuryServiceOrchestrator.Infrastructure/Notifications/NotificationDispatcher.cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Notifications;
 
@@ -9199,7 +9267,7 @@ Expected: PASS (3 tests).
 ```csharp
 // src/TreasuryServiceOrchestrator.Infrastructure/Persistence/NotificationOutboxRepository.cs
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;

@@ -201,15 +201,23 @@ primary wallet. See
 [Supported Chains and Currencies](/circle-mint/references/supported-chains-and-currencies).
 
 ```bash theme={null}
-curl -X POST https://api-sandbox.circle.com/v1/businessAccount/wallets/addresses/deposit \
+curl -X POST "https://api-sandbox.circle.com/v1/businessAccount/wallets/addresses/deposit?walletId=212000" \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "walletId": "212000",
+    "idempotencyKey": "9352ec9e-5ee6-441f-ab42-186bc71fbdde",
     "currency": "USD",
     "chain": "ARC"
   }'
 ```
+
+<Note>
+  **Corrected 2026-07-17** against the live API reference
+  (`api-reference/circle-mint/account/create-business-deposit-address`): `walletId`
+  is a **query parameter**, not a body field (this page previously showed it in the
+  body), the body requires `idempotencyKey`, and omitting `walletId` generates the
+  address on the Distributor's main wallet.
+</Note>
 
 ### 4.2. Send an outbound transfer from the entity wallet
 
