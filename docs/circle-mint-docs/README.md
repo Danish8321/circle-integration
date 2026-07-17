@@ -30,9 +30,6 @@ Circle's docs site restructures without redirects for old crawl paths.
 - [Receive a stablecoin payin](howtos/receive-stablecoin-payin.md) — accept onchain USDC/EURC via payment intents
 - [Transfer USDC onchain](howtos/transfer-usdc-onchain.md)
 - [Manage institutional subaccounts](howtos/manage-institutional-subaccounts.md)
-- [Set up mTLS authentication](howtos/set-up-mtls-authentication.md) — **likely deprecated/merged**, see Refresh notes
-- [Rotate an mTLS API key](howtos/rotate-mtls-api-key.md) — **likely deprecated/merged**
-- [Rotate an mTLS client certificate](howtos/rotate-mtls-client-certificate.md) — **likely deprecated/merged**
 - [Set up a webhook endpoint](howtos/set-up-a-webhook-endpoint.md) — confirmed live at `api-reference/webhooks`, v1/v2 split, Circle Mint v1 flow accurate
 - [Verify webhook signatures](howtos/verify-webhook-signatures.md) — confirmed live at `api-reference/verify-webhook-signatures`, **but v2/ECDSA scheme doesn't apply to Circle Mint** (v1) — see file note
 
@@ -46,7 +43,6 @@ Circle's docs site restructures without redirects for old crawl paths.
 - [Error codes](reference/error-codes.md)
 - [Sandbox to production](reference/sandbox-to-production.md) — current nav label "Sandbox and Testing"
 - [Travel rule compliance](reference/travel-rule-compliance.md) — endpoint is `POST /v1/payouts` (crypto payout), confirmed live
-- [How mTLS authentication works](reference/mtls-authentication-overview.md) — **likely deprecated/merged**
 - [API keys](reference/api-keys.md) — confirmed live at `api-reference/keys`
 - [Idempotent requests](reference/idempotent-requests.md) — confirmed live at `api-reference/idempotent-requests`
 - [OpenAPI Specifications](reference/openapi-specifications.md) — confirmed live; use this to fetch definitive endpoint lists (`payouts.yaml`, `account.yaml`, etc.)
@@ -127,10 +123,12 @@ for "mtls" anywhere in `llms.txt`; 7 different path guesses across
 `circle-mint/*` and `api-reference/*` all 404'd. Only live mention of mTLS
 anywhere is one sentence in `getting-started-with-the-circle-apis`: it's
 "available for additional security and may be required for entities under EU
-MiCA regulation" — no setup/rotation steps. Treat the mTLS howtos and
-`mtls-authentication-overview.md` in this mirror as likely deprecated/merged
-away, not just misfiled. If you need mTLS for a MiCA-scoped entity, contact
-Circle directly rather than trusting this mirror's mTLS pages.
+MiCA regulation" — no setup/rotation steps. The mTLS howtos and
+`mtls-authentication-overview.md` were removed from this mirror on
+2026-07-17 (dead docs, not just misfiled) since nothing here could confirm
+them against a live page. If you need mTLS for a MiCA-scoped entity, contact
+Circle directly — do not reconstruct these pages from memory or an older
+mirror.
 
 **Idempotent requests — confirmed live 2026-07-07**, moved from
 `circle-mint/references/idempotent-requests` to `api-reference/idempotent-requests`

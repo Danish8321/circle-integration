@@ -176,7 +176,7 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 - Modify: `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleHttpClientRegistration.cs` (Task 1) — replace the placeholder key source.
 
 **Scope:**
-- Circle API keys have no enforced rotation cadence *unless* mTLS is enabled (see Task 9 decision) — in which case keys expire at 180 days and must be rotated before then (`rotate-mtls-api-key.md`). Either way, PRD §12/§14 requires the key live in a managed secret store, never in config files, with rotation support.
+- Circle API keys have no enforced rotation cadence — Task 9 decided against mTLS (2026-07-17), and mTLS was the only thing that would have imposed a 180-day forced expiry. PRD §12/§14 still requires the key live in a managed secret store, never in config files, with rotation support.
 - [ ] Store the sandbox and production Circle API keys as separate secrets (`Circle:ApiKey:Sandbox`, `Circle:ApiKey:Production` or equivalent), resolved by environment at startup, never both loaded into the same process.
 - [ ] Add a startup health check that fails fast (not silently falls back to mock) if the expected secret is missing in a non-mock environment.
 - [x] ~~If mTLS is adopted (Task 9), add a scheduled reminder/alert at day 150 of the 180-day key lifetime~~ — dropped: Task 9 decided against mTLS (2026-07-17), so no enforced key lifetime applies.
@@ -189,7 +189,7 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16): `Circl
 
 **Files:** TBD, contingent on the decision below.
 
-**Open decision — needs a human call, not an inferred default:** the org's PRD (§1.1) describes a Circle Mint **(US)** account. mTLS is mandatory only for entities regulated under EU/EEA MiCA; for a US-only entity it is purely an **optional** extra security layer (`mtls-authentication-overview.md`). Two paths:
+**Decision context (resolved below):** the org's PRD (§1.1) describes a Circle Mint **(US)** account. mTLS is mandatory only for entities regulated under EU/EEA MiCA; for a US-only entity it is purely an optional extra security layer (per `getting-started-with-the-circle-apis`, the only live Circle Mint page that still mentions mTLS as of 2026-07-07 — Circle's own mTLS setup/rotation pages could not be confirmed live and were removed from the local mirror on 2026-07-17). Two paths considered:
 
 - **Skip mTLS** (default posture for a US-only entity with no MiCA exposure): this task becomes a no-op; document the decision inline in this file and close it.
 - **Adopt mTLS anyway** (defense-in-depth): requires generating an ECDSA P-256 key pair + CSR (never leaves our environment), submitting it to Circle, configuring the resulting client cert on the `HttpClient` used in Task 1, switching the API key regeneration process to Mint Console + MFA, and accepting the mandatory 180-day key lifetime (feeds Task 8's rotation reminder). This also revokes **all existing API keys** the moment it's enabled on the entity — must be scheduled as a deliberate cutover, not toggled casually.
