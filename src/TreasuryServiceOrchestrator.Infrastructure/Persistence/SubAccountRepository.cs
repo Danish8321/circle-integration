@@ -17,4 +17,18 @@ public sealed class SubAccountRepository(TreasuryServiceOrchestratorDbContext db
         return await dbContext.SubAccounts
             .FirstOrDefaultAsync(x => x.ClientCompanyId == clientCompanyId, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<SubAccount>> ListAsync(
+        SubAccountLifecycleState? lifecycleState = null, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.SubAccounts.AsQueryable();
+        if (lifecycleState is not null)
+        {
+            query = query.Where(x => x.LifecycleState == lifecycleState);
+        }
+
+        return await query
+            .OrderBy(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
 }
