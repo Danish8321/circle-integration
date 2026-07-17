@@ -43,3 +43,12 @@ dotnet_diagnostic.CA1716.severity = none
 # naming convention for readability; scoped to tests/ only, production code still forbids underscores.
 [tests/**.cs]
 dotnet_diagnostic.CA1707.severity = none
+
+# EF Core migrations are tool-generated (dotnet-ef); their timestamp-prefixed filenames, single
+# large Up()/Down() methods, and array-literal column lists are the standard EF shape, not code
+# this repo hand-writes to house style. Analyzer noise suppressed for this generated folder only.
+[src/TreasuryServiceOrchestrator.Infrastructure/Migrations/**.cs]
+dotnet_diagnostic.MA0048.severity = none
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.MA0051.severity = none
+dotnet_diagnostic.CA1861.severity = none

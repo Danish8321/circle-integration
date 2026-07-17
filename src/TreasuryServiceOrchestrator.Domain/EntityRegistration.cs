@@ -93,4 +93,16 @@ public class EntityRegistration
         RejectionReason = reason;
         UpdatedAtUtc = nowUtc;
     }
+
+    public void Accept(DateTime nowUtc)
+    {
+        if (Status != EntityRegistrationStatus.Pending)
+        {
+            throw new InvalidOperationException(
+                $"Cannot accept from status {Status}; expected {EntityRegistrationStatus.Pending}.");
+        }
+
+        Status = EntityRegistrationStatus.Accepted;
+        UpdatedAtUtc = nowUtc;
+    }
 }

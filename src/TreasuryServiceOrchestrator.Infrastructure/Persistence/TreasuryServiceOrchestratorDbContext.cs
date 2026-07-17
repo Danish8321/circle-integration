@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -10,6 +11,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<EntityRegistration> EntityRegistrations => Set<EntityRegistration>();
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<WebhookInboxEntry> WebhookInboxEntries => Set<WebhookInboxEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +46,15 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.IdempotencyKey).IsRequired().HasMaxLength(128);
             entity.Property(x => x.RequestHash).IsRequired().HasMaxLength(64);
             entity.HasIndex(x => new { x.TenantId, x.IdempotencyKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<WebhookInboxEntry>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Topic).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.CircleEventId).IsRequired().HasMaxLength(128);
+            entity.HasIndex(x => x.CircleEventId).IsUnique();
+            entity.Property(x => x.ProcessingResult).HasMaxLength(16);
         });
     }
 }

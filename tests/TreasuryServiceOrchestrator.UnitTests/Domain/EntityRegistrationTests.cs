@@ -77,4 +77,34 @@ public sealed class EntityRegistrationTests
 
         Assert.Throws<InvalidOperationException>(() => registration.Reject("Again.", NowUtc));
     }
+
+    [Fact]
+    public void Accept_FromPending_SetsAcceptedStatusAndUpdatedAt()
+    {
+        var registration = CreateValid();
+        var laterUtc = NowUtc.AddHours(1);
+
+        registration.Accept(laterUtc);
+
+        Assert.Equal(EntityRegistrationStatus.Accepted, registration.Status);
+        Assert.Equal(laterUtc, registration.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void Accept_WhenAlreadyAccepted_Throws()
+    {
+        var registration = CreateValid();
+        registration.Accept(NowUtc);
+
+        Assert.Throws<InvalidOperationException>(() => registration.Accept(NowUtc));
+    }
+
+    [Fact]
+    public void Accept_WhenAlreadyRejected_Throws()
+    {
+        var registration = CreateValid();
+        registration.Reject("Documents illegible.", NowUtc);
+
+        Assert.Throws<InvalidOperationException>(() => registration.Accept(NowUtc));
+    }
 }

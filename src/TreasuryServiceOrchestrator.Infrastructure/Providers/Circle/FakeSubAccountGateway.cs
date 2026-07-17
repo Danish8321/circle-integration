@@ -21,4 +21,16 @@ public sealed class FakeSubAccountGateway : ISubAccountGateway
 
         return Task.FromResult(result);
     }
+
+    public Task<CreateExternalEntityResult> GetExternalEntityAsync(
+        string walletId, CancellationToken cancellationToken = default)
+    {
+        var result = new CreateExternalEntityResult(
+            WalletId: walletId,
+            ComplianceState: "ACCEPTED",
+            BusinessName: "Dev Fake Business",
+            BusinessUniqueIdentifier: "DEV-0000");
+
+        return Task.FromResult(result);
+    }
 }

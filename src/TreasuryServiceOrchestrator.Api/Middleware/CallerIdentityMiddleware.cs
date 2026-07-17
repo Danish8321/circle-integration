@@ -14,6 +14,14 @@ public sealed class CallerIdentityMiddleware(RequestDelegate next)
         IOptions<CallerIdentityOptions> options,
         ISubAccountRepository subAccountRepository)
     {
+        // Provider webhook callbacks are not a registered caller — authenticated by SNS
+        // signature verification inside the controller instead (PRD §10 item 7).
+        if (context.Request.Path.StartsWithSegments("/v1/webhooks/circle", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+
         if (!context.Request.Headers.TryGetValue(HeaderName, out var callerId) || string.IsNullOrWhiteSpace(callerId))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;

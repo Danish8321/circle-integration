@@ -83,6 +83,35 @@ public sealed class SubAccountTests
     }
 
     [Fact]
+    public void MarkAccepted_FromPendingCompliance_TransitionsToActive()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.BeginCompliance("wallet-123");
+
+        subAccount.MarkAccepted();
+
+        Assert.Equal(SubAccountLifecycleState.Active, subAccount.LifecycleState);
+    }
+
+    [Fact]
+    public void MarkAccepted_FromCreated_Throws()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+
+        Assert.Throws<InvalidOperationException>(() => subAccount.MarkAccepted());
+    }
+
+    [Fact]
+    public void MarkAccepted_FromRejected_Throws()
+    {
+        var subAccount = SubAccount.Create("client-1", NowUtc);
+        subAccount.BeginCompliance("wallet-123");
+        subAccount.MarkRejected();
+
+        Assert.Throws<InvalidOperationException>(() => subAccount.MarkAccepted());
+    }
+
+    [Fact]
     public void SetDisabled_True_SetsIsDisabled()
     {
         var subAccount = SubAccount.Create("client-1", NowUtc);

@@ -35,4 +35,18 @@ public sealed class CircleSubAccountGateway(HttpClient httpClient) : ISubAccount
             envelope.Data.WalletId, envelope.Data.ComplianceState, envelope.Data.BusinessName,
             envelope.Data.BusinessUniqueIdentifier);
     }
+
+    public async Task<CreateExternalEntityResult> GetExternalEntityAsync(
+        string walletId, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.GetAsync($"v1/externalEntities/{walletId}", cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content.ReadFromJsonAsync<ExternalEntityCircleEnvelope>(cancellationToken)
+            ?? throw new InvalidOperationException("Circle returned an empty externalEntities response.");
+
+        return new CreateExternalEntityResult(
+            envelope.Data.WalletId, envelope.Data.ComplianceState, envelope.Data.BusinessName,
+            envelope.Data.BusinessUniqueIdentifier);
+    }
 }

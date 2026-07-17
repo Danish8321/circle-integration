@@ -18,6 +18,13 @@ public sealed class SubAccountRepository(TreasuryServiceOrchestratorDbContext db
             .FirstOrDefaultAsync(x => x.ClientCompanyId == clientCompanyId, cancellationToken);
     }
 
+    public async Task<SubAccount?> GetByCircleWalletIdAsync(
+        string circleWalletId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.SubAccounts
+            .FirstOrDefaultAsync(x => x.CircleWalletId == circleWalletId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SubAccount>> ListAsync(
         SubAccountLifecycleState? lifecycleState = null, CancellationToken cancellationToken = default)
     {

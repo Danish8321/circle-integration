@@ -6,12 +6,16 @@ using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
+using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,9 +44,15 @@ builder.Services.AddScoped<GetSubAccountHandler>();
 builder.Services.AddScoped<ListSubAccountsHandler>();
 builder.Services.AddScoped<SetSubAccountDisabledHandler>();
 builder.Services.AddScoped<ResubmitEntityRegistrationHandler>();
+builder.Services.AddScoped<ProcessExternalEntityDecisionHandler>();
 builder.Services.AddScoped<IValidator<CreateSubAccountCommand>, CreateSubAccountValidator>();
 builder.Services.AddScoped<IValidator<ResubmitEntityRegistrationCommand>, ResubmitEntityRegistrationValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
+builder.Services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
+builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
+builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
+builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
 

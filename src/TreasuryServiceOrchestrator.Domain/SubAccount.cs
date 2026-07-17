@@ -58,6 +58,17 @@ public class SubAccount
         LifecycleState = SubAccountLifecycleState.Rejected;
     }
 
+    public void MarkAccepted()
+    {
+        if (LifecycleState != SubAccountLifecycleState.PendingCompliance)
+        {
+            throw new InvalidOperationException(
+                $"Cannot mark accepted from state {LifecycleState}; expected {SubAccountLifecycleState.PendingCompliance}.");
+        }
+
+        LifecycleState = SubAccountLifecycleState.Active;
+    }
+
     public void SetDisabled(bool disabled)
     {
         IsDisabled = disabled;
