@@ -13,6 +13,9 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<WebhookInboxEntry> WebhookInboxEntries => Set<WebhookInboxEntry>();
     public DbSet<DepositAddress> DepositAddresses => Set<DepositAddress>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<BalanceSnapshot> BalanceSnapshots => Set<BalanceSnapshot>();
+    public DbSet<FundAccount> FundAccounts => Set<FundAccount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +69,51 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.Address).IsRequired().HasMaxLength(128);
             entity.Property(x => x.CircleAddressId).HasMaxLength(64);
             entity.HasIndex(x => new { x.SubAccountId, x.Chain, x.Currency }).IsUnique();
+        });
+
+        ConfigureLedgerEntities(modelBuilder);
+    }
+
+    private static void ConfigureLedgerEntities(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Transaction>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.ProviderReferenceId).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.CorrelationId).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.FailureReason).HasMaxLength(500);
+            entity.HasIndex(x => x.ProviderReferenceId).IsUnique();
+            entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+            entity.ComplexProperty(x => x.Amount, amount =>
+            {
+                amount.Property(x => x.Amount).HasColumnName("Amount").HasPrecision(28, 8);
+                amount.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
+            });
+        });
+
+        modelBuilder.Entity<BalanceSnapshot>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+            entity.ComplexProperty(x => x.Balance, balance =>
+            {
+                balance.Property(x => x.Amount).HasColumnName("Balance").HasPrecision(28, 8);
+                balance.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
+            });
+        });
+
+        modelBuilder.Entity<FundAccount>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.HasIndex(x => x.ClientCompanyId).IsUnique();
+            entity.ComplexProperty(x => x.Balance, balance =>
+            {
+                balance.Property(x => x.Amount).HasColumnName("Balance").HasPrecision(28, 8);
+                balance.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
+            });
         });
     }
 }
