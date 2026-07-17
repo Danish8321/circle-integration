@@ -1,4 +1,13 @@
-Status: open
+Status: resolved
+
+## Solidified 2026-07-17 grilling
+
+Spec `docs/features/13-internal-notifications-outbox.md` is exhaustive. One flagged gap (§8 item
+1): the DoD's "kill mid-transaction" atomicity requirement needs a fault-injection test beyond the
+plan excerpt's positive-path example — already specified precisely enough to implement (poisoned/
+throwing `SaveChangesAsync` after both writes staged, assert neither persisted), not a design
+ambiguity. §6.1's `CallerIdentityMiddleware` `BypassPaths` addition also resolves ticket 14 item 2
+(see that ticket) — `/internal/notifications` is the first bypass entry.
 
 Source: `docs/features/13-internal-notifications-outbox.md` (old source
 `docs/Phase_1_Feature_Slices.md` Task 13, deleted 2026-07-17 — superseded by the per-feature doc

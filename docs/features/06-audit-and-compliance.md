@@ -205,14 +205,13 @@ call, so a single `TraceIdentifier` links every audit record produced by one req
 PRD §11's provider-call design) the same value is available to attach to outbound Circle calls
 and inbound webhook processing for that logical operation.
 
-**Not implemented: no response header echoes the correlation id back to the caller.** No
-`X-Correlation-Id`-style response header exists anywhere in `src/` today. `TraceIdentifier` is
-visible to the caller only indirectly (e.g. in an RFC 7807 `traceId` extension member, if
-`05-reliability-and-error-handling.md`'s problem-details mapping includes one — not verified as
-part of this file). Flagged as an open item in §7 since PRD §14's "structured logging with
-correlation ids on every request/event" implies the caller should be able to reference it
-(e.g. when filing a support ticket), which requires it to be visible on the response, not just in
-server-side logs and audit records.
+**Resolved 2026-07-17 grilling (ticket 13): `X-Correlation-Id` response header, echoed on every
+response, not just RFC 7807 error bodies.** Chosen over an error-only RFC 7807 `traceId` extension
+member because success responses need it too — a caller filing a support ticket about a 200 that
+later turned out wrong still needs a way to reference the request, which an error-only extension
+member would not give them. Set from the same `TraceIdentifier`/`CorrelationId` already forwarded
+into every `auditLog.AppendAsync` call, so the header value matches the correlation id on the
+audit records the request produced.
 
 ---
 
@@ -378,15 +377,15 @@ point at which "structurally impossible to modify" needs to become true rather t
 no explicit backup-policy cross-reference to the 7-year horizon. Needs an explicit ops decision
 (likely SQL Server backup/retention policy, not application code) before Phase 3 sign-off.
 
-**Correlation id not echoed on the response.** See §3. `HttpContext.TraceIdentifier` is captured
-and propagated into every audit record and command, but never returned to the caller via a
-response header. Flagged for whoever implements `05-reliability-and-error-handling.md`'s RFC 7807
-mapping — consider a `traceId` problem-details extension member or an `X-Correlation-Id` response
-header.
+**Correlation id echo — resolved 2026-07-17.** See §3: `X-Correlation-Id` response header, set on
+every response from `HttpContext.TraceIdentifier` (ticket 13).
 
-**Portal human-user audit header (PRD §2.2) — not yet implemented.** Already flagged in
-`01-tenancy-and-authorization.md` §4 as "likely owned by this file" — confirmed here: PRD §2.2
-requires the human portal user driving an Admin action to be passed in a separate header and
+**Portal human-user audit header (PRD §2.2) — resolved 2026-07-17 grilling (ticket 14):
+explicitly deferred, not a gap.** No portal/client exists in this repo (API-only, no Angular/TS
+client per CLAUDE.md) and no portal authentication mechanism exists to source a human identity
+from — designing a header shape now would be speculative with no consumer to validate it against.
+Re-open when a portal auth client is actually built. PRD §2.2 requires the human portal user
+driving an Admin action to be passed in a separate header and
 recorded for audit only. No such header exists in `CallerIdentityMiddleware` or any
 `AuditRecord`/`IAuditLogService` call site today (`ClientCompanyId` is the only identity captured).
 Genuine gap, not a doc-drift correction — open until a feature slice implements it.

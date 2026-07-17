@@ -301,13 +301,13 @@ id. **Resolved: shipped code's reading is correct and is what this file describe
 simpler design (no second source of truth to keep in sync with `SubAccount` creation/deletion)
 and is what is actually running.
 
-**Portal human-user audit header (PRD §2.2) — not yet implemented, flagged not resolved.**
-PRD §2.2 states the identity of the human user driving a portal action is "passed in a request
-header and recorded for audit only." `CallerIdentityMiddleware` has no such header handling
-today — it resolves only `ClientCompanyId`. This is a genuine gap, not a doc-drift correction:
-left as an open item for whichever feature slice implements admin action audit records
-(likely `04-audit-and-compliance-actions.md` or equivalent — not owned by this file, since it's
-about audit-record content, not tenancy/authorization resolution itself).
+**Portal human-user audit header (PRD §2.2) — resolved 2026-07-17 grilling (ticket 14): explicitly
+deferred.** PRD §2.2 states the identity of the human user driving a portal action is "passed in a
+request header and recorded for audit only." `CallerIdentityMiddleware` has no such header
+handling today — it resolves only `ClientCompanyId`. No portal/client exists in this repo
+(API-only, no Angular/TS client per CLAUDE.md) and no portal authentication mechanism exists to
+source a human identity from, so designing the header now would be speculative. Deferred until a
+portal auth client is actually built — see `06-audit-and-compliance.md` §7 for the matching entry.
 
 **RFC 7807 content intentionally excluded.** Phase_1 Task 2 bundles `TenantScopeResolver` and
 the global `IExceptionHandler`/`ProblemDetails` mapping into one task. This file took only the
