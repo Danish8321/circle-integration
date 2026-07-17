@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using TreasuryServiceOrchestrator.Api.Middleware;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -32,6 +33,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IIdempotencyService, IdempotencyService>();
 builder.Services.AddScoped<CreateSubAccountHandler>();
+builder.Services.AddScoped<GetSubAccountHandler>();
 builder.Services.AddScoped<IValidator<CreateSubAccountCommand>, CreateSubAccountValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 

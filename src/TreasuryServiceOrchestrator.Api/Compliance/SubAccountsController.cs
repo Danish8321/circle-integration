@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
+using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
@@ -8,8 +9,31 @@ namespace TreasuryServiceOrchestrator.Api.Compliance;
 [ApiController]
 [Route("v1/sub-accounts")]
 public sealed class SubAccountsController(
-    CreateSubAccountHandler createSubAccountHandler, ICallerContext callerContext) : ControllerBase
+    CreateSubAccountHandler createSubAccountHandler,
+    GetSubAccountHandler getSubAccountHandler,
+    ICallerContext callerContext) : ControllerBase
 {
+    [HttpGet("{clientCompanyId}")]
+    public async Task<ActionResult<SubAccountResponse>> GetSubAccount(
+        string clientCompanyId, CancellationToken cancellationToken)
+    {
+        // The route segment is always non-empty, so the resolved scope is always
+        // SingleTenant (or TenantForbiddenException -> 403 centrally).
+        var scope = (TenantScope.SingleTenant)TenantScopeResolver.Resolve(callerContext, clientCompanyId);
+
+        var result = await getSubAccountHandler.HandleAsync(
+            new GetSubAccountQuery(scope.ClientCompanyId), cancellationToken);
+
+        return Ok(new SubAccountResponse(
+            result.SubAccountId,
+            result.ClientCompanyId,
+            result.LifecycleState,
+            result.IsDisabled,
+            result.CircleWalletId,
+            result.LatestRegistrationStatus,
+            result.RegistrationRejectionReason));
+    }
+
     [HttpPost]
     public async Task<ActionResult<CreateSubAccountResponse>> CreateSubAccount(
         [FromBody] CreateSubAccountRequest request,
