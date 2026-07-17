@@ -319,11 +319,10 @@ a denied outcome).
      No discrepancy — different endpoint families, same "alert ops, don't blame the tenant"
      treatment, both captured in this file's table as one `provider-unavailable` row rather than
      two, since the product-facing translation is identical either way).
-   - `429` (rate limited) — present in the mirror's "Synchronous and asynchronous errors" status
-     list (`400, 401, 403, 404, 409, 429, or 500`) but not re-confirmed by name in this pass's
-     live fetch prompt (the fetch targeted the specific codes list above, not the general status
-     table). Carried from the local mirror, marked **unconfirmed by this pass's specific fetch**
-     — not dropped, per the task's instruction to report rather than silently drop.
+   - `429` (rate limited) — **confirmed live 2026-07-17** (follow-up pass), fetched
+     `https://developers.circle.com/circle-mint/references/error-codes` directly: "Returned inline
+     in the HTTP response with a status code (`400`, `401`, `403`, `404`, `409`, `429`, or `500`)".
+     Matches the local mirror exactly. No discrepancy.
    - The live fetch reported no visible "last verified" date on the page itself; the local
      mirror's own note ("Verified live... on 2026-07-07") is the only dated verification on
      record, and this pass's 2026-07-17 fetch found identical content — no drift across the
@@ -333,9 +332,8 @@ a denied outcome).
    records it as verified live 2026-07-07 at (now-moved) `https://developers.circle.com/api-reference/idempotent-requests`;
    treated as current ground truth without re-verification.
 
-**Overall result: no discrepancy found.** Every code in the task's required-verification list was
-confirmed live except `429`, which is carried from the mirror with an explicit "not re-verified
-by name this pass" flag rather than silently asserted as freshly confirmed.
+**Overall result: no discrepancy found.** Every code in the task's required-verification list is
+now confirmed live, including `429` (follow-up pass, 2026-07-17).
 
 ## 7. Reconciliation job design (folded in from `DepositReconciliationPLan.md`)
 
@@ -520,11 +518,9 @@ Per `DepositReconciliationPLan.md`'s Global Constraints, these stay documented g
   record as `DepositSourceType.OnChain` and only listed the deposits endpoint — doubly wrong,
   since that endpoint returns only wire deposits and on-chain gaps were never actually covered.
   §7.2 reflects the corrected two-call design; no open discrepancy.
-- **Circle error-code table verification (this pass, 2026-07-17):** every code named in the task
-  brief was confirmed live except `429`, which is carried from the local mirror with an explicit
-  "not re-verified by name this pass" flag (§6) rather than silently dropped or silently claimed
-  as fresh. No mismatch found between the live page and the local mirror for anything that was
-  fetched.
+- **Circle error-code table verification (2026-07-17, two passes):** every code named in the task
+  brief confirmed live, including `429` (follow-up pass, direct fetch of the error-codes reference
+  page — §6). No mismatch found between the live page and the local mirror for anything fetched.
 - **`idempotencyKey` request-body-field fact:** treated as settled per the task brief, not
   re-fetched live this pass; carried from the 2026-07-07 verification already on file in
   `docs/circle-mint-docs/reference/idempotent-requests.md`.
