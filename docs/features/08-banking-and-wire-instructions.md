@@ -88,6 +88,15 @@ public class LinkedBankAccount
     public required string AccountNumber { get; set; }
     public required string RoutingNumber { get; set; }
     public required string BankName { get; set; }
+    public required string BillingName { get; set; }
+    public required string BillingCity { get; set; }
+    public required string BillingCountry { get; set; }
+    public required string BillingLine1 { get; set; }
+    public required string BillingPostalCode { get; set; }
+    public string? BillingLine2 { get; set; }
+    public string? BillingDistrict { get; set; }
+    public required string BankAddressCountry { get; set; }
+    public string? BankAddressBankName { get; set; }
     public required string CircleBankAccountId { get; set; }
     public LinkedBankAccountStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }
@@ -101,10 +110,11 @@ other entity-construction site; the `Phase_1_Feature_Slices.md` Task 11 code blo
 `LinkedBankAccount`/`RedeemRequest` timestamps via `DateTime.UtcNow` directly and must not be copied
 verbatim.
 
-**This four-flat-field shape is a deliberate simplification, not Circle's real request/response
-schema — see §5's discrepancy.** It is sufficient for what the domain and Application tiers need
-to reason about (identity, verification state); the real Circle field layout is nested and is
-mapped at the Infrastructure boundary only (§6).
+**Widened beyond the Phase 1 source's four-flat-field shape (ratified 2026-07-17 grilling, ticket
+11) — resolution (a).** The billing/bank-address fields above were added so the entity can build a
+well-formed Circle US wire-creation body (§5, §7) without a static Distributor-level config
+fallback; the optional fields (`BillingLine2`, `BillingDistrict`, `BankAddressBankName`) mirror the
+US schema's own optionality. IBAN/non-IBAN-non-US schemas remain out of scope (US-only, Phase 1).
 
 ---
 
@@ -163,7 +173,10 @@ public interface IStablecoinGateway
 
 public sealed record CreateLinkedBankAccountGatewayRequest(
     string IdempotencyKey, string BeneficiaryName, string AccountNumber,
-    string RoutingNumber, string BankName);
+    string RoutingNumber, string BankName, string BillingName, string BillingCity,
+    string BillingCountry, string BillingLine1, string BillingPostalCode,
+    string? BillingLine2, string? BillingDistrict, string BankAddressCountry,
+    string? BankAddressBankName);
 
 public sealed record CreateLinkedBankAccountGatewayResult(string CircleBankAccountId, string Status);
 
@@ -205,14 +218,19 @@ forward the caller's reserved key, not a freshly generated one. Carried as corre
 ```csharp
 public sealed record CreateLinkedBankAccountCommand(
     string BeneficiaryName, string AccountNumber, string RoutingNumber, string BankName,
+    string BillingName, string BillingCity, string BillingCountry, string BillingLine1,
+    string BillingPostalCode, string? BillingLine2, string? BillingDistrict,
+    string BankAddressCountry, string? BankAddressBankName,
     string IdempotencyKey, string CorrelationId);
 
 public sealed record CreateLinkedBankAccountResult(
     Guid LinkedBankAccountId, string CircleBankAccountId, LinkedBankAccountStatus Status);
 ```
 
-`CreateLinkedBankAccountCommandValidator` — `NotEmpty()` on all four bank-detail fields plus
-`IdempotencyKey`/`CorrelationId`.
+`CreateLinkedBankAccountCommandValidator` — `NotEmpty()` on the four original bank-detail fields,
+the five required billing fields (`BillingName/City/Country/Line1/PostalCode`),
+`BankAddressCountry`, plus `IdempotencyKey`/`CorrelationId`. `BillingLine2`/`BillingDistrict`/
+`BankAddressBankName` are optional, no `NotEmpty()`.
 
 `CreateLinkedBankAccountCommandHandler(IStablecoinGateway gateway, ILinkedBankAccountRepository
 linkedBankAccounts, IAuditLogService auditLog, IUnitOfWork unitOfWork)`:
@@ -467,15 +485,13 @@ not restated here).
 - `POST /v1/businessAccount/banks/wires`.
 - Body: `idempotencyKey` = the **caller's reserved key** (§3.2's correction — not a
   gateway-generated GUID; Phase 3 Task 4's idempotency-forwarding audit explicitly names this
-  method), plus the applicable one of the three schemas in §5. **Only the US schema
-  (`accountNumber`/`routingNumber`/`billingDetails`/`bankAddress`) is in scope for Phase 1's
-  four-flat-field `LinkedBankAccount` domain shape** (§2.2) — mapping `BeneficiaryName` →
-  `billingDetails.name`, `BankName` → `bankAddress.bankName`, `AccountNumber`/`RoutingNumber` →
-  root-level fields, with `billingDetails.city`/`country`/`line1`/`postalCode` and
-  `bankAddress.country` left as **open fields the domain entity does not currently carry** — see
-  §8's discrepancy; the gateway cannot build a well-formed US wire-creation request from the
-  Phase 1 domain shape alone as it stands today without either a config-level default billing
-  address or an entity-shape change.
+  method), plus the US schema (`WireCreationRequestUs`) built from the widened `LinkedBankAccount`
+  shape (§2.2, ratified 2026-07-17, ticket 11 resolution (a)): `accountNumber` = `AccountNumber`,
+  `routingNumber` = `RoutingNumber`, `billingDetails` = `{name: BillingName, city: BillingCity,
+  country: BillingCountry, line1: BillingLine1, postalCode: BillingPostalCode, line2:
+  BillingLine2, district: BillingDistrict}`, `bankAddress` = `{country: BankAddressCountry,
+  bankName: BankAddressBankName}`. IBAN and non-IBAN-non-US schemas remain out of scope (US-only,
+  Phase 1).
 - Response mapping: `CircleBankAccountId = response.Id`, `Status = response.Status`
   (`"pending"` expected on every create — Circle never returns a terminal status synchronously,
   per §5's `wire` topic confirmation).
@@ -616,7 +632,7 @@ test).
 | 2 | Wire instructions endpoint requires a `currency` query parameter. | **New fact, not in PRD §5.2/Appendix B or either Phase doc.** Neither source lists `currency` as a parameter on `GET .../instructions` — both show only `walletId`. **Resolved: added to `GetWireInstructionsGatewayRequest`/`GetWireInstructionsQuery` (§3.2, §3.5) and the controller route (§4) as a required parameter**, since omitting a required Circle parameter would make every real-mode call fail. | Live fetch, `https://developers.circle.com/api-reference/circle-mint/account/create-business-wire-account`-adjacent instructions reference. |
 | 3 | `IStablecoinGateway.GetWireInstructionsAsync` did not exist on any port in Phase 1; Phase 3 Task 3 explicitly deferred the decision ("confirm which port... before adding"). | **Resolved by this file** — placed on `IStablecoinGateway` (§3.2), with a `Grep` of shipped `src/` for `WireInstructions`/`GetWireInstructions` confirming zero prior placements on either port before this file's design was written. Not yet implemented in code; this is a design decision for Phase 3 Task 3 to consume, not a correction of existing shipped code. | `Phase_3_Circle_Integration_Plan.md` line 90; `Grep` of `src/` (this session, zero matches). |
 | 4 | `CreateLinkedBankAccountGatewayRequest` (Phase 1 shape) has no `IdempotencyKey` field, contradicting CLAUDE.md invariant 11 and Phase 3 Task 4's own audit scope (which names this exact method). | **Corrected here** — `IdempotencyKey` added as the request's first field (§3.2), sourced from the command's `IdempotencyKey`, itself expected to be the caller-reserved key per invariant 11's forwarding clause. No code exists yet to diverge from this — flagged so Phase 1/3 implementers don't copy the Phase 1 doc's field-less record verbatim. | `Phase_1_Feature_Slices.md` line 7251-7252 (no `IdempotencyKey`) vs. `.claude/CLAUDE.md` invariant 11 and `Phase_3_Circle_Integration_Plan.md` line 102 (names `CreateLinkedBankAccountAsync` in the idempotency-forwarding test list). |
-| 5 | Real Circle wire-creation request body is **nested** (`billingDetails`, `bankAddress`, three bank-location-dependent schemas) — Phase 1's domain `LinkedBankAccount`/gateway DTOs use four **flat** fields (`BeneficiaryName`, `AccountNumber`, `RoutingNumber`, `BankName`) that map onto only a subset of the real US schema's required fields (`billingDetails.city/country/line1/postalCode`, `bankAddress.country` have no home in the flat shape). | **Open, not resolved by this file** — flagged rather than silently widening the domain entity, since that is a schema/entity-shape decision affecting migrations and out of scope for a docs-only pass. Phase 1's flat shape is adequate for mock mode (§6, which invents no such fields) and for every Application-tier concern (identity, status); it becomes a real blocker only at the Infrastructure/HTTP boundary (§7), which is exactly where this discrepancy is called out. Two resolutions are possible: (a) widen `LinkedBankAccount`/`CreateLinkedBankAccountCommand` to carry the full nested US-schema fields, or (b) keep the domain shape flat and source the missing billing/bank-address fields from static Distributor-level configuration (plausible if the Distributor always links its own bank accounts under one fixed billing identity) — this file does not pick between them. | `https://developers.circle.com/api-reference/circle-mint/account/create-business-wire-account` (live, this session) vs. `Phase_1_Feature_Slices.md` line 7183-7195, 7251-7255. |
+| 5 | Real Circle wire-creation request body is **nested** (`billingDetails`, `bankAddress`, three bank-location-dependent schemas) — Phase 1's domain `LinkedBankAccount`/gateway DTOs used four **flat** fields that mapped onto only a subset of the real US schema's required fields. | **Resolved 2026-07-17 grilling (ticket 11, resolution (a)).** `LinkedBankAccount`/`CreateLinkedBankAccountCommand`/`CreateLinkedBankAccountGatewayRequest` widened to carry the full US-schema billing/bank-address fields (§2.2, §3.2, §3.3, §7) rather than sourcing them from static Distributor-level config — config-sourcing was rejected for baking in an unconfirmed one-billing-identity assumption with no product sign-off. Needs an additive migration (new columns on a not-yet-shipped table, no data-loss risk). | `https://developers.circle.com/api-reference/circle-mint/account/create-business-wire-account` (live, this session) vs. `Phase_1_Feature_Slices.md` line 7183-7195, 7251-7255; ratified `.scratch/treasury-service-orchestrator/issues/11-linked-bank-account-wire-body-shape.md`. |
 | 6 | `GetWireInstructionsAsync`/`GetWireInstructionsQuery` return `LinkedBankAccount` **domain-adjacent** DTOs, not the Domain entity itself — but `ListLinkedBankAccountsQueryHandler`/`GetLinkedBankAccountQueryHandler` (§3.4) return the `LinkedBankAccount` Domain entity directly through `IQueryHandler<..., LinkedBankAccount>`, which the controller (§4) then serializes as the HTTP response body verbatim. | **Standing tension with CLAUDE.md invariant 5** ("Domain entities never leak past the Application boundary into an API response"), carried forward unresolved from shipped Phase 1 code and from the same pattern already flagged (without resolution) in `04-ledger-and-balances.md` §4.1's `GetTransactionQueryHandler`. Not fixed in this file — a fix would mean adding an explicit response-DTO mapping layer to `LinkedBankAccountsController`, which is a code change, not a doc correction; recorded here so it isn't rediscovered as a fresh defect later. | `Phase_1_Feature_Slices.md` line 7679-7703, `04-ledger-and-balances.md` §4.1 (same pattern, same non-fix). |
 | 7 | Whether `GET .../instructions` requires the `LinkedBankAccount` to already be `Active`/`complete`, or answers for a still-`Pending` account too. | **Unverified, left open** (§9's test list flags rather than assumes). Neither the live fetch nor the local mirror states a status precondition on the instructions call; PRD §5.1 doesn't address it either. If Circle in fact 4xxs for a non-`complete` bank account, `GetWireInstructionsQueryHandler` (§3.5) needs a pre-check against `account.Status` before calling the gateway — not added here without a source confirming the requirement exists. | No source found either way; flagged for Phase 3 Task 3 to confirm against the live sandbox before shipping. |
 

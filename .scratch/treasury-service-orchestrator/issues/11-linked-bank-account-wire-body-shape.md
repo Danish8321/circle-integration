@@ -1,4 +1,4 @@
-Status: open
+Status: resolved
 
 Source: `docs/features/08-banking-and-wire-instructions.md` §7, §10 item 5; `docs/README.md` §7.
 Blocked by: 07-redemption-and-linked-bank-account.
@@ -31,11 +31,30 @@ real:
 IBAN and non-IBAN-non-US schemas are explicitly out of scope for Phase 1 either way (US-only
 today).
 
+## Decision (resolved 2026-07-17 grilling)
+
+**(a) — widen the entity.** `LinkedBankAccount` and `CreateLinkedBankAccountCommand` gain the
+full US-schema billing/bank-address fields rather than sourcing them from static config. Reason:
+static Distributor-level config bakes in an unconfirmed assumption (one fixed billing identity
+for every linked account) that has no product sign-off and breaks silently the day it's wrong;
+widening models what Circle's schema actually requires per-account and needs only an additive
+migration.
+
+New/changed fields on `LinkedBankAccount` (`Domain/LinkedBankAccount.cs`) and
+`CreateLinkedBankAccountCommand`/`CreateLinkedBankAccountGatewayRequest`:
+`BillingName, BillingCity, BillingCountry, BillingLine1, BillingPostalCode, BillingLine2? ,
+BillingDistrict?, BankAddressCountry, BankAddressBankName?` (the optional fields mirror the US
+schema's own optionality — `line2`/`district` on `billingDetails`, `bankName` on `bankAddress`
+are the only ones Circle marks optional there). `docs/features/08-banking-and-wire-instructions.md`
+§2.2/§3.2/§3.3/§7 updated to match (see that file's own corrections log entry #5).
+
 ## Definition of done
 
-- Decision (a) or (b) recorded here.
-- `LinkedBankAccount`/`CreateLinkedBankAccountGatewayRequest`/`CircleMintGateway.
-  CreateLinkedBankAccountAsync` updated to match; migration reviewed by hand if (a).
+- [x] Decision (a) recorded here.
+- `LinkedBankAccount`/`CreateLinkedBankAccountCommand`/`CreateLinkedBankAccountGatewayRequest`/
+  `CircleMintGateway.CreateLinkedBankAccountAsync` updated to match; migration reviewed by hand
+  (additive columns only, no data loss — no `LinkedBankAccount` rows exist yet in any shipped
+  migration to worry about, so this is a new-table addition, not a rename/backfill).
 - `CircleMintGatewayTests.cs` fixture asserts the full US wire-creation body shape per
   `docs/features/08-banking-and-wire-instructions.md` §5/§7.
 

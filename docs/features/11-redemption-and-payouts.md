@@ -205,14 +205,17 @@ IBalanceSnapshotRepository, IAuditLogService, IUnitOfWork)`:
 4. On `Failed`: no `FundAccount` mutation (nothing was ever debited).
 5. Append an audit entry (`"RedemptionStatusChanged"`) and `SaveChangesAsync` once.
 
-This mirrors `04-ledger-and-balances.md`'s `LedgerPostingService` triplet (post `Transaction`,
-adjust `FundAccount.Balance`, write `BalanceSnapshot`) but is written inline in the handler per the
-Phase 1 source's literal step — the shared module's callers per §3 of that file are deposit credit,
-transfer debit, and redemption debit; an implementation should route this through
-`LedgerPostingService.PostAsync` with a signed negative `Money` for the gross debit rather than
-hand-rolling the triplet, consistent with that file's "one implementation, not three drifting
-copies" mandate. Flagged in §9 below since the Phase 1 source snippet predates that module's
-extraction and shows the pre-extraction inline form.
+**Resolved 2026-07-17 grilling (ticket 07): this handler routes the gross debit through
+`LedgerPostingService.PostAsync`**, not the inline triplet the Phase 1 source snippet shows —
+applying ticket 12's already-ratified `PostAsync(signed Money)` shape (`04-ledger-and-balances.md`
+§6), since redemption debit is one of that module's three named callers (deposit credit, transfer
+debit, redemption debit). Step 3 above becomes: on `Complete`, call
+`LedgerPostingService.PostAsync(new LedgerPosting(fundAccount.Id, -redeemRequest.GrossAmount.
+Amount, redeemRequest.GrossAmount.CurrencyCode, TransactionType.Redemption, redeemRequest.
+CircleRedeemId))` in place of the hand-rolled `Transaction`/`Balance`/`BalanceSnapshot` writes —
+the module owns posting the `Transaction`, adjusting `FundAccount.Balance`, and writing the
+`BalanceSnapshot` internally. No separate `IBalanceSnapshotRepository`/`IFundAccountRepository`
+mutation call remains in this handler.
 
 ### 3.4 `RedemptionsController`
 
@@ -371,18 +374,12 @@ gross/fees/net").
   `sepa_instant` destination types. This product's redemption feature only ever constructs `{type:
   "wire", id: bankId}` (PRD §8 is fiat-wire-only) — flagged here as a schema-breadth note, not a
   scope change; nothing in this file's design should be read as supporting non-wire destinations.
-- **`ProcessPayoutStatusCommandHandler`'s debit logic is shown inline in the Phase 1 source, not
-  routed through `LedgerPostingService`.** `04-ledger-and-balances.md` §3 (design-pass correction
-  #2) establishes `LedgerPostingService.PostAsync` as the **one** implementation of the
-  post-`Transaction`/adjust-`Balance`/write-`BalanceSnapshot` triplet, explicitly naming
-  redemption debit as one of its three intended callers. The Phase 1 source's
-  `ProcessPayoutStatusCommandHandler` snippet (`Phase_1_Feature_Slices.md` Step 20) predates that
-  extraction and hand-rolls the triplet directly against `IFundAccountRepository`/
-  `IBalanceSnapshotRepository`. §3.3 above flags this: an implementation should call
-  `LedgerPostingService.PostAsync` with a signed negative `Money` for the gross debit rather than
-  reproducing the triplet a third time. Not fixed here as a rewritten code block (the exact
-  `LedgerPostingService`-based call shape is `04-ledger-and-balances.md`'s synthesis to own, not
-  this file's), but flagged so an implementer doesn't copy the pre-extraction form verbatim.
+- **`ProcessPayoutStatusCommandHandler`'s debit logic — resolved 2026-07-17 grilling (ticket 07).**
+  Routes through `LedgerPostingService.PostAsync` (signed negative `Money` for the gross debit),
+  not the inline triplet the Phase 1 source snippet shows. See §3.3's updated text for the exact
+  call shape. This applies ticket 12's already-ratified `PostAsync` signature
+  (`04-ledger-and-balances.md` §6) — redemption debit is one of that module's three named callers
+  (deposit credit, transfer debit, redemption debit).
 - **`RedeemRequest.Status` reuses `TransferStatus` rather than a redemption-specific enum.** Not a
   discrepancy — this is the Phase 1 source's own design (`Status TransferStatus` field on
   `RedeemRequest`) and matches `04-ledger-and-balances.md` §2.1's three-value-status convention
