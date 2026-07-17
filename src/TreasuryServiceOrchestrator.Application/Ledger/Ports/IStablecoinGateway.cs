@@ -17,4 +17,13 @@ public interface IStablecoinGateway
 
     Task<CreatedTransfer> CreateTransferAsync(
         CreateTransferGatewayRequest request, CancellationToken ct = default);
+
+    Task<CreatedRedeem> RedeemAsync(
+        RedeemGatewayRequest request, CancellationToken ct = default);
+
+    Task<CreatedLinkedBankAccount> CreateLinkedBankAccountAsync(
+        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default);
+
+    Task<WireInstructions> GetWireInstructionsAsync(
+        string circleBankAccountId, CancellationToken ct = default);
 }

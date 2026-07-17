@@ -80,4 +80,19 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
 
         return new CreatedTransfer(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
     }
+
+    public Task<CreatedRedeem> RedeemAsync(
+        RedeemGatewayRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "CircleMintGateway.RedeemAsync is implemented in ticket 07.6.");
+
+    public Task<CreatedLinkedBankAccount> CreateLinkedBankAccountAsync(
+        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "CircleMintGateway.CreateLinkedBankAccountAsync is implemented in ticket 07.6.");
+
+    public Task<WireInstructions> GetWireInstructionsAsync(
+        string circleBankAccountId, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "CircleMintGateway.GetWireInstructionsAsync is implemented in ticket 07.6.");
 }

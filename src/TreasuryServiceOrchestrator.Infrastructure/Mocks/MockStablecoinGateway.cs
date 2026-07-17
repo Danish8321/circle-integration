@@ -108,6 +108,21 @@ public sealed class MockStablecoinGateway(
         return Task.FromResult(new CreatedTransfer(circleTransferId, "pending"));
     }
 
+    public Task<CreatedRedeem> RedeemAsync(
+        RedeemGatewayRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "MockStablecoinGateway.RedeemAsync is implemented in ticket 07.6.");
+
+    public Task<CreatedLinkedBankAccount> CreateLinkedBankAccountAsync(
+        CreateLinkedBankAccountGatewayRequest request, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "MockStablecoinGateway.CreateLinkedBankAccountAsync is implemented in ticket 07.6.");
+
+    public Task<WireInstructions> GetWireInstructionsAsync(
+        string circleBankAccountId, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "MockStablecoinGateway.GetWireInstructionsAsync is implemented in ticket 07.6.");
+
     private void MaybeThrowProviderUnavailable()
     {
         if (randomSource.NextDouble() < options.Value.FailureInjectionRate)
