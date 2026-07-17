@@ -59,6 +59,7 @@ public sealed class SubAccountsControllerTests(TreasuryServiceOrchestratorApiFac
     {
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("ClientCompanyId", "some-other-client");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", $"idem-{Guid.NewGuid():N}");
 
         var response = await client.PostAsJsonAsync(
             "sub-accounts", ValidRequest($"client-{Guid.NewGuid():N}"), TestContext.Current.CancellationToken);
