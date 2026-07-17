@@ -28,6 +28,19 @@ config flag.
 - `MockModeGuard.Validate(mockModeEnabled, environmentName)` throws if enabled in
   `Environments.Production` — this is the structural guard, test it explicitly.
 
+## Decisions resolved during grilling (2026-07-17)
+
+- **`RedeemAsync` stays pure 1:1 fiat-to-target-currency, no fee simulation.** Gross/fees/net
+  math is ticket 07's real-handler concern; the mock only proves the pipeline shape stays
+  deterministic and simple.
+- **`SystemRandomSource` must be thread-safe.** Both mock gateways are singletons serving
+  concurrent requests; back it with `System.Random.Shared` (thread-safe since .NET 6), not a
+  private `new Random()` instance.
+- **`FixedRandomSource`/`CapturingScheduler` test doubles live in a shared test-utilities
+  location**, not local to this ticket's test file — tickets 03-10 reuse the same doubles for
+  their own mock-gateway tests. Create the shared project/folder as part of this ticket's scope
+  (first consumer), reference from every subsequent ticket rather than duplicating.
+
 ## Definition of done
 
 - `MockModeGuardTests`: throws in Production, no-ops elsewhere — Moq not needed here (pure

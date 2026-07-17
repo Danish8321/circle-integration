@@ -327,16 +327,11 @@ public sealed record GeneratedDepositAddress(string Address, string Chain, strin
    own use of `POST /v1/businessAccount/transfers` for outbound), so this is noted as an
    **unused alternate path**, not a correction — flagged in §7 below for product awareness, not
    acted on.
-4. **Chain/currency support matrix** — local mirror
-   (`docs/circle-mint-docs/reference/supported-chains-and-currencies.md`) states 34 chains for
-   USDC, 8 for EURC, current as of its last capture; this pass did not re-fetch
-   `https://developers.circle.com/circle-mint/supported-chains-and-currencies` live (out of the
-   verification budget for this file — the mirror itself instructs checking
-   `https://developers.circle.com/llms.txt` "before shipping a new chain integration," which is a
-   Phase 3 concern for `CircleMintGateway`'s real chain validation, not this file's Phase 1
-   allow-list default). The `["ETH"]` Phase 1 default remains an assumption pending that
-   pre-Phase-3 cross-check called out by `Phase_1_Feature_Slices.md` Task 7 itself — not newly
-   verified or newly contradicted by this pass.
+4. **Chain/currency support matrix — `ETH` confirmed live (follow-up pass, 2026-07-17).** Fetched
+   `https://developers.circle.com/circle-mint/supported-chains-and-currencies` directly: "Ethereum"
+   is supported for USDC, API chain code `ETH` — matches the Phase 1 `["ETH"]` default exactly.
+   No discrepancy. (Full 34-chain matrix re-verification for Phase 3's real chain-validation work
+   remains out of this pass's scope — only the Phase 1 default itself was in question here.)
 5. **`GET /v1/businessAccount/transfers?destinationWalletId=…`, confirmed** — fetched
    `https://developers.circle.com/api-reference/circle-mint/account/list-business-transfers`
    live. Confirmed `walletId` (either direction), `sourceWalletId`, and `destinationWalletId`
@@ -451,10 +446,8 @@ flagged, since that judgment is deposit-domain knowledge, not job-scheduling kno
   Stablecoin Payins, an alternate on-chain-receipt mechanism this product does not use (§5.3) —
   flagged for product awareness only, since PRD §6.2/§7 deliberately standardize on `transfers`
   for both outbound (already-built) and inbound (this file) on-chain movement; no action taken.
-- **Chain/currency support matrix — not re-fetched live this pass, carried from local mirror**
-  (§5.4). The `["ETH"]` Phase 1 default's own pre-Phase-3 cross-check (called out by
-  `Phase_1_Feature_Slices.md` Task 7 itself) remains open and unresolved by this pass — not a new
-  gap, just not closed here.
+- **Chain/currency support matrix — `["ETH"]` Phase 1 default confirmed live** (follow-up pass,
+  2026-07-17, §5.4). No discrepancy; gap closed.
 - **Idempotency-key scope for deposit-address generation is system-generated, not
   caller-supplied — confirmed intentional, not a defect.** §3.3 documents why: permanence at the
   product level already gives the operation caller-facing idempotency; the system-generated key
