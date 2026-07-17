@@ -304,7 +304,7 @@ tenant scope via `(TenantScope.SingleTenant)TenantScopeResolver.Resolve(caller, 
 |---|---|---|
 | `GET .../transactions` | `ListTransactionsQueryHandler` | `ListTransactionsQuery(ResolvedClientCompanyId, TransactionType? Type, TransactionStatus? Status, DateTime? FromUtc, DateTime? ToUtc, int Page, int PageSize)` — `page`/`pageSize` default to `1`/`20` when the query string supplies `<= 0`. |
 | `GET .../transactions/{transactionId:guid}` | `GetTransactionQueryHandler` | `GetTransactionQuery(ResolvedClientCompanyId, Guid TransactionId)` — 404 (`NotFoundException`) if the transaction doesn't exist *or* belongs to a different `SubAccountId` than the resolved tenant (tenant isolation enforced by identity check, not a filtered query, so a cross-tenant guess reads as "not found," never leaks existence). |
-| `GET .../balances` | `GetCurrentBalanceQueryHandler` | `GetCurrentBalanceQuery(ResolvedClientCompanyId)` → `Money`. Returns `Money.Zero("USD")` when no `FundAccount` row exists yet (no deposits ever credited) — this is a documented default, not a real-currency guess; **open question, see §6**. |
+| `GET .../balances` | `GetCurrentBalanceQueryHandler` | `GetCurrentBalanceQuery(ResolvedClientCompanyId)` → `Money`. Returns `Money.Zero("USDC")` when no `FundAccount` row exists yet (no deposits ever credited) — decided 2026-07-17 grilling, see §6. |
 | `GET .../balances/history` | `GetBalanceHistoryQueryHandler` | `GetBalanceHistoryQuery(ResolvedClientCompanyId, DateTime FromUtc, DateTime ToUtc)` → `IReadOnlyList<BalanceSnapshot>`, ordered ascending by `CapturedAtUtc`. Both handlers 404 via `NotFoundException` if no `SubAccount` matches `ResolvedClientCompanyId`. |
 
 Both `type`/`status` query parameters bind directly to `TransactionType?`/`TransactionStatus?` —
@@ -376,7 +376,7 @@ the same pagination idiom as the tenant-scoped `ListAsync`.
 | Unit | `LedgerPostingServiceTests.cs` | `Complete` posting: creates a `FundAccount` when none exists, applies signed `Amount` to `Balance`, writes one `Transaction` + one `BalanceSnapshot(Reason = PostMutation)`, stamps timestamps from an injected fake `TimeProvider` (not real time). `Failed` posting: writes the `Transaction` only, no `FundAccount` mutation, no `BalanceSnapshot`. Debit (`negative Amount`) reduces `Balance` correctly. |
 | Unit | `ListTransactionsQueryHandlerTests.cs` | Lists transactions for the resolved sub-account; throws `NotFoundException` when no sub-account matches `ResolvedClientCompanyId`. |
 | Unit | `GetTransactionQueryHandlerTests.cs` | Returns the transaction when it belongs to the resolved tenant; throws `NotFoundException` both when the id doesn't exist and when it belongs to a different `SubAccountId` (cross-tenant access must read identically to not-found). |
-| Unit | `GetCurrentBalanceQueryHandlerTests.cs` | Returns `Money.Zero("USD")` when no `FundAccount` exists yet; returns the real balance otherwise. |
+| Unit | `GetCurrentBalanceQueryHandlerTests.cs` | Returns `Money.Zero("USDC")` when no `FundAccount` exists yet; returns the real balance otherwise. |
 | Unit | `GetBalanceHistoryQueryHandlerTests.cs` | Returns snapshots within `[FromUtc, ToUtc]` ordered ascending; throws `NotFoundException` when no sub-account matches. |
 | Unit | `ListAllTransactionsQueryHandlerTests.cs` | Delegates to `ITransactionRepository.ListAllAsync` with the constructed `TransactionListFilter`; no tenant check at this layer (the caller — `AdminTransactionsController`, owned by `12-admin-cross-tenant-views.md` — enforces `caller.IsAdmin` before constructing the query). |
 | Integration | `DepositWebhookLedgerTests.cs` (owned end-to-end by `09-deposits.md`, but exercises this file's entities/module) | A `deposits` webhook delivery produces one `Transaction(Type = Deposit, Status = Complete)` and one `BalanceSnapshot(Reason = PostMutation)`, and `GET .../balances` reflects the new total. |
@@ -402,26 +402,15 @@ the same pagination idiom as the tenant-scoped `ListAsync`.
   code blocks must substitute `TimeProvider` at every `DateTime.UtcNow` site touching
   `Transaction`/`BalanceSnapshot`/`FundAccount` timestamps. This is a correction applied here, not
   an unresolved open question.
-- **`LedgerPostingService`'s exact method signature is this file's synthesis, not a verbatim
-  source quote.** `Phase_1_Feature_Slices.md` states the constraint (design-pass correction #2:
-  "Interface stays one method... repositories become its internals") and names the extraction
-  origin (`ProcessDepositCommandHandler.RecordCompleteAsync`) and the three callers
-  (deposit/transfer/redemption), but never shows the module's own code — Tasks 9-11's steps for
-  *consuming* it are also not spelled out verbatim in the source range read for this file. §3.2's
-  `LedgerPosting`/`LedgerPostingResult`/`PostAsync` shape is a design derived from that constraint
-  plus the original inline logic it replaces; flag for review against whatever the eventual Task
-  9/10/11 implementation actually needs (e.g. whether a single signed `Money.Amount` is sufficient
-  for both credit and debit, or whether the module should instead expose separate `CreditAsync`/
-  `DebitAsync` methods — the "one method" wording in the source favors the single signed-amount
-  form used here, but this is an inference, not a quoted decision).
-- **`GetCurrentBalanceQueryHandler`'s `Money.Zero("USD")` default currency is unverified against
-  a multi-currency `FundAccount` design.** If a sub-account's eventual `FundAccount` currency is
-  always USDC (per PRD's stablecoin focus) rather than USD, this default may be wrong once a real
-  `FundAccount` is created with a `USDC`-denominated `Balance` — a `Money.Zero("USD")` placeholder
-  followed by a `Money(x, "USDC")` real balance is an inconsistent currency across the "no activity
-  yet" → "first deposit" transition for the same sub-account. Flagged for product/design
-  confirmation; not fixed here since neither PRD §9 nor Task 8's source snippets address it
-  directly (the source snippet literally returns `Money.Zero("USD")` — carried through as-is,
-  flagged rather than silently changed to `"USDC"`).
+- **`LedgerPostingService`'s method signature — ratified 2026-07-17 grilling: single
+  `PostAsync(LedgerPosting)` with a signed `Money.Amount`, not split `CreditAsync`/`DebitAsync`.**
+  Matches the source constraint's literal "stays one method" wording; callers already compute the
+  sign, so a split API would diverge from the constraint without solving a concrete problem. No
+  longer an open synthesis question — this is the decided shape.
+- **`GetCurrentBalanceQueryHandler`'s zero-balance default — ratified 2026-07-17 grilling:
+  `Money.Zero("USDC")`, not `Money.Zero("USD")`.** Every real `FundAccount` this stablecoin-only
+  product ever creates is USDC-denominated; a `USD` zero-balance followed by a `USDC` real balance
+  was a currency inconsistency across the no-activity→first-deposit transition. Corrected from the
+  Phase 1 source snippet's literal `"USD"` default.
 - No other discrepancies found between PRD §9, PRD §3.1, `Phase_1_Feature_Slices.md` Task 8/Task
   12's ledger-read portion, ADR 0002, and ADR 0003 during this pass.
