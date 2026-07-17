@@ -8,4 +8,7 @@ public interface IDepositAddressRepository
 
     Task<DepositAddress?> FindAsync(
         Guid subAccountId, string chain, string currency, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DepositAddress>> ListForSubAccountAsync(
+        Guid subAccountId, CancellationToken cancellationToken = default);
 }
