@@ -8,6 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/TreasuryServiceOrchestrator.ArchitectureTests/TreasuryServiceOrchestrator.ArchitectureTests.csproj" />
     <Project Path="tests/TreasuryServiceOrchestrator.IntegrationTests/TreasuryServiceOrchestrator.IntegrationTests.csproj" />
+    <Project Path="tests/TreasuryServiceOrchestrator.TestUtilities/TreasuryServiceOrchestrator.TestUtilities.csproj" />
     <Project Path="tests/TreasuryServiceOrchestrator.UnitTests/TreasuryServiceOrchestrator.UnitTests.csproj" />
   </Folder>
 </Solution>
