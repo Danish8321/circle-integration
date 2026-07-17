@@ -90,6 +90,15 @@ builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
 builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, AddressBookRecipientsWebhookTopicProcessor>();
+// TransfersWebhookTopicProcessor (and its ProcessTransferStatusCommand handler registration) is
+// not yet wired here: WebhookProcessor resolves IEnumerable<IWebhookTopicProcessor> eagerly, and
+// TransfersWebhookTopicProcessor depends on ITransferRepository, whose persistence-layer
+// implementation is ticket 06.6's scope (not this ticket's). Registering it now would break
+// every webhook-processing WebApplicationFactory test via a DI resolution failure. Ticket 06.6
+// adds `AddScoped<ITransferRepository, TransferRepository>()`,
+// `AddScoped<ICommandHandler<ProcessTransferStatusCommand, ProcessTransferStatusResult>,
+// ProcessTransferStatusCommandHandler>()`, and
+// `AddScoped<IWebhookTopicProcessor, TransfersWebhookTopicProcessor>()` together.
 builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
