@@ -32,11 +32,24 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
             envelope.Data.Address, envelope.Data.Chain, envelope.Data.Currency, ProviderAddressId: null);
     }
 
-    public Task<RegisteredRecipient> RegisterRecipientAsync(
+    public async Task<RegisteredRecipient> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken ct = default)
     {
-        // Real implementation lands alongside ticket 05.5's mock logic; stubbed for now.
-        throw new NotSupportedException(
-            "CircleMintGateway.RegisterRecipientAsync is not implemented yet (ticket 05.5).");
+        var circleRequest = new RegisterRecipientCircleRequest
+        {
+            IdempotencyKey = request.IdempotencyKey,
+            Address = request.Address,
+            Chain = request.Chain,
+            Description = request.Label,
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            "v1/businessAccount/wallets/addresses/recipient", circleRequest, ct);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content.ReadFromJsonAsync<RegisterRecipientCircleEnvelope>(ct)
+            ?? throw new InvalidOperationException("Circle returned an empty recipient-registration response.");
+
+        return new RegisteredRecipient(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
     }
 }

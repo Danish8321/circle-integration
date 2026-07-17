@@ -61,6 +61,52 @@ public sealed class CircleMintGatewayTests
         result.Currency.Should().Be("USDC");
     }
 
+    [Fact]
+    public async Task RegisterRecipientAsync_SendsIdempotencyKeyBodyAndMapsResponse()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        string? capturedBody = null;
+
+        var handler = new StubHttpMessageHandler(async (request, ct) =>
+        {
+            capturedRequest = request;
+            capturedBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+
+            var envelope = new RegisterRecipientCircleEnvelope
+            {
+                Data = new RegisterRecipientCircleData
+                {
+                    Id = "circle-recipient-1",
+                    Status = "active",
+                },
+            };
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(envelope),
+            };
+        });
+
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.circle.test/") };
+        var sut = new CircleMintGateway(httpClient);
+
+        var request = new RegisterRecipientGatewayRequest(
+            Chain: "ETH", Address: "0xabc123", Label: "Primary payout wallet", IdempotencyKey: "recipient:sub-1:0xabc123");
+
+        var result = await sut.RegisterRecipientAsync(request, TestContext.Current.CancellationToken);
+
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Method.Should().Be(HttpMethod.Post);
+        capturedRequest.RequestUri!.AbsolutePath.Should().Be("/v1/businessAccount/wallets/addresses/recipient");
+        capturedBody.Should().Contain("\"idempotencyKey\":\"recipient:sub-1:0xabc123\"");
+        capturedBody.Should().Contain("\"address\":\"0xabc123\"");
+        capturedBody.Should().Contain("\"chain\":\"ETH\"");
+        capturedBody.Should().Contain("\"description\":\"Primary payout wallet\"");
+
+        result.CircleRecipientId.Should().Be("circle-recipient-1");
+        result.Status.Should().Be("active");
+    }
+
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder) : HttpMessageHandler
     {

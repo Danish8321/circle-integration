@@ -1,7 +1,10 @@
+using System.Text.Json;
+
 using Microsoft.Extensions.Options;
 
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 
@@ -16,6 +19,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 /// </summary>
 public sealed class MockStablecoinGateway(
     IOptions<MockProviderOptions> options,
+    IMockWebhookScheduler webhookScheduler,
     IMockRandomSource randomSource) : IStablecoinGateway
 {
     public Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
@@ -32,10 +36,29 @@ public sealed class MockStablecoinGateway(
     public Task<RegisteredRecipient> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken ct = default)
     {
-        // Real mock logic lands in ticket 05.5; stubbed for now, matching how
-        // GenerateDepositAddressAsync was stubbed ahead of ticket 03.5.
-        throw new NotSupportedException(
-            "MockStablecoinGateway.RegisterRecipientAsync is not implemented yet (ticket 05.5).");
+        MaybeThrowProviderUnavailable();
+
+        var circleRecipientId = $"mock-recipient-{randomSource.NewGuid()}";
+        var webhookStatus = request.Label.EndsWith(
+            options.Value.RejectBusinessNameSuffix, StringComparison.OrdinalIgnoreCase)
+            ? "denied"
+            : "active";
+
+        var envelope = new AddressBookRecipientsWebhookEnvelope
+        {
+            AddressBookRecipient = new AddressBookRecipientsWebhookRecipient
+            {
+                Id = circleRecipientId,
+                Status = webhookStatus,
+            },
+        };
+
+        webhookScheduler.Schedule(
+            "addressBookRecipients",
+            JsonSerializer.Serialize(envelope),
+            TimeSpan.FromMilliseconds(options.Value.WebhookDelayMilliseconds));
+
+        return Task.FromResult(new RegisteredRecipient(circleRecipientId, "pending_verification"));
     }
 
     private void MaybeThrowProviderUnavailable()
