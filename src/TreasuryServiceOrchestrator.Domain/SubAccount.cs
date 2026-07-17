@@ -1,0 +1,49 @@
+namespace TreasuryServiceOrchestrator.Domain;
+
+public class SubAccount
+{
+    public Guid Id { get; private set; }
+    public string ClientCompanyId { get; private set; } = string.Empty;
+    public SubAccountLifecycleState LifecycleState { get; private set; }
+    public bool IsDisabled { get; private set; }
+    public string? CircleWalletId { get; private set; }
+    public DateTime CreatedAtUtc { get; private set; }
+
+    private SubAccount()
+    {
+    }
+
+    public static SubAccount Create(string clientCompanyId, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(clientCompanyId))
+        {
+            throw new ArgumentException("ClientCompanyId is required.", nameof(clientCompanyId));
+        }
+
+        return new SubAccount
+        {
+            Id = Guid.NewGuid(),
+            ClientCompanyId = clientCompanyId,
+            LifecycleState = SubAccountLifecycleState.Created,
+            IsDisabled = false,
+            CreatedAtUtc = nowUtc,
+        };
+    }
+
+    public void BeginCompliance(string circleWalletId)
+    {
+        if (LifecycleState != SubAccountLifecycleState.Created)
+        {
+            throw new InvalidOperationException(
+                $"Cannot begin compliance from state {LifecycleState}; expected {SubAccountLifecycleState.Created}.");
+        }
+
+        if (string.IsNullOrWhiteSpace(circleWalletId))
+        {
+            throw new ArgumentException("CircleWalletId is required.", nameof(circleWalletId));
+        }
+
+        CircleWalletId = circleWalletId;
+        LifecycleState = SubAccountLifecycleState.PendingCompliance;
+    }
+}
