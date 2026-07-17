@@ -14,6 +14,7 @@ using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
+using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -85,20 +86,20 @@ builder.Services.AddScoped<GetBalanceHistoryQueryHandler>();
 builder.Services.AddScoped<ICommandHandler<ProcessDepositCommand, ProcessDepositResult>, ProcessDepositCommandHandler>();
 builder.Services.AddScoped<IValidator<ProcessDepositCommand>, ProcessDepositCommandValidator>();
 
+builder.Services.AddScoped<ITransferRepository, TransferRepository>();
+builder.Services.AddScoped<CreateTransferCommandHandler>();
+builder.Services.AddScoped<ListTransfersQueryHandler>();
+builder.Services.AddScoped<GetTransferQueryHandler>();
+builder.Services.AddScoped<
+    ICommandHandler<ProcessTransferStatusCommand, ProcessTransferStatusResult>, ProcessTransferStatusCommandHandler>();
+builder.Services.AddScoped<IValidator<CreateTransferCommand>, CreateTransferCommandValidator>();
+
 builder.Services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
 builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
 builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, AddressBookRecipientsWebhookTopicProcessor>();
-// TransfersWebhookTopicProcessor (and its ProcessTransferStatusCommand handler registration) is
-// not yet wired here: WebhookProcessor resolves IEnumerable<IWebhookTopicProcessor> eagerly, and
-// TransfersWebhookTopicProcessor depends on ITransferRepository, whose persistence-layer
-// implementation is ticket 06.6's scope (not this ticket's). Registering it now would break
-// every webhook-processing WebApplicationFactory test via a DI resolution failure. Ticket 06.6
-// adds `AddScoped<ITransferRepository, TransferRepository>()`,
-// `AddScoped<ICommandHandler<ProcessTransferStatusCommand, ProcessTransferStatusResult>,
-// ProcessTransferStatusCommandHandler>()`, and
-// `AddScoped<IWebhookTopicProcessor, TransfersWebhookTopicProcessor>()` together.
+builder.Services.AddScoped<IWebhookTopicProcessor, TransfersWebhookTopicProcessor>();
 builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));

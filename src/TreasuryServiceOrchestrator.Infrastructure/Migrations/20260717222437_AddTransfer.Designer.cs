@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
@@ -12,9 +13,11 @@ using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
 {
     [DbContext(typeof(TreasuryServiceOrchestratorDbContext))]
-    partial class TreasuryServiceOrchestratorDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717222437_AddTransfer")]
+    partial class AddTransfer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

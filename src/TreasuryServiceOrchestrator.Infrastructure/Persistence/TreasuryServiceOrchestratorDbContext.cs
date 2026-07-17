@@ -17,6 +17,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<BalanceSnapshot> BalanceSnapshots => Set<BalanceSnapshot>();
     public DbSet<FundAccount> FundAccounts => Set<FundAccount>();
     public DbSet<Recipient> Recipients => Set<Recipient>();
+    public DbSet<Transfer> Transfers => Set<Transfer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +74,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
         });
 
         ConfigureLedgerEntities(modelBuilder);
+        ConfigureRecipientAndTransferEntities(modelBuilder);
     }
 
     private static void ConfigureLedgerEntities(ModelBuilder modelBuilder)
@@ -117,6 +119,10 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             });
         });
 
+    }
+
+    private static void ConfigureRecipientAndTransferEntities(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<Recipient>(entity =>
         {
             entity.HasKey(x => x.Id);
@@ -128,6 +134,22 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.DenialReason).HasMaxLength(500);
             entity.HasIndex(x => x.CircleRecipientId);
             entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+        });
+
+        modelBuilder.Entity<Transfer>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.CircleTransferId).HasMaxLength(64);
+            entity.Property(x => x.FailureReason).HasMaxLength(500);
+            entity.Property(x => x.CorrelationId).IsRequired().HasMaxLength(128);
+            entity.HasIndex(x => x.CircleTransferId);
+            entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+            entity.ComplexProperty(x => x.Amount, amount =>
+            {
+                amount.Property(x => x.Amount).HasColumnName("Amount").HasPrecision(28, 8);
+                amount.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
+            });
         });
     }
 }
