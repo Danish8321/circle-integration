@@ -52,4 +52,11 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
 
         return new RegisteredRecipient(envelope.Data.Id, envelope.Data.Status ?? string.Empty);
     }
+
+    public Task<CreatedTransfer> CreateTransferAsync(
+        CreateTransferGatewayRequest request, CancellationToken ct = default)
+    {
+        // Ticket 06.5 implements this properly; stub only for now.
+        throw new NotSupportedException("CreateTransferAsync is implemented in ticket 06.5.");
+    }
 }

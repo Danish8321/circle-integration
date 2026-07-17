@@ -61,6 +61,13 @@ public sealed class MockStablecoinGateway(
         return Task.FromResult(new RegisteredRecipient(circleRecipientId, "pending_verification"));
     }
 
+    public Task<CreatedTransfer> CreateTransferAsync(
+        CreateTransferGatewayRequest request, CancellationToken ct = default)
+    {
+        // Ticket 06.5 implements this properly; stub only for now.
+        throw new NotSupportedException("CreateTransferAsync is implemented in ticket 06.5.");
+    }
+
     private void MaybeThrowProviderUnavailable()
     {
         if (randomSource.NextDouble() < options.Value.FailureInjectionRate)

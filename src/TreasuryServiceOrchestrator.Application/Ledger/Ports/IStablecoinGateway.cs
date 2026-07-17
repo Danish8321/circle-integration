@@ -14,4 +14,7 @@ public interface IStablecoinGateway
 
     Task<RegisteredRecipient> RegisterRecipientAsync(
         RegisterRecipientGatewayRequest request, CancellationToken ct = default);
+
+    Task<CreatedTransfer> CreateTransferAsync(
+        CreateTransferGatewayRequest request, CancellationToken ct = default);
 }
