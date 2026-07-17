@@ -10,7 +10,9 @@ using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
+using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
@@ -52,6 +54,15 @@ builder.Services.AddScoped<IValidator<CreateSubAccountCommand>, CreateSubAccount
 builder.Services.AddScoped<IValidator<ResubmitEntityRegistrationCommand>, ResubmitEntityRegistrationValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
+builder.Services.Configure<SupportedChainsOptions>(
+    builder.Configuration.GetSection(SupportedChainsOptions.SectionName));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SupportedChainsOptions>>().Value);
+builder.Services.AddScoped<IDepositAddressRepository, DepositAddressRepository>();
+builder.Services.AddScoped<GenerateDepositAddressCommandHandler>();
+builder.Services.AddScoped<ListDepositAddressesQueryHandler>();
+builder.Services.AddScoped<IValidator<GenerateDepositAddressCommand>, GenerateDepositAddressCommandValidator>();
+
 builder.Services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
 builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
 builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
@@ -79,10 +90,24 @@ if (mockModeEnabled)
 else if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddScoped<ISubAccountGateway, FakeSubAccountGateway>();
+    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>((sp, client) =>
+    {
+        var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
+        client.BaseAddress = new Uri(circleOptions.BaseUrl);
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
+    });
 }
 else
 {
     builder.Services.AddHttpClient<ISubAccountGateway, CircleSubAccountGateway>((sp, client) =>
+    {
+        var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
+        client.BaseAddress = new Uri(circleOptions.BaseUrl);
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
+    });
+    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>((sp, client) =>
     {
         var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
         client.BaseAddress = new Uri(circleOptions.BaseUrl);

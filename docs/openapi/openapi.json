@@ -5,6 +5,145 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/v1/webhooks/circle": {
+      "post": {
+        "tags": [
+          "CircleWebhooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/deposit-addresses": {
+      "get": {
+        "tags": [
+          "DepositAddresses"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DepositAddressResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DepositAddressResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DepositAddressResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "DepositAddresses"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateDepositAddressRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateDepositAddressRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateDepositAddressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositAddressResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositAddressResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositAddressResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts": {
       "get": {
         "tags": [
@@ -275,6 +414,29 @@
   },
   "components": {
     "schemas": {
+      "CircleSnsEnvelopeRequest": {
+        "type": "object",
+        "properties": {
+          "Type": {
+            "type": "string"
+          },
+          "MessageId": {
+            "type": "string"
+          },
+          "TopicArn": {
+            "type": "string"
+          },
+          "Message": {
+            "type": "string"
+          },
+          "Signature": {
+            "type": "string"
+          },
+          "SigningCertURL": {
+            "type": "string"
+          }
+        }
+      },
       "CreateSubAccountRequest": {
         "required": [
           "clientCompanyId",
@@ -342,6 +504,55 @@
             "type": "string"
           },
           "lifecycleState": {
+            "type": "string"
+          }
+        }
+      },
+      "DepositAddressResponse": {
+        "required": [
+          "id",
+          "subAccountId",
+          "chain",
+          "currency",
+          "address",
+          "createdAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chain": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "GenerateDepositAddressRequest": {
+        "required": [
+          "chain",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "chain": {
+            "type": "string"
+          },
+          "currency": {
             "type": "string"
           }
         }
@@ -497,6 +708,12 @@
     }
   },
   "tags": [
+    {
+      "name": "CircleWebhooks"
+    },
+    {
+      "name": "DepositAddresses"
+    },
     {
       "name": "SubAccounts"
     }
