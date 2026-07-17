@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using TreasuryServiceOrchestrator.Api.Middleware;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
@@ -9,10 +10,12 @@ using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
+using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
@@ -56,7 +59,24 @@ builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
 
-if (builder.Environment.IsDevelopment())
+builder.Services.Configure<MockProviderOptions>(
+    builder.Configuration.GetSection(MockProviderOptions.SectionName));
+
+var mockModeEnabled = builder.Configuration.GetValue<bool>($"{MockProviderOptions.SectionName}:Enabled");
+
+MockModeGuard.Validate(mockModeEnabled, builder.Environment.EnvironmentName);
+
+if (mockModeEnabled)
+{
+    builder.Services.AddScoped<ISubAccountGateway, MockSubAccountGateway>();
+    builder.Services.AddScoped<IStablecoinGateway, MockStablecoinGateway>();
+    builder.Services.AddSingleton<IMockRandomSource, SystemRandomSource>();
+    builder.Services.AddSingleton<MockWebhookChannel>();
+    builder.Services.AddSingleton<IMockWebhookScheduler>(sp => sp.GetRequiredService<MockWebhookChannel>());
+    builder.Services.AddSingleton<MockWebhookDispatcher>();
+    builder.Services.AddHostedService<MockWebhookDispatchBackgroundService>();
+}
+else if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddScoped<ISubAccountGateway, FakeSubAccountGateway>();
 }
