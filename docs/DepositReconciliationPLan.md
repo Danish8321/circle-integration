@@ -16,6 +16,8 @@ Per `Phase_1_Feature_Slices.md`'s Module Boundaries (decided 2026-07-16), this p
 
 Per `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`: deposit listing is a money-moving read, so it lands on a new `IStablecoinGateway` port (implemented by new `CircleMintGateway`/`MockStablecoinGateway` classes), not on `ISubAccountGateway` (the existing Compliance-module gateway for entity/registration/recipient ops). `IStablecoinGateway`, `CircleMintGateway`, and `MockStablecoinGateway` don't exist yet — Task 2 below creates all three from scratch; it does not modify `ISubAccountGateway` or its implementers.
 
+> **Design-pass correction 2026-07-17 (codebase-design):** `IMockProviderDepositLedger` and `MockProviderDepositLedger` do **not** live in `Application/Ledger/Ports/` — a mock-only seam has no production adapter (`CircleMintGateway` never implements it), so placing it at the Application seam teaches the production tier that mock mode exists. Both move to the Infrastructure mock-provider namespace alongside `MockStablecoinGateway`; its only callers are the mock gateway and integration tests (which reference Infrastructure already via the host). `ProviderDepositRecord` stays in `Application/Ledger/Ports/` — it's part of the real `IStablecoinGateway` interface. Task 1 paths below are superseded accordingly.
+
 ## Global Constraints
  
 - `net10.0`, `Nullable=enable`, `TreatWarningsAsErrors=true` — do not override per-project.

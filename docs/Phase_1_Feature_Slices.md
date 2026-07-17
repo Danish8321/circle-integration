@@ -57,6 +57,20 @@ These override any contradicting snippet below. Where Phase 1 code already exist
 
 ---
 
+## Design-pass corrections 2026-07-17 (codebase-design review of all interfaces)
+
+These override any contradicting snippet below, same authority as the doc-grilling corrections above.
+
+1. **`FundAccount.Balance` must be `Money`, not `decimal` (Tasks 8, 10, 11).** The Task 10 consumes-note admitting "`decimal`, not `Money` — see `FundAccount.cs`" is a defect against Global Constraint "`Money` is the only monetary type crossing Domain/Application boundaries", not a fact to preserve. Fix at Task 8 when the ledger lands.
+2. **Ledger-posting module introduced at Task 10, not deferred (Tasks 8, 10, 11).** Task 8's "no shared record-ledger-entry helper — YAGNI until a second caller" expires the moment Task 10 starts: deposit credit (T8), transfer debit (T10), and payout debit (T11) each repeat post-`Transaction` + adjust `FundAccount` balance + `BalanceSnapshot`. That triplet is the money-mutation critical path (PRD §14) and must have one implementation. Task 10 Step 1 becomes: extract the posting module from `ProcessDepositCommandHandler`, then consume it from both new handlers. Interface stays one method (post a ledger entry against a fund account); repositories become its internals.
+3. **`TenantScopeResolver` returns `TenantScope`, not `string?` (Tasks 2, 4, 7–12).** Decided in spec `004-subaccount-endpoints-rework` (2026-07-17): closed hierarchy `Single(string ClientCompanyId) | AllTenants` replaces null-means-all-tenants. Single-tenant handlers take a plain `ClientCompanyId` extracted at the endpoint; only all-tenant-capable endpoints (list, Task 12 admin views) match on `TenantScope`. Every `Resolve(...)!` null-forgiving usage in snippets below is superseded — the `!` was the defect's symptom.
+4. **`ITransactionRepository.ListAllAsync` takes a filter record (Task 12).** Eight positional parameters (five nullable, two adjacent `DateTime?`) is an unusable interface. Signature becomes `ListAllAsync(TransactionListFilter filter, CancellationToken ct)` with `TransactionListFilter(string? ClientCompanyId, TransactionType? Type, TransactionStatus? Status, DateTime? FromUtc, DateTime? ToUtc, int Page, int PageSize)`.
+5. **`SupportedChainsOptions` wraps, never inherits, `List<string>` (Task 7).** Inheriting `List` leaks the whole mutable list surface as interface. Shape: options class holding the configured list, exposing `bool IsSupported(string chain)` (case-insensitive) — validators consume that one method.
+6. **Gateway DTO renamed `GeneratedDepositAddress` (Task 7).** Two types named `GenerateDepositAddressResult` in sibling namespaces is pure interface tax; the Ports-namespace gateway DTO takes the new name, the Application command result keeps the old one.
+7. **Doc drift vs shipped code (all tasks).** Code as committed uses `ISubAccountGateway` (not Task 0's `ICircleSubAccountGateway`), module-first layout `Application/Compliance/...` (not `Application/SubAccounts/`), `Application.Shared.Ports` (not `Application.Ports.GatewayDtos`), and no `ITenantContext`. Where a snippet's path or type name conflicts with the committed tree, the tree and the B0.5 module boundaries win.
+
+---
+
 ## Task 1: Caller registry with roles (Admin | SubAccount)
 
 Replaces the flat `KnownClientCompaniesOptions : List<string>` / `KnownClientCompaniesRegistry.IsKnown` check with a structured caller registry that also yields a role, and introduces `ICallerContext` so downstream code can tell an admin credential from a tenant credential without re-parsing the header.
