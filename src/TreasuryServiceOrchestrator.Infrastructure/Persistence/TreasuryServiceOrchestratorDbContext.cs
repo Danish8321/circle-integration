@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -196,6 +197,11 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
         });
 
+        ConfigureRedeemRequestEntity(modelBuilder);
+    }
+
+    private static void ConfigureRedeemRequestEntity(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<RedeemRequest>(entity =>
         {
             entity.HasKey(x => x.Id);
@@ -211,23 +217,31 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
                 amount.Property(x => x.CurrencyCode).HasColumnName("GrossCurrencyCode").IsRequired().HasMaxLength(16);
             });
 
-            // EF Core 10 supports an optional (nullable) ComplexProperty directly — Fees/NetAmount
-            // are Money? (populated only on RedeemRequest.Settle()), and IsRequired(false) on the
-            // complex-property builder maps that to a nullable column pair with no wrapper-object
-            // presence tracked separately, keeping Money the only monetary type crossing the
-            // Domain/Application boundary (invariant 10) with no JSON blob / shadow-column split.
-            entity.ComplexProperty(x => x.Fees, fees =>
-            {
-                fees.IsRequired(false);
-                fees.Property(x => x.Amount).HasColumnName("FeesAmount").HasPrecision(28, 8);
-                fees.Property(x => x.CurrencyCode).HasColumnName("FeesCurrencyCode").HasMaxLength(16);
-            });
-            entity.ComplexProperty(x => x.NetAmount, netAmount =>
-            {
-                netAmount.IsRequired(false);
-                netAmount.Property(x => x.Amount).HasColumnName("NetAmount").HasPrecision(28, 8);
-                netAmount.Property(x => x.CurrencyCode).HasColumnName("NetCurrencyCode").HasMaxLength(16);
-            });
+            ConfigureRedeemRequestFeesAndNetAmount(entity);
+        });
+    }
+
+    // Fees/NetAmount are Money? (populated only on RedeemRequest.Settle()). Table-split optional
+    // ComplexProperty mapping (per-column, IsRequired(false)) determines column-level presence via
+    // a per-property sentinel compared against the CLR default — but a genuine $0 fee has
+    // Amount == 0m, and EF's optional-complex-property presence check silently persists NULL for
+    // it regardless of an explicit HasSentinel override (confirmed empirically: a non-zero fee
+    // persists correctly, a zero fee does not, even with HasSentinel(decimal.MinValue) configured).
+    // Mapping to a single JSON column sidesteps that heuristic entirely — the whole Money object
+    // serializes atomically, so null-vs-populated is a single JSON NULL vs JSON document, with no
+    // per-property zero-value ambiguity. Money stays the only monetary type crossing the
+    // Domain/Application boundary (invariant 10); this is a storage-representation choice only.
+    private static void ConfigureRedeemRequestFeesAndNetAmount(EntityTypeBuilder<RedeemRequest> entity)
+    {
+        entity.ComplexProperty(x => x.Fees, fees =>
+        {
+            fees.ToJson("FeesJson");
+            fees.Property(x => x.CurrencyCode).HasMaxLength(16);
+        });
+        entity.ComplexProperty(x => x.NetAmount, netAmount =>
+        {
+            netAmount.ToJson("NetAmountJson");
+            netAmount.Property(x => x.CurrencyCode).HasMaxLength(16);
         });
     }
 }
