@@ -39,3 +39,9 @@ Two related `CallerIdentityMiddleware` gaps:
       `BypassPaths` addition (`docs/features/13-internal-notifications-outbox.md` §6.1).
 
 ## Comments
+
+2026-07-18: revisited on request ("ticket 13 item 1 / caller-identity audit header"). Confirmed:
+ticket 13 item 1 (X-Correlation-Id response header) already shipped in ticket 09.7
+(`CorrelationIdMiddleware`, commit `18723ed`). This ticket's item 1 (portal human-user audit
+header) remains deferred as decided above — still no portal/client in this repo to design
+against. Nothing actionable here; re-open when a portal auth client exists.
