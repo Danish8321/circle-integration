@@ -1,5 +1,6 @@
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -21,7 +22,7 @@ public sealed class ListLinkedBankAccountsQueryHandler(
         }
 
         var listed = await linkedBankAccounts.ListBySubAccountAsync(
-            query.SubAccountId, callerContext.CallerId, cancellationToken);
+            query.SubAccountId, callerContext.CallerId, query.PageRequest ?? new PageRequest(), cancellationToken);
 
         return listed.Select(Map).ToList();
     }

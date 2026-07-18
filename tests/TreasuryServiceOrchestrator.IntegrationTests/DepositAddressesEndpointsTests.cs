@@ -80,6 +80,50 @@ public sealed class DepositAddressesEndpointsTests(TreasuryServiceOrchestratorAp
     }
 
     [Fact]
+    public async Task ListDepositAddresses_WithPageAndPageSize_ReturnsSecondPageSlice()
+    {
+        var clientCompanyId = $"client-{Guid.NewGuid():N}";
+        var subAccountId = await SeedSubAccountAsync(clientCompanyId);
+        using var client = CreateClientFor(clientCompanyId);
+
+        // Seed 5 deposit addresses directly with distinct, increasing CreatedAtUtc values so
+        // the repository's OrderBy(CreatedAtUtc) ordering is deterministic across pages.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<TreasuryServiceOrchestratorDbContext>();
+            var baseTime = DateTime.UtcNow;
+            for (var i = 0; i < 5; i++)
+            {
+                // Unique index is (SubAccountId, Chain, Currency), so vary Currency per row to
+                // avoid collisions while keeping Chain fixed.
+                dbContext.DepositAddresses.Add(DepositAddress.Create(
+                    subAccountId,
+                    "ETH",
+                    $"USDC{i}",
+                    $"0xaddress{i}",
+                    circleAddressId: null,
+                    baseTime.AddSeconds(i)));
+            }
+
+            await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var listResponse = await client.GetAsync(
+            $"v1/sub-accounts/{subAccountId}/deposit-addresses?page=2&pageSize=2",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var body = await listResponse.Content.ReadFromJsonAsync<List<DepositAddressResponse>>(
+            TestContext.Current.CancellationToken);
+        Assert.NotNull(body);
+        // Page 1 (pageSize 2) is addresses 0,1; page 2 must be addresses 2,3 — not a duplicate
+        // of page 1.
+        Assert.Equal(2, body!.Count);
+        Assert.Equal("0xaddress2", body[0].Address);
+        Assert.Equal("0xaddress3", body[1].Address);
+    }
+
+    [Fact]
     public async Task GenerateDepositAddress_WithUnsupportedChain_ReturnsBadRequestProblemDetails()
     {
         var clientCompanyId = $"client-{Guid.NewGuid():N}";

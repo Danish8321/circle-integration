@@ -3,6 +3,7 @@ using Moq;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -28,7 +29,8 @@ public sealed class ListRecipientsQueryHandlerTests
             subAccountId, "client-1", "ETH", "0xabc", "My wallet", "circle-recipient-1",
             RecipientStatus.Active, DateTime.UtcNow);
         recipients
-            .Setup(x => x.ListForSubAccountAsync(subAccountId, "client-1", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ListForSubAccountAsync(
+                subAccountId, "client-1", It.IsAny<PageRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([recipient]);
 
         var results = await handler.HandleAsync(
@@ -51,7 +53,7 @@ public sealed class ListRecipientsQueryHandlerTests
         await act.Should().ThrowAsync<TenantForbiddenException>();
         recipients.Verify(
             x => x.ListForSubAccountAsync(
-                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<PageRequest>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -60,12 +62,45 @@ public sealed class ListRecipientsQueryHandlerTests
     {
         var subAccountId = Guid.NewGuid();
         recipients
-            .Setup(x => x.ListForSubAccountAsync(subAccountId, "client-1", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ListForSubAccountAsync(
+                subAccountId, "client-1", It.IsAny<PageRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         var results = await handler.HandleAsync(
             new ListRecipientsQuery(subAccountId), TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithPage2_ReturnsNextSliceNotDuplicateOfPage1AndPageSizeBoundsCount()
+    {
+        var subAccountId = Guid.NewGuid();
+        var page1Recipient = Recipient.Create(
+            subAccountId, "client-1", "ETH", "0xpage1", "Page1", "circle-recipient-page1",
+            RecipientStatus.Active, DateTime.UtcNow);
+        var page2Recipient = Recipient.Create(
+            subAccountId, "client-1", "ETH", "0xpage2", "Page2", "circle-recipient-page2",
+            RecipientStatus.Active, DateTime.UtcNow);
+
+        recipients
+            .Setup(x => x.ListForSubAccountAsync(
+                subAccountId, "client-1", new PageRequest(1, 1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([page1Recipient]);
+        recipients
+            .Setup(x => x.ListForSubAccountAsync(
+                subAccountId, "client-1", new PageRequest(2, 1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([page2Recipient]);
+
+        var page1Results = await handler.HandleAsync(
+            new ListRecipientsQuery(subAccountId, new PageRequest(1, 1)), TestContext.Current.CancellationToken);
+        var page2Results = await handler.HandleAsync(
+            new ListRecipientsQuery(subAccountId, new PageRequest(2, 1)), TestContext.Current.CancellationToken);
+
+        page1Results.Should().HaveCount(1);
+        page2Results.Should().HaveCount(1);
+        page1Results[0].Id.Should().Be(page1Recipient.Id);
+        page2Results[0].Id.Should().Be(page2Recipient.Id);
+        page2Results[0].Id.Should().NotBe(page1Results[0].Id);
     }
 }

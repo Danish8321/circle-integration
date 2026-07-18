@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
+using TreasuryServiceOrchestrator.Application.Shared;
 
 namespace TreasuryServiceOrchestrator.Api.Ledger;
 
@@ -11,10 +12,14 @@ public sealed class DepositAddressesController(
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DepositAddressResponse>>> ListDepositAddresses(
-        Guid subAccountId, CancellationToken cancellationToken)
+        Guid subAccountId,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        CancellationToken cancellationToken)
     {
+        var pageRequest = new PageRequest(page == 0 ? 1 : page, pageSize == 0 ? 20 : pageSize);
         var results = await listDepositAddressesHandler.HandleAsync(
-            new ListDepositAddressesQuery(subAccountId), cancellationToken);
+            new ListDepositAddressesQuery(subAccountId, pageRequest), cancellationToken);
 
         return Ok(results.Select(Map).ToList());
     }

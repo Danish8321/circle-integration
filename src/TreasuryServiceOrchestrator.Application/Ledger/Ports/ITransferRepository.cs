@@ -1,3 +1,4 @@
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -13,7 +14,7 @@ public interface ITransferRepository
         Guid transferId, string clientCompanyId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Transfer>> ListBySubAccountAsync(
-        Guid subAccountId, string clientCompanyId, CancellationToken cancellationToken = default);
+        Guid subAccountId, string clientCompanyId, PageRequest pageRequest, CancellationToken cancellationToken = default);
 
     // For webhook correlation: Circle's transfer webhooks carry only the provider-side
     // transfer id, not our tenant identity, so this lookup is not tenant-scoped by parameter —

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
+using TreasuryServiceOrchestrator.Application.Shared;
 
 namespace TreasuryServiceOrchestrator.Api.Ledger;
 
@@ -10,10 +11,14 @@ public sealed class LinkedBankAccountsController(
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<LinkedBankAccountResponse>>> ListLinkedBankAccounts(
-        Guid subAccountId, CancellationToken cancellationToken)
+        Guid subAccountId,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        CancellationToken cancellationToken)
     {
+        var pageRequest = new PageRequest(page == 0 ? 1 : page, pageSize == 0 ? 20 : pageSize);
         var results = await listLinkedBankAccountsHandler.HandleAsync(
-            new ListLinkedBankAccountsQuery(subAccountId), cancellationToken);
+            new ListLinkedBankAccountsQuery(subAccountId, pageRequest), cancellationToken);
 
         return Ok(results.Select(LinkedBankAccountResponse.Map).ToList());
     }

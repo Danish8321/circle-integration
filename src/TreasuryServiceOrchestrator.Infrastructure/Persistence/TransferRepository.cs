@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
@@ -21,11 +22,16 @@ public sealed class TransferRepository(TreasuryServiceOrchestratorDbContext dbCo
     }
 
     public async Task<IReadOnlyList<Transfer>> ListBySubAccountAsync(
-        Guid subAccountId, string clientCompanyId, CancellationToken cancellationToken = default)
+        Guid subAccountId, string clientCompanyId, PageRequest pageRequest, CancellationToken cancellationToken = default)
     {
+        var page = pageRequest.Page <= 0 ? 1 : pageRequest.Page;
+        var pageSize = pageRequest.PageSize <= 0 ? 20 : pageRequest.PageSize;
+
         return await dbContext.Transfers
             .Where(x => x.SubAccountId == subAccountId && x.ClientCompanyId == clientCompanyId)
             .OrderBy(x => x.CreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
     }
 

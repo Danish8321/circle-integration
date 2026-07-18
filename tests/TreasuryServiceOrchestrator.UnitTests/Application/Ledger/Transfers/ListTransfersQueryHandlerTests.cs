@@ -2,6 +2,7 @@ using FluentAssertions;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -26,7 +27,8 @@ public sealed class ListTransfersQueryHandlerTests
         var transfer = Transfer.Create(
             subAccountId, "client-1", Guid.NewGuid(), new Money(50m, "USDC"), "corr-1", DateTime.UtcNow);
         transfers
-            .Setup(x => x.ListBySubAccountAsync(subAccountId, "client-1", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ListBySubAccountAsync(
+                subAccountId, "client-1", It.IsAny<PageRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([transfer]);
 
         var result = await handler.HandleAsync(
@@ -35,5 +37,35 @@ public sealed class ListTransfersQueryHandlerTests
         result.Should().ContainSingle();
         result[0].Id.Should().Be(transfer.Id);
         result[0].SubAccountId.Should().Be(subAccountId);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithPage2_ReturnsNextSliceNotDuplicateOfPage1AndPageSizeBoundsCount()
+    {
+        var subAccountId = Guid.NewGuid();
+        var page1Transfer = Transfer.Create(
+            subAccountId, "client-1", Guid.NewGuid(), new Money(10m, "USDC"), "corr-page1", DateTime.UtcNow);
+        var page2Transfer = Transfer.Create(
+            subAccountId, "client-1", Guid.NewGuid(), new Money(20m, "USDC"), "corr-page2", DateTime.UtcNow);
+
+        transfers
+            .Setup(x => x.ListBySubAccountAsync(
+                subAccountId, "client-1", new PageRequest(1, 1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([page1Transfer]);
+        transfers
+            .Setup(x => x.ListBySubAccountAsync(
+                subAccountId, "client-1", new PageRequest(2, 1), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([page2Transfer]);
+
+        var page1Results = await handler.HandleAsync(
+            new ListTransfersQuery(subAccountId, new PageRequest(1, 1)), TestContext.Current.CancellationToken);
+        var page2Results = await handler.HandleAsync(
+            new ListTransfersQuery(subAccountId, new PageRequest(2, 1)), TestContext.Current.CancellationToken);
+
+        page1Results.Should().HaveCount(1);
+        page2Results.Should().HaveCount(1);
+        page1Results[0].Id.Should().Be(page1Transfer.Id);
+        page2Results[0].Id.Should().Be(page2Transfer.Id);
+        page2Results[0].Id.Should().NotBe(page1Results[0].Id);
     }
 }

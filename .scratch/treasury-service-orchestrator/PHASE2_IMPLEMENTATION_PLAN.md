@@ -1,6 +1,6 @@
 # Phase 2 Implementation Plan
 
-Status: draft, awaiting approval. Phase 1 (tickets 02-14) fully shipped and closed — see
+Status: **all six tickets (15-20) done, closed 2026-07-18.** Phase 1 (tickets 02-14) fully shipped and closed — see
 `PHASE1_IMPLEMENTATION_PLAN.md`. Goal per `docs/README.md` line ~101: "Hardening: reconciliation
 job live (before real money moves), webhook + notification dead-letter/replay, provider
 resilience (Polly), scheduled balance snapshots, observability completion, full list-endpoint
@@ -205,6 +205,11 @@ abstraction, matches existing `ILogger<T>` convention already used throughout In
 Only `TransactionListFilter` currently carries `Page`/`PageSize` (ticket 08.2). Every other
 `List*` query (`DepositAddresses`, `Recipients`, `Transfers`, `Redemptions`,
 `LinkedBankAccounts`) returns everything unpaged. Blocked by: none.
+
+**Status: done, closed 2026-07-18.** All sub-tasks 20.1-20.3 shipped and verified: `check.sh`
+clean full solution, `test-fast.sh` 402/402, `test-full.sh` 68/68, `contract.sh` regenerated
+(120-line diff adding `page`/`pageSize` optional query params to the five existing GET list
+operations). **Phase 2 (tickets 15-20) is now fully complete.**
 
 ### 20.1 — Shared pagination record
 - Files: `Application/Shared/PageRequest.cs` (`record PageRequest(int Page = 1, int PageSize =

@@ -1,3 +1,4 @@
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -13,7 +14,7 @@ public interface ILinkedBankAccountRepository
         Guid linkedBankAccountId, string clientCompanyId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LinkedBankAccount>> ListBySubAccountAsync(
-        Guid subAccountId, string clientCompanyId, CancellationToken cancellationToken = default);
+        Guid subAccountId, string clientCompanyId, PageRequest pageRequest, CancellationToken cancellationToken = default);
 
     // For webhook correlation: Circle's wire webhooks carry only the provider-side bank
     // account id, not our tenant identity, so this lookup is not tenant-scoped by parameter —

@@ -1,3 +1,4 @@
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -13,7 +14,7 @@ public interface IRecipientRepository
         Guid recipientId, string clientCompanyId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Recipient>> ListForSubAccountAsync(
-        Guid subAccountId, string clientCompanyId, CancellationToken cancellationToken = default);
+        Guid subAccountId, string clientCompanyId, PageRequest pageRequest, CancellationToken cancellationToken = default);
 
     // For webhook correlation (ticket 05.4): Circle's recipient webhooks carry only the
     // provider-side recipient id, not our tenant identity, so this lookup is not

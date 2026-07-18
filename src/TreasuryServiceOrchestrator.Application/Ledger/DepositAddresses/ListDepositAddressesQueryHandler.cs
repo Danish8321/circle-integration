@@ -1,5 +1,6 @@
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
@@ -18,7 +19,8 @@ public sealed class ListDepositAddressesQueryHandler(
             throw new TenantForbiddenException();
         }
 
-        var listed = await depositAddresses.ListForSubAccountAsync(query.SubAccountId, cancellationToken);
+        var listed = await depositAddresses.ListForSubAccountAsync(
+            query.SubAccountId, query.PageRequest ?? new PageRequest(), cancellationToken);
 
         return listed
             .Select(depositAddress => new GenerateDepositAddressResult(

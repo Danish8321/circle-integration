@@ -1,3 +1,4 @@
+using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -10,5 +11,5 @@ public interface IDepositAddressRepository
         Guid subAccountId, string chain, string currency, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<DepositAddress>> ListForSubAccountAsync(
-        Guid subAccountId, CancellationToken cancellationToken = default);
+        Guid subAccountId, PageRequest pageRequest, CancellationToken cancellationToken = default);
 }
