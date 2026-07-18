@@ -40,7 +40,7 @@ public sealed class TreasuryServiceOrchestratorApiFactory : WebApplicationFactor
 
         using var scope = Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<TreasuryServiceOrchestratorDbContext>();
-        await dbContext.Database.EnsureCreatedAsync();
+        await dbContext.Database.MigrateAsync();
     }
 
     public new async ValueTask DisposeAsync()
