@@ -41,3 +41,14 @@ step exists beyond this file.
   done-but-this-test-fails as not actually done, per the doc's own framing.
 
 ## Comments
+
+2026-07-18: implementation surfaced a real gap in already-shipped code (not this ticket's own
+scope) — `ResubmitEntityRegistrationHandler` never updates `subAccount.CircleWalletId` to the
+resubmission's new wallet id, so the resubmitted sub-account's decision webhook can never find it
+and it is structurally stuck in `PendingCompliance` forever. Filed as
+`15-resubmission-wallet-id-not-persisted.md`. `DemoScriptEndToEndTests` currently documents this:
+it asserts the resubmitted sub-account (B) reaches `Rejected` then `PendingCompliance` post-
+resubmit as today's actual (broken) behavior, with a comment pointing at ticket 15, rather than
+asserting the demo script's intended `Active` outcome for B. All other clauses of this ticket's
+scope are asserted against sub-account A. Once ticket 15 ships, update this test's B-path
+assertion to expect `Active` and remove the workaround comment.
