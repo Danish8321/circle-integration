@@ -108,6 +108,11 @@ Real Circle HTTP gateways already exist and are wired via `AddHttpClient` (`Prog
 blocked on Phase 3, buildable now. Design fully spec'd in
 `docs/features/05-reliability-and-error-handling.md` §4. Blocked by: none.
 
+**Status: done, closed 2026-07-18.** All sub-tasks 17.1-17.3 shipped and verified: `check.sh`
+clean full solution, `test-fast.sh` 394/394, `test-full.sh` 65/65. New dependency
+`Microsoft.Extensions.Http.Resilience` 10.8.0 added (pre-scoped in this Phase 2 plan's "Polly"
+item, not ad hoc).
+
 ### 17.1 — `CircleClientOptions` + Polly pipeline
 - Files: `Infrastructure/Providers/Circle/CircleClientOptions.cs`,
   `Infrastructure/Providers/Circle/CircleResiliencePipelineFactory.cs` (or equivalent

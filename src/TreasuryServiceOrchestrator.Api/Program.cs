@@ -133,6 +133,8 @@ builder.Services.AddScoped<WebhookProcessor>();
 builder.Services.AddScoped<ReplayWebhookInboxEntryHandler>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
+builder.Services.Configure<CircleClientOptions>(
+    builder.Configuration.GetSection(CircleClientOptions.SectionName));
 
 builder.Services.Configure<NotificationDispatcherOptions>(
     builder.Configuration.GetSection(NotificationDispatcherOptions.SectionName));
@@ -176,7 +178,7 @@ else if (builder.Environment.IsDevelopment())
         client.BaseAddress = new Uri(circleOptions.BaseUrl);
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
-    });
+    }).AddCircleResilienceHandler();
 }
 else
 {
@@ -186,14 +188,14 @@ else
         client.BaseAddress = new Uri(circleOptions.BaseUrl);
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
-    });
+    }).AddCircleResilienceHandler();
     builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>((sp, client) =>
     {
         var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
         client.BaseAddress = new Uri(circleOptions.BaseUrl);
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
-    });
+    }).AddCircleResilienceHandler();
 }
 
 var app = builder.Build();
