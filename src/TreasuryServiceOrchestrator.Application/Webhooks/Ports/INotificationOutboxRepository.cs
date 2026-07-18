@@ -1,0 +1,11 @@
+using TreasuryServiceOrchestrator.Domain;
+
+namespace TreasuryServiceOrchestrator.Application.Webhooks.Ports;
+
+public interface INotificationOutboxRepository
+{
+    Task AddAsync(NotificationOutboxEntry entry, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<NotificationOutboxEntry>> GetDueBatchAsync(
+        int batchSize, DateTime nowUtc, CancellationToken cancellationToken);
+}
