@@ -20,6 +20,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<LinkedBankAccount> LinkedBankAccounts => Set<LinkedBankAccount>();
     public DbSet<RedeemRequest> RedeemRequests => Set<RedeemRequest>();
+    public DbSet<NotificationOutboxEntry> NotificationOutboxEntries => Set<NotificationOutboxEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +79,20 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
         ConfigureLedgerEntities(modelBuilder);
         ConfigureRecipientAndTransferEntities(modelBuilder);
         ConfigureLinkedBankAccountAndRedeemRequestEntities(modelBuilder);
+        ConfigureNotificationOutboxEntity(modelBuilder);
+    }
+
+    private static void ConfigureNotificationOutboxEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<NotificationOutboxEntry>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.EventType).IsRequired().HasMaxLength(100);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.EntityId).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.CorrelationId).IsRequired().HasMaxLength(128);
+            entity.HasIndex(x => new { x.Status, x.NextAttemptAtUtc });
+        });
     }
 
     private static void ConfigureLedgerEntities(ModelBuilder modelBuilder)

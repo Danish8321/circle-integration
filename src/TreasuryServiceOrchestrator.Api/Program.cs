@@ -24,6 +24,7 @@ using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
+using TreasuryServiceOrchestrator.Infrastructure.Notifications;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
@@ -129,6 +130,13 @@ builder.Services.AddScoped<IWebhookTopicProcessor, PayoutsWebhookTopicProcessor>
 builder.Services.AddScoped<WebhookProcessor>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
+
+builder.Services.Configure<NotificationDispatcherOptions>(
+    builder.Configuration.GetSection(NotificationDispatcherOptions.SectionName));
+builder.Services.AddScoped<INotificationOutboxRepository, NotificationOutboxRepository>();
+builder.Services.AddHttpClient<INotificationSender, HttpNotificationSender>();
+builder.Services.AddSingleton<NotificationDispatcher>();
+builder.Services.AddHostedService<NotificationDispatchBackgroundService>();
 
 builder.Services.Configure<MockProviderOptions>(
     builder.Configuration.GetSection(MockProviderOptions.SectionName));
