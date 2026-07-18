@@ -1425,6 +1425,86 @@
         }
       }
     },
+    "/v1/admin/webhooks/{id}/replay": {
+      "post": {
+        "tags": [
+          "DeadLetter"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/notifications/{id}/replay": {
+      "post": {
+        "tags": [
+          "DeadLetter"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/master-account/summary": {
       "get": {
         "tags": [
@@ -2089,6 +2169,46 @@
           }
         }
       },
+      "ReplayNotificationOutboxEntryResponse": {
+        "required": [
+          "notificationOutboxEntryId",
+          "eventType",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "notificationOutboxEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ReplayWebhookInboxEntryResponse": {
+        "required": [
+          "webhookInboxEntryId",
+          "topic",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "webhookInboxEntryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
       "ResubmitEntityRegistrationRequest": {
         "required": [
           "businessName",
@@ -2467,6 +2587,9 @@
     },
     {
       "name": "AdminTransactions"
+    },
+    {
+      "name": "DeadLetter"
     },
     {
       "name": "MasterAccount"

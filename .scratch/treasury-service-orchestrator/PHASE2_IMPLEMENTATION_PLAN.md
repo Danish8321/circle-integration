@@ -75,6 +75,10 @@ tests), `test-fast.sh` 379/379 unit tests green.
 `WebhookDeadLetterPolicy` (threshold 5) already exists — detection only, no replay action.
 `NotificationOutboxEntry` has no equivalent policy at all. Blocked by: none.
 
+**Status: done, closed 2026-07-18.** Both sub-tasks shipped and verified: `check.sh` clean full
+solution, `test-fast.sh` 388/388, `test-full.sh` 63/63, `contract.sh` regenerated with the two new
+routes (`POST /v1/admin/webhooks/{id}/replay`, `POST /v1/admin/notifications/{id}/replay`).
+
 ### 16.1 — Notification outbox dead-letter policy
 - Files: `Application/Webhooks/Ports/NotificationOutboxDeadLetterPolicy.cs` (mirrors
   `WebhookDeadLetterPolicy`'s shape — `AttemptThreshold = 5`, same constant, not re-derived

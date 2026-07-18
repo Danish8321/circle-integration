@@ -130,12 +130,14 @@ builder.Services.AddScoped<IWebhookTopicProcessor, TransfersWebhookTopicProcesso
 builder.Services.AddScoped<IWebhookTopicProcessor, WireWebhookTopicProcessor>();
 builder.Services.AddScoped<IWebhookTopicProcessor, PayoutsWebhookTopicProcessor>();
 builder.Services.AddScoped<WebhookProcessor>();
+builder.Services.AddScoped<ReplayWebhookInboxEntryHandler>();
 
 builder.Services.Configure<CircleOptions>(builder.Configuration.GetSection(CircleOptions.SectionName));
 
 builder.Services.Configure<NotificationDispatcherOptions>(
     builder.Configuration.GetSection(NotificationDispatcherOptions.SectionName));
 builder.Services.AddScoped<INotificationOutboxRepository, NotificationOutboxRepository>();
+builder.Services.AddScoped<ReplayNotificationOutboxEntryHandler>();
 builder.Services.AddHttpClient<INotificationSender, HttpNotificationSender>();
 builder.Services.AddSingleton<NotificationDispatcher>();
 builder.Services.AddHostedService<NotificationDispatchBackgroundService>();

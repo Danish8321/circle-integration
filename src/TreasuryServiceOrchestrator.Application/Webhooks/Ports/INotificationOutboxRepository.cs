@@ -8,4 +8,6 @@ public interface INotificationOutboxRepository
 
     Task<IReadOnlyList<NotificationOutboxEntry>> GetDueBatchAsync(
         int batchSize, DateTime nowUtc, CancellationToken cancellationToken);
+
+    Task<NotificationOutboxEntry?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 }

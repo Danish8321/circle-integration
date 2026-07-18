@@ -18,4 +18,7 @@ public sealed class NotificationOutboxRepository(TreasuryServiceOrchestratorDbCo
             .OrderBy(e => e.OccurredAtUtc)
             .Take(batchSize)
             .ToListAsync(cancellationToken);
+
+    public async Task<NotificationOutboxEntry?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
+        await dbContext.NotificationOutboxEntries.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 }

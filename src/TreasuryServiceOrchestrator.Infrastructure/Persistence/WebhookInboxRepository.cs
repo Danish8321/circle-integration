@@ -54,4 +54,17 @@ public sealed partial class WebhookInboxRepository(
             LogDeadLettered(entry.Id, entry.Topic, entry.CircleEventId, entry.Attempts, entry.LastError);
         }
     }
+
+    public async Task<WebhookInboxEntry?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await dbContext.WebhookInboxEntries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+    public async Task ResetForReplayAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entry = await dbContext.WebhookInboxEntries.FirstAsync(x => x.Id == id, cancellationToken);
+        entry.Attempts = 0;
+        entry.Processed = false;
+        entry.ProcessingResult = null;
+        entry.LastError = null;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }
