@@ -30,6 +30,13 @@ public sealed class TransactionRepository(TreasuryServiceOrchestratorDbContext d
                 cancellationToken);
     }
 
+    public async Task<Transaction?> GetByProviderReferenceIdAsync(
+        string providerReferenceId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.Transactions
+            .FirstOrDefaultAsync(x => x.ProviderReferenceId == providerReferenceId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Transaction>> ListAllAsync(
         TransactionListFilter filter, CancellationToken cancellationToken = default)
     {

@@ -35,4 +35,10 @@ public interface IStablecoinGateway
     // exception to the walletId-must-be-explicit rule elsewhere in this gateway, see
     // docs/features/12-admin-cross-tenant-views.md §3.
     Task<Money> GetMainWalletBalanceAsync(CancellationToken ct = default);
+
+    // Ticket 15 — reconciliation. Merges the two Circle listing calls (wire deposits + on-chain
+    // transfers into this wallet) into one result, per
+    // docs/features/05-reliability-and-error-handling.md §7.2-7.3.
+    Task<IReadOnlyList<ProviderDepositRecord>> ListRecentDepositsAsync(
+        string circleWalletId, DateTime sinceUtc, CancellationToken ct = default);
 }

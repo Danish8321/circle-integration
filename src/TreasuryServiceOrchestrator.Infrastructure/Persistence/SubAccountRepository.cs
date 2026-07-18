@@ -38,4 +38,15 @@ public sealed class SubAccountRepository(TreasuryServiceOrchestratorDbContext db
             .OrderBy(x => x.CreatedAtUtc)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<SubAccount>> ListActiveWithWalletAsync(CancellationToken ct = default)
+    {
+        return await dbContext.SubAccounts
+            .Where(x => x.LifecycleState == SubAccountLifecycleState.Active
+                && !x.IsDisabled
+                && x.CircleWalletId != null
+                && x.CircleWalletId != "")
+            .OrderBy(x => x.CreatedAtUtc)
+            .ToListAsync(ct);
+    }
 }

@@ -22,7 +22,8 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 public sealed class MockStablecoinGateway(
     IOptions<MockProviderOptions> options,
     IMockWebhookScheduler webhookScheduler,
-    IMockRandomSource randomSource) : IStablecoinGateway
+    IMockRandomSource randomSource,
+    IMockProviderDepositLedger depositLedger) : IStablecoinGateway
 {
     public Task<GeneratedDepositAddress> GenerateDepositAddressAsync(
         GenerateDepositAddressGatewayRequest request, CancellationToken ct = default)
@@ -186,6 +187,14 @@ public sealed class MockStablecoinGateway(
         MaybeThrowProviderUnavailable();
 
         return Task.FromResult(new Money(options.Value.MainWalletBalanceAmount, "USDC"));
+    }
+
+    public Task<IReadOnlyList<ProviderDepositRecord>> ListRecentDepositsAsync(
+        string circleWalletId, DateTime sinceUtc, CancellationToken ct = default)
+    {
+        MaybeThrowProviderUnavailable();
+
+        return depositLedger.ListAsync(circleWalletId, sinceUtc, ct);
     }
 
     private void MaybeThrowProviderUnavailable()

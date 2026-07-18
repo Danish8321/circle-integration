@@ -178,4 +178,49 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
 
         return new Money(amount, "USDC");
     }
+
+    public async Task<IReadOnlyList<ProviderDepositRecord>> ListRecentDepositsAsync(
+        string circleWalletId, DateTime sinceUtc, CancellationToken ct = default)
+    {
+        var records = new List<ProviderDepositRecord>();
+        var since = sinceUtc.ToString("o", CultureInfo.InvariantCulture);
+
+        using (var depositsResponse = await httpClient.GetAsync(
+            $"v1/businessAccount/deposits?walletId={circleWalletId}&from={since}", ct))
+        {
+            depositsResponse.EnsureSuccessStatusCode();
+
+            var depositsEnvelope = await depositsResponse.Content
+                .ReadFromJsonAsync<ListDepositsCircleEnvelope>(ct)
+                ?? throw new InvalidOperationException("Circle returned an empty deposits-list response.");
+
+            records.AddRange(depositsEnvelope.Data.Select(deposit => new ProviderDepositRecord(
+                deposit.Id,
+                deposit.Destination.Id,
+                DestinationAddress: deposit.Destination.Id,
+                new Money(decimal.Parse(deposit.Amount.Amount, CultureInfo.InvariantCulture), deposit.Amount.Currency),
+                DepositSourceType.Wire,
+                deposit.CreateDate)));
+        }
+
+        using (var transfersResponse = await httpClient.GetAsync(
+            $"v1/businessAccount/transfers?destinationWalletId={circleWalletId}&from={since}", ct))
+        {
+            transfersResponse.EnsureSuccessStatusCode();
+
+            var transfersEnvelope = await transfersResponse.Content
+                .ReadFromJsonAsync<ListTransfersCircleEnvelope>(ct)
+                ?? throw new InvalidOperationException("Circle returned an empty transfers-list response.");
+
+            records.AddRange(transfersEnvelope.Data.Select(transfer => new ProviderDepositRecord(
+                transfer.Id,
+                circleWalletId,
+                DestinationAddress: transfer.Destination.Address ?? transfer.Destination.Id ?? string.Empty,
+                new Money(decimal.Parse(transfer.Amount.Amount, CultureInfo.InvariantCulture), transfer.Amount.Currency),
+                DepositSourceType.OnChain,
+                transfer.CreateDate)));
+        }
+
+        return records;
+    }
 }

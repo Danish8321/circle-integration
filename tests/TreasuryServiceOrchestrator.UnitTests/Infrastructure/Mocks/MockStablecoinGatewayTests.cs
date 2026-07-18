@@ -72,7 +72,8 @@ public sealed class MockStablecoinGatewayTests
         return new MockStablecoinGateway(
             options,
             scheduler ?? new CapturingScheduler(),
-            randomSource ?? new FixedRandomSource(fixedDouble: failureInjectionRate > 0 ? 0.0 : 0.5));
+            randomSource ?? new FixedRandomSource(fixedDouble: failureInjectionRate > 0 ? 0.0 : 0.5),
+            new MockProviderDepositLedger());
     }
 
     [Fact]

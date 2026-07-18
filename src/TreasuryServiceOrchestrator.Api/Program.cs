@@ -16,6 +16,7 @@ using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
+using TreasuryServiceOrchestrator.Application.Ledger.Reconciliation;
 using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared;
@@ -27,6 +28,7 @@ using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using TreasuryServiceOrchestrator.Infrastructure.Notifications;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
+using TreasuryServiceOrchestrator.Infrastructure.Reconciliation;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -138,6 +140,13 @@ builder.Services.AddHttpClient<INotificationSender, HttpNotificationSender>();
 builder.Services.AddSingleton<NotificationDispatcher>();
 builder.Services.AddHostedService<NotificationDispatchBackgroundService>();
 
+builder.Services.Configure<ReconciliationOptions>(
+    builder.Configuration.GetSection("Reconciliation"));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ReconciliationOptions>>().Value);
+builder.Services.AddScoped<DepositReconciliationService>();
+builder.Services.AddHostedService<DepositReconciliationBackgroundService>();
+
 builder.Services.Configure<MockProviderOptions>(
     builder.Configuration.GetSection(MockProviderOptions.SectionName));
 
@@ -150,6 +159,7 @@ if (mockModeEnabled)
     builder.Services.AddScoped<ISubAccountGateway, MockSubAccountGateway>();
     builder.Services.AddScoped<IStablecoinGateway, MockStablecoinGateway>();
     builder.Services.AddSingleton<IMockRandomSource, SystemRandomSource>();
+    builder.Services.AddSingleton<IMockProviderDepositLedger, MockProviderDepositLedger>();
     builder.Services.AddSingleton<MockWebhookChannel>();
     builder.Services.AddSingleton<IMockWebhookScheduler>(sp => sp.GetRequiredService<MockWebhookChannel>());
     builder.Services.AddSingleton<MockWebhookDispatcher>();

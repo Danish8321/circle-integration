@@ -15,6 +15,13 @@ public interface ITransactionRepository
     Task<Transaction?> GetByIdAsync(
         Guid transactionId, string clientCompanyId, CancellationToken cancellationToken = default);
 
+    // Cross-tenant by design: reconciliation (Ticket 15) doesn't know which tenant a provider
+    // deposit belongs to until after this dedup lookup resolves it — same shape as the
+    // admin-only ListAllAsync exception to CLAUDE.md invariant 7, but here the caller is
+    // trusted Application-tier reconciliation code, not a route/body parameter.
+    Task<Transaction?> GetByProviderReferenceIdAsync(
+        string providerReferenceId, CancellationToken cancellationToken = default);
+
     // Deliberate exception to CLAUDE.md invariant 7 (no route/body ClientCompanyId, always
     // ICallerContext): this is an admin-only, all-tenant read with no ClientCompanyId filter
     // required. It is safe because the caller-side Admin gate is enforced structurally by

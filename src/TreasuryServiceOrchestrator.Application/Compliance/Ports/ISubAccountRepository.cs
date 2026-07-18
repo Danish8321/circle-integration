@@ -10,4 +10,6 @@ public interface ISubAccountRepository
 
     Task<IReadOnlyList<SubAccount>> ListAsync(
         SubAccountLifecycleState? lifecycleState = null, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<SubAccount>> ListActiveWithWalletAsync(CancellationToken ct = default);
 }
