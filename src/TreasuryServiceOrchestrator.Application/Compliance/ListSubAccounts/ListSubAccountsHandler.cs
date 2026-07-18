@@ -2,6 +2,7 @@ using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -11,6 +12,7 @@ namespace TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 public sealed class ListSubAccountsHandler(
     ISubAccountRepository subAccounts,
     IEntityRegistrationRepository entityRegistrations,
+    IFundAccountRepository fundAccounts,
     IAuditLogService auditLog,
     IUnitOfWork unitOfWork,
     ICallerContext callerContext)
@@ -40,7 +42,10 @@ public sealed class ListSubAccountsHandler(
         {
             var registration = await entityRegistrations.GetLatestForSubAccountAsync(
                 subAccount.Id, cancellationToken);
-            results.Add(SubAccountDetailsMapper.Map(subAccount, registration));
+            var fundAccount = await fundAccounts.FindByClientCompanyIdAsync(
+                subAccount.ClientCompanyId, cancellationToken);
+            var mapped = SubAccountDetailsMapper.Map(subAccount, registration);
+            results.Add(mapped with { CurrentBalance = fundAccount?.Balance });
         }
 
         return results;

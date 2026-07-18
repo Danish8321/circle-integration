@@ -3,6 +3,7 @@ using Moq;
 using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Exceptions;
+using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -14,6 +15,7 @@ public sealed class ListSubAccountsHandlerTests
 {
     private readonly Mock<ISubAccountRepository> subAccounts = new();
     private readonly Mock<IEntityRegistrationRepository> entityRegistrations = new();
+    private readonly Mock<IFundAccountRepository> fundAccounts = new();
     private readonly Mock<IAuditLogService> auditLog = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<ICallerContext> callerContext = new();
@@ -24,8 +26,11 @@ public sealed class ListSubAccountsHandlerTests
         callerContext.SetupGet(x => x.CallerId).Returns("apiso-admin");
         callerContext.SetupGet(x => x.Role).Returns(CallerRole.Admin);
         callerContext.SetupGet(x => x.IsAdmin).Returns(true);
+        fundAccounts
+            .Setup(x => x.FindByClientCompanyIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FundAccount?)null);
         handler = new ListSubAccountsHandler(
-            subAccounts.Object, entityRegistrations.Object, auditLog.Object,
+            subAccounts.Object, entityRegistrations.Object, fundAccounts.Object, auditLog.Object,
             unitOfWork.Object, callerContext.Object);
     }
 
@@ -116,6 +121,48 @@ public sealed class ListSubAccountsHandlerTests
         subAccounts.Verify(
             x => x.ListAsync(SubAccountLifecycleState.Active, It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenFundAccountExists_PopulatesCurrentBalance()
+    {
+        var subAccount = ProvisionedSubAccount("client-1");
+        var fundAccount = FundAccount.Create(
+            "client-1", new Money(42m, "USDC"), new DateTime(2026, 7, 17, 0, 0, 0, DateTimeKind.Utc));
+        subAccounts
+            .Setup(x => x.ListAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([subAccount]);
+        entityRegistrations
+            .Setup(x => x.GetLatestForSubAccountAsync(subAccount.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntityRegistration?)null);
+        fundAccounts
+            .Setup(x => x.FindByClientCompanyIdAsync("client-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fundAccount);
+
+        var results = await handler.HandleAsync(AllTenantsQuery(), TestContext.Current.CancellationToken);
+
+        results.Should().HaveCount(1);
+        results[0].CurrentBalance.Should().Be(new Money(42m, "USDC"));
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenNoFundAccountExists_LeavesCurrentBalanceNull()
+    {
+        var subAccount = ProvisionedSubAccount("client-1");
+        subAccounts
+            .Setup(x => x.ListAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([subAccount]);
+        entityRegistrations
+            .Setup(x => x.GetLatestForSubAccountAsync(subAccount.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntityRegistration?)null);
+        fundAccounts
+            .Setup(x => x.FindByClientCompanyIdAsync("client-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FundAccount?)null);
+
+        var results = await handler.HandleAsync(AllTenantsQuery(), TestContext.Current.CancellationToken);
+
+        results.Should().HaveCount(1);
+        results[0].CurrentBalance.Should().BeNull();
     }
 
     [Fact]

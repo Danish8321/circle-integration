@@ -1,3 +1,5 @@
+using TreasuryServiceOrchestrator.Domain;
+
 namespace TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 
 public sealed record SubAccountDetailsResult(
@@ -7,4 +9,5 @@ public sealed record SubAccountDetailsResult(
     bool IsDisabled,
     string? CircleWalletId,
     string? LatestRegistrationStatus,
-    string? RegistrationRejectionReason);
+    string? RegistrationRejectionReason,
+    Money? CurrentBalance = null);

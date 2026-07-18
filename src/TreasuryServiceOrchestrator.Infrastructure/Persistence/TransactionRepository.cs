@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
@@ -27,5 +28,45 @@ public sealed class TransactionRepository(TreasuryServiceOrchestratorDbContext d
             .FirstOrDefaultAsync(
                 x => x.Id == transactionId && x.ClientCompanyId == clientCompanyId,
                 cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Transaction>> ListAllAsync(
+        TransactionListFilter filter, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Transactions.AsQueryable();
+
+        if (filter.ClientCompanyId is not null)
+        {
+            query = query.Where(x => x.ClientCompanyId == filter.ClientCompanyId);
+        }
+
+        if (filter.Type is not null)
+        {
+            query = query.Where(x => x.Type == filter.Type);
+        }
+
+        if (filter.Status is not null)
+        {
+            query = query.Where(x => x.Status == filter.Status);
+        }
+
+        if (filter.FromUtc is not null)
+        {
+            query = query.Where(x => x.CreatedAtUtc >= filter.FromUtc);
+        }
+
+        if (filter.ToUtc is not null)
+        {
+            query = query.Where(x => x.CreatedAtUtc <= filter.ToUtc);
+        }
+
+        var page = filter.Page <= 0 ? 1 : filter.Page;
+        var pageSize = filter.PageSize <= 0 ? 20 : filter.PageSize;
+
+        return await query
+            .OrderBy(x => x.CreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
     }
 }
