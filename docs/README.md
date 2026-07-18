@@ -121,10 +121,11 @@ doc-level) impact, not to be lost:
   and `SubAccount.MarkAccepted()`/`EntityRegistration.Accept()` domain transitions — the
   compliance-acceptance edge (`PendingCompliance → Active`) now works end to end, covered by
   unit tests. Migration `20260717153028_InitialCreate` generated (staged, not applied to a DB).
-- **08**: `GetWireInstructionsAsync` has no port method in shipped code yet (Phase 3 deferred
-  this explicitly); real Circle wire-creation body is more structured (`billingDetails`/
-  `bankAddress`, region-dependent schemas) than the current flat domain entity — affects entity
-  shape/migrations, not just docs.
+- **08**: ~~`GetWireInstructionsAsync` has no port method in shipped code yet~~ — **resolved**:
+  implemented (`IStablecoinGateway.GetWireInstructionsAsync`, `CircleMintGateway`,
+  `MockStablecoinGateway`, `GetWireInstructionsQueryHandler`) — this note was stale as of the
+  2026-07-18 audit. Real Circle wire-creation body's region-dependent schema fidelity is
+  Phase 3 ticket 21's sandbox-verification concern, not an unbuilt port.
 - **03**: ~~unhandled webhook topics currently map to `Failed` → HTTP 500 → infinite SNS
   redelivery~~ — **resolved**: `WebhookProcessor` now has a distinct `WebhookProcessingStatus.
   Unhandled` value, mapped to HTTP 200 by `CircleWebhooksController` (no dead-letter for
@@ -144,16 +145,27 @@ doc-level) impact, not to be lost:
 - **04**: `LedgerPostingService`'s exact shape was undocumented in source material and had to be
   synthesized — flagged for review, not treated as settled. `GetCurrentBalanceQueryHandler`'s
   `Money.Zero("USD")` default vs. a funded account's `USDC` currency is an open product question.
-- **06**: audit immutability is accidental, not DB-enforced; no retention implementation/ops
-  record exists yet; correlation id is not echoed back to the caller in the HTTP response.
+  **Ticketed**: Phase 4 ticket 26 (`.scratch/treasury-service-orchestrator/PHASE4_IMPLEMENTATION_PLAN.md`).
+- **06**: audit immutability is DB-enforced as of ticket 13 item 2 (trigger, `test-full.sh`
+  fault-injection-covered); no retention implementation/ops record exists yet (deferred by
+  decision, ticket 14); correlation id is not echoed back to the caller in the HTTP response.
+  **Ticketed**: Phase 4 ticket 27.
 - **13**: the Phase 1 plan's own integration test for outbox/state-change atomicity is
   happy-path only — no fault-injection test exists proving the same-transaction guarantee holds
-  when `SaveChangesAsync` actually fails mid-way.
+  when `SaveChangesAsync` actually fails mid-way. **Ticketed**: Phase 4 ticket 28.
 - **02.2 / CallerIdentityMiddleware**: PRD §2.2's "human portal user audit header" is still
-  unimplemented. ~~the middleware also has no bypass-path mechanism yet~~ — **partially
-  resolved**: a path-based bypass now exempts `/v1/webhooks/circle` from `ClientCompanyId`
-  scoping (PRD §10 item 7); whether 13's stub receiver needs the same treatment is still open.
+  unimplemented (deferred by decision, ticket 14). ~~the middleware also has no bypass-path
+  mechanism yet~~ — **partially resolved**: a path-based bypass now exempts
+  `/v1/webhooks/circle` from `ClientCompanyId` scoping (PRD §10 item 7); whether 13's stub
+  receiver needs the same treatment is still open. **Ticketed**: Phase 4 ticket 29.
+- **03 / 07 / 08 stale-note correction (2026-07-18)**: this table itself had drifted from shipped
+  code on two points — the unhandled-topic-webhook fix (item 03) and `GetWireInstructionsAsync`
+  (item 08) were already resolved but a stale note in `docs/features/03-webhook-processing.md`
+  and this file's own prior wording claimed otherwise. Corrected in place above; the lesson is
+  this table needs periodic Grep-verification against code, not just doc-to-doc consistency.
 
 None of these are doc-drift — they're genuine implementation gaps found while authoring the
-corrected docs, left open rather than silently resolved. Track them in `.scratch/` tickets as
-work proceeds.
+corrected docs, left open rather than silently resolved. Every item above now has a ticket
+(Phase 3 for the Circle-integration items, Phase 4 for the remainder) — see
+`.scratch/treasury-service-orchestrator/PHASE3_IMPLEMENTATION_PLAN.md` and
+`PHASE4_IMPLEMENTATION_PLAN.md`.
