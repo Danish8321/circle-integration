@@ -37,6 +37,38 @@
         }
       }
     },
+    "/internal/notifications": {
+      "post": {
+        "tags": [
+          "InternalNotificationsStub"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/balances/history": {
       "get": {
         "tags": [
@@ -1817,6 +1849,44 @@
           }
         }
       },
+      "InternalNotificationEnvelopeRequest": {
+        "required": [
+          "eventId",
+          "eventType",
+          "clientCompanyId",
+          "entityId",
+          "occurredAtUtc",
+          "correlationId",
+          "payload"
+        ],
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonElement"
+          }
+        }
+      },
+      "JsonElement": { },
       "LinkedBankAccountResponse": {
         "required": [
           "id",
@@ -2334,6 +2404,9 @@
   "tags": [
     {
       "name": "CircleWebhooks"
+    },
+    {
+      "name": "InternalNotificationsStub"
     },
     {
       "name": "BalanceHistory"
