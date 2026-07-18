@@ -126,6 +126,234 @@
         }
       }
     },
+    "/v1/sub-accounts/{subAccountId}/linked-bank-accounts": {
+      "post": {
+        "tags": [
+          "CreateLinkedBankAccount"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkedBankAccountRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkedBankAccountRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkedBankAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "LinkedBankAccounts"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/redemptions": {
+      "post": {
+        "tags": [
+          "CreateRedemption"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRedemptionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRedemptionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRedemptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Redemptions"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RedemptionResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RedemptionResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RedemptionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/transfers": {
       "post": {
         "tags": [
@@ -347,6 +575,55 @@
         }
       }
     },
+    "/v1/sub-accounts/{subAccountId}/linked-bank-accounts/{linkedBankAccountId}": {
+      "get": {
+        "tags": [
+          "LinkedBankAccountDetail"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "linkedBankAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/recipients/{recipientId}": {
       "get": {
         "tags": [
@@ -503,6 +780,55 @@
         }
       }
     },
+    "/v1/sub-accounts/{subAccountId}/redemptions/{redemptionId}": {
+      "get": {
+        "tags": [
+          "RedemptionDetail"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "redemptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedemptionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/transactions/{transactionId}": {
       "get": {
         "tags": [
@@ -643,6 +969,55 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/linked-bank-accounts/{linkedBankAccountId}/wire-instructions": {
+      "get": {
+        "tags": [
+          "WireInstructions"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "linkedBankAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WireInstructions"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WireInstructions"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WireInstructions"
                 }
               }
             }
@@ -996,6 +1371,90 @@
           }
         }
       },
+      "CreateLinkedBankAccountRequest": {
+        "required": [
+          "beneficiaryName",
+          "accountNumber",
+          "routingNumber",
+          "bankName",
+          "billingName",
+          "billingCity",
+          "billingCountry",
+          "billingLine1",
+          "billingPostalCode",
+          "billingLine2",
+          "billingDistrict",
+          "bankAddressCountry",
+          "bankAddressBankName"
+        ],
+        "type": "object",
+        "properties": {
+          "beneficiaryName": {
+            "type": "string"
+          },
+          "accountNumber": {
+            "type": "string"
+          },
+          "routingNumber": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "billingName": {
+            "type": "string"
+          },
+          "billingCity": {
+            "type": "string"
+          },
+          "billingCountry": {
+            "type": "string"
+          },
+          "billingLine1": {
+            "type": "string"
+          },
+          "billingPostalCode": {
+            "type": "string"
+          },
+          "billingLine2": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "billingDistrict": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bankAddressCountry": {
+            "type": "string"
+          },
+          "bankAddressBankName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateRedemptionRequest": {
+        "required": [
+          "linkedBankAccountId",
+          "grossAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "linkedBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "grossAmount": {
+            "$ref": "#/components/schemas/Money"
+          }
+        }
+      },
       "CreateSubAccountRequest": {
         "required": [
           "clientCompanyId",
@@ -1135,6 +1594,50 @@
           }
         }
       },
+      "LinkedBankAccountResponse": {
+        "required": [
+          "id",
+          "subAccountId",
+          "beneficiaryName",
+          "bankName",
+          "circleBankAccountId",
+          "status",
+          "createdAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "beneficiaryName": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "circleBankAccountId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/LinkedBankAccountStatus"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LinkedBankAccountStatus": {
+        "type": "integer"
+      },
       "Money": {
         "required": [
           "amount",
@@ -1202,6 +1705,77 @@
       },
       "RecipientStatus": {
         "type": "integer"
+      },
+      "RedemptionResponse": {
+        "required": [
+          "id",
+          "subAccountId",
+          "linkedBankAccountId",
+          "grossAmount",
+          "fees",
+          "netAmount",
+          "circleRedeemId",
+          "status",
+          "failureReason",
+          "createdAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "linkedBankAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "grossAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "fees": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Money"
+              }
+            ]
+          },
+          "netAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Money"
+              }
+            ]
+          },
+          "circleRedeemId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/TransferStatus"
+          },
+          "failureReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "RegisterRecipientRequest": {
         "required": [
@@ -1492,6 +2066,45 @@
       },
       "TransferStatus": {
         "type": "integer"
+      },
+      "WireInstructions": {
+        "required": [
+          "trackingRef",
+          "beneficiaryName",
+          "beneficiaryAddress",
+          "bankName",
+          "swiftCode",
+          "routingNumber",
+          "maskedAccountNumber",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "trackingRef": {
+            "type": "string"
+          },
+          "beneficiaryName": {
+            "type": "string"
+          },
+          "beneficiaryAddress": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "swiftCode": {
+            "type": "string"
+          },
+          "routingNumber": {
+            "type": "string"
+          },
+          "maskedAccountNumber": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
       }
     }
   },
@@ -1506,6 +2119,18 @@
       "name": "Balances"
     },
     {
+      "name": "CreateLinkedBankAccount"
+    },
+    {
+      "name": "LinkedBankAccounts"
+    },
+    {
+      "name": "CreateRedemption"
+    },
+    {
+      "name": "Redemptions"
+    },
+    {
       "name": "CreateTransfer"
     },
     {
@@ -1513,6 +2138,9 @@
     },
     {
       "name": "DepositAddresses"
+    },
+    {
+      "name": "LinkedBankAccountDetail"
     },
     {
       "name": "RecipientDetail"
@@ -1524,6 +2152,9 @@
       "name": "RegisterRecipient"
     },
     {
+      "name": "RedemptionDetail"
+    },
+    {
       "name": "TransactionDetail"
     },
     {
@@ -1531,6 +2162,9 @@
     },
     {
       "name": "TransferDetail"
+    },
+    {
+      "name": "WireInstructions"
     },
     {
       "name": "SubAccounts"

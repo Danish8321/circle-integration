@@ -21,6 +21,7 @@ public sealed class ProcessPayoutStatusCommandHandler(
     LedgerPostingService ledgerPostingService,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
+    : ICommandHandler<ProcessPayoutStatusCommand, ProcessPayoutStatusResult>
 {
     public async Task<ProcessPayoutStatusResult> HandleAsync(
         ProcessPayoutStatusCommand command, CancellationToken cancellationToken = default)

@@ -18,6 +18,8 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
     public DbSet<FundAccount> FundAccounts => Set<FundAccount>();
     public DbSet<Recipient> Recipients => Set<Recipient>();
     public DbSet<Transfer> Transfers => Set<Transfer>();
+    public DbSet<LinkedBankAccount> LinkedBankAccounts => Set<LinkedBankAccount>();
+    public DbSet<RedeemRequest> RedeemRequests => Set<RedeemRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +77,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
 
         ConfigureLedgerEntities(modelBuilder);
         ConfigureRecipientAndTransferEntities(modelBuilder);
+        ConfigureLinkedBankAccountAndRedeemRequestEntities(modelBuilder);
     }
 
     private static void ConfigureLedgerEntities(ModelBuilder modelBuilder)
@@ -149,6 +152,66 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             {
                 amount.Property(x => x.Amount).HasColumnName("Amount").HasPrecision(28, 8);
                 amount.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
+            });
+        });
+
+    }
+
+    private static void ConfigureLinkedBankAccountAndRedeemRequestEntities(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<LinkedBankAccount>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.BeneficiaryName).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.AccountNumber).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.RoutingNumber).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.BankName).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BillingName).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BillingCity).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BillingCountry).IsRequired().HasMaxLength(2);
+            entity.Property(x => x.BillingLine1).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BillingPostalCode).IsRequired().HasMaxLength(32);
+            entity.Property(x => x.BillingLine2).HasMaxLength(200);
+            entity.Property(x => x.BillingDistrict).HasMaxLength(200);
+            entity.Property(x => x.BankAddressCountry).IsRequired().HasMaxLength(2);
+            entity.Property(x => x.BankAddressBankName).HasMaxLength(200);
+            entity.Property(x => x.CircleBankAccountId).HasMaxLength(64);
+            entity.HasIndex(x => x.CircleBankAccountId);
+            entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+        });
+
+        modelBuilder.Entity<RedeemRequest>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.CircleRedeemId).HasMaxLength(64);
+            entity.Property(x => x.FailureReason).HasMaxLength(500);
+            entity.Property(x => x.CorrelationId).IsRequired().HasMaxLength(128);
+            entity.HasIndex(x => x.CircleRedeemId);
+            entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+            entity.ComplexProperty(x => x.GrossAmount, amount =>
+            {
+                amount.Property(x => x.Amount).HasColumnName("GrossAmount").HasPrecision(28, 8);
+                amount.Property(x => x.CurrencyCode).HasColumnName("GrossCurrencyCode").IsRequired().HasMaxLength(16);
+            });
+
+            // EF Core 10 supports an optional (nullable) ComplexProperty directly — Fees/NetAmount
+            // are Money? (populated only on RedeemRequest.Settle()), and IsRequired(false) on the
+            // complex-property builder maps that to a nullable column pair with no wrapper-object
+            // presence tracked separately, keeping Money the only monetary type crossing the
+            // Domain/Application boundary (invariant 10) with no JSON blob / shadow-column split.
+            entity.ComplexProperty(x => x.Fees, fees =>
+            {
+                fees.IsRequired(false);
+                fees.Property(x => x.Amount).HasColumnName("FeesAmount").HasPrecision(28, 8);
+                fees.Property(x => x.CurrencyCode).HasColumnName("FeesCurrencyCode").HasMaxLength(16);
+            });
+            entity.ComplexProperty(x => x.NetAmount, netAmount =>
+            {
+                netAmount.IsRequired(false);
+                netAmount.Property(x => x.Amount).HasColumnName("NetAmount").HasPrecision(28, 8);
+                netAmount.Property(x => x.CurrencyCode).HasColumnName("NetCurrencyCode").HasMaxLength(16);
             });
         });
     }

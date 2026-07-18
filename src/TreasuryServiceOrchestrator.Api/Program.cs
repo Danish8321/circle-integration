@@ -13,7 +13,9 @@ using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.DepositAddresses;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
+using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
@@ -93,6 +95,25 @@ builder.Services.AddScoped<GetTransferQueryHandler>();
 builder.Services.AddScoped<
     ICommandHandler<ProcessTransferStatusCommand, ProcessTransferStatusResult>, ProcessTransferStatusCommandHandler>();
 builder.Services.AddScoped<IValidator<CreateTransferCommand>, CreateTransferCommandValidator>();
+
+builder.Services.AddScoped<ILinkedBankAccountRepository, LinkedBankAccountRepository>();
+builder.Services.AddScoped<CreateLinkedBankAccountCommandHandler>();
+builder.Services.AddScoped<ListLinkedBankAccountsQueryHandler>();
+builder.Services.AddScoped<GetLinkedBankAccountQueryHandler>();
+builder.Services.AddScoped<GetWireInstructionsQueryHandler>();
+builder.Services.AddScoped<
+    ICommandHandler<ProcessLinkedBankAccountStatusCommand, ProcessLinkedBankAccountStatusResult>,
+    ProcessLinkedBankAccountStatusCommandHandler>();
+builder.Services.AddScoped<
+    IValidator<CreateLinkedBankAccountCommand>, CreateLinkedBankAccountCommandValidator>();
+
+builder.Services.AddScoped<IRedeemRequestRepository, RedeemRequestRepository>();
+builder.Services.AddScoped<CreateRedemptionCommandHandler>();
+builder.Services.AddScoped<ListRedemptionsQueryHandler>();
+builder.Services.AddScoped<GetRedemptionQueryHandler>();
+builder.Services.AddScoped<
+    ICommandHandler<ProcessPayoutStatusCommand, ProcessPayoutStatusResult>, ProcessPayoutStatusCommandHandler>();
+builder.Services.AddScoped<IValidator<CreateRedemptionCommand>, CreateRedemptionCommandValidator>();
 
 builder.Services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
 builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
