@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
@@ -55,10 +56,28 @@ public sealed class ProcessDepositCommandHandler(
             command.DepositSourceType,
             command.CorrelationId);
 
-        var transaction = await ledgerPostingService.PostAsync(posting, cancellationToken);
+        var transaction = await ledgerPostingService.PostAsync(
+            posting, txn => BuildOutboxEntry(txn, command), cancellationToken);
 
         return Map(transaction);
     }
+
+    private static NotificationOutboxEntry BuildOutboxEntry(
+        Transaction transaction, ProcessDepositCommand command) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            EventType = "DepositCredited",
+            ClientCompanyId = transaction.ClientCompanyId,
+            EntityId = transaction.Id.ToString(),
+            OccurredAtUtc = transaction.UpdatedAtUtc,
+            CorrelationId = command.CorrelationId,
+            PayloadJson = JsonSerializer.Serialize(new { transaction.Amount, transaction.SubAccountId }),
+            Status = NotificationDeliveryStatus.Pending,
+            AttemptCount = 0,
+            NextAttemptAtUtc = null,
+            DeliveredAtUtc = null,
+        };
 
     private static ProcessDepositResult Map(Transaction transaction) => new(
         transaction.Id,

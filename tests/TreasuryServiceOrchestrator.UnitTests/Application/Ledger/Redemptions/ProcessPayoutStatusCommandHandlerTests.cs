@@ -5,6 +5,7 @@ using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Redemptions;
@@ -15,6 +16,7 @@ public sealed class ProcessPayoutStatusCommandHandlerTests
     private readonly Mock<ITransactionRepository> transactions = new();
     private readonly Mock<IBalanceSnapshotRepository> balanceSnapshots = new();
     private readonly Mock<IFundAccountRepository> fundAccounts = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly LedgerPostingService ledgerPostingService;
     private readonly ProcessPayoutStatusCommandHandler handler;
@@ -29,6 +31,7 @@ public sealed class ProcessPayoutStatusCommandHandlerTests
             transactions.Object,
             balanceSnapshots.Object,
             fundAccounts.Object,
+            outbox.Object,
             unitOfWork.Object,
             TimeProvider.System);
 
@@ -60,6 +63,11 @@ public sealed class ProcessPayoutStatusCommandHandlerTests
         result.Status.Should().Be(TransferStatus.Complete);
         redeemRequest.Fees!.Amount.Should().Be(2m);
         redeemRequest.NetAmount!.Amount.Should().Be(98m);
+        outbox.Verify(
+            x => x.AddAsync(
+                It.Is<NotificationOutboxEntry>(e => e.EventType == "RedemptionCompleted"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

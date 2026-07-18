@@ -6,6 +6,7 @@ using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Transfers;
@@ -18,6 +19,7 @@ public sealed class CreateTransferCommandHandlerTests
     private readonly Mock<ITransactionRepository> transactions = new();
     private readonly Mock<IBalanceSnapshotRepository> balanceSnapshots = new();
     private readonly Mock<IFundAccountRepository> fundAccounts = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<IIdempotencyService> idempotency = new();
     private readonly Mock<ICallerContext> callerContext = new();
@@ -39,6 +41,7 @@ public sealed class CreateTransferCommandHandlerTests
             transactions.Object,
             balanceSnapshots.Object,
             fundAccounts.Object,
+            outbox.Object,
             unitOfWork.Object,
             TimeProvider.System);
 

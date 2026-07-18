@@ -1,6 +1,8 @@
+using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Transfers;
@@ -15,6 +17,7 @@ namespace TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 /// </summary>
 public sealed class ProcessTransferStatusCommandHandler(
     ITransferRepository transfers,
+    INotificationOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
     : ICommandHandler<ProcessTransferStatusCommand, ProcessTransferStatusResult>
@@ -42,8 +45,30 @@ public sealed class ProcessTransferStatusCommandHandler(
 
         transfer.UpdateStatus(mappedStatus, failureReason, nowUtc);
 
+        if (mappedStatus == TransferStatus.Complete)
+        {
+            await outbox.AddAsync(BuildOutboxEntry(transfer, command), cancellationToken);
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ProcessTransferStatusResult(transfer.Id, transfer.Status);
     }
+
+    private static NotificationOutboxEntry BuildOutboxEntry(
+        Transfer transfer, ProcessTransferStatusCommand command) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            EventType = "TransferCompleted",
+            ClientCompanyId = transfer.ClientCompanyId,
+            EntityId = transfer.Id.ToString(),
+            OccurredAtUtc = transfer.UpdatedAtUtc,
+            CorrelationId = command.CircleTransferId,
+            PayloadJson = JsonSerializer.Serialize(new { transfer.Amount, transfer.SubAccountId }),
+            Status = NotificationDeliveryStatus.Pending,
+            AttemptCount = 0,
+            NextAttemptAtUtc = null,
+            DeliveredAtUtc = null,
+        };
 }

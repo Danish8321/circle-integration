@@ -1,5 +1,6 @@
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger;
@@ -14,10 +15,20 @@ public sealed class LedgerPostingService(
     ITransactionRepository transactions,
     IBalanceSnapshotRepository balanceSnapshots,
     IFundAccountRepository fundAccounts,
+    INotificationOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
 {
-    public async Task<Transaction> PostAsync(LedgerPosting posting, CancellationToken ct = default)
+    /// <param name="outboxEntryBuilder">
+    /// Optional: builds a <see cref="NotificationOutboxEntry"/> from the just-created
+    /// <see cref="Transaction"/>, staged before this method's own <c>SaveChangesAsync</c> so it
+    /// commits atomically with the posting — never call this from outside after <c>PostAsync</c>
+    /// returns, that lands in a later, separate commit (see ticket 09.4's atomicity proof).
+    /// </param>
+    public async Task<Transaction> PostAsync(
+        LedgerPosting posting,
+        Func<Transaction, NotificationOutboxEntry>? outboxEntryBuilder,
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(posting);
 
@@ -56,6 +67,11 @@ public sealed class LedgerPostingService(
             BalanceSnapshotReason.PostMutation,
             nowUtc);
         await balanceSnapshots.AddAsync(snapshot, ct);
+
+        if (outboxEntryBuilder is not null)
+        {
+            await outbox.AddAsync(outboxEntryBuilder(transaction), ct);
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
 

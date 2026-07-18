@@ -4,6 +4,7 @@ using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Transfers;
@@ -11,12 +12,14 @@ namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Transfers;
 public sealed class ProcessTransferStatusCommandHandlerTests
 {
     private readonly Mock<ITransferRepository> transfers = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly ProcessTransferStatusCommandHandler handler;
 
     public ProcessTransferStatusCommandHandlerTests()
     {
-        handler = new ProcessTransferStatusCommandHandler(transfers.Object, unitOfWork.Object, TimeProvider.System);
+        handler = new ProcessTransferStatusCommandHandler(
+            transfers.Object, outbox.Object, unitOfWork.Object, TimeProvider.System);
     }
 
     private static Transfer PendingTransfer()
@@ -43,6 +46,11 @@ public sealed class ProcessTransferStatusCommandHandlerTests
         transfer.Status.Should().Be(TransferStatus.Complete);
         transfer.FailureReason.Should().BeNull();
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Verify(
+            x => x.AddAsync(
+                It.Is<NotificationOutboxEntry>(e => e.EventType == "TransferCompleted"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

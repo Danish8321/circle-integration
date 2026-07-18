@@ -1,7 +1,9 @@
+using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
@@ -66,7 +68,8 @@ public sealed class ProcessPayoutStatusCommandHandler(
                 null,
                 redeemRequest.CorrelationId);
 
-            await ledgerPostingService.PostAsync(posting, cancellationToken);
+            await ledgerPostingService.PostAsync(
+                posting, _ => BuildOutboxEntry(redeemRequest, command), cancellationToken);
         }
         else
         {
@@ -81,4 +84,26 @@ public sealed class ProcessPayoutStatusCommandHandler(
 
         return new ProcessPayoutStatusResult(redeemRequest.Id, redeemRequest.Status);
     }
+
+    private static NotificationOutboxEntry BuildOutboxEntry(
+        RedeemRequest redeemRequest, ProcessPayoutStatusCommand command) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            EventType = "RedemptionCompleted",
+            ClientCompanyId = redeemRequest.ClientCompanyId,
+            EntityId = redeemRequest.Id.ToString(),
+            OccurredAtUtc = redeemRequest.UpdatedAtUtc,
+            CorrelationId = command.CircleRedeemId,
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                GrossAmount = redeemRequest.GrossAmount,
+                Fees = redeemRequest.Fees,
+                NetAmount = redeemRequest.NetAmount,
+            }),
+            Status = NotificationDeliveryStatus.Pending,
+            AttemptCount = 0,
+            NextAttemptAtUtc = null,
+            DeliveredAtUtc = null,
+        };
 }

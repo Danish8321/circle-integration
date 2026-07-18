@@ -3,6 +3,7 @@ using Moq;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger;
@@ -12,6 +13,7 @@ public sealed class LedgerPostingServiceTests
     private readonly Mock<ITransactionRepository> transactions = new();
     private readonly Mock<IBalanceSnapshotRepository> balanceSnapshots = new();
     private readonly Mock<IFundAccountRepository> fundAccounts = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly LedgerPostingService service;
 
@@ -21,6 +23,7 @@ public sealed class LedgerPostingServiceTests
             transactions.Object,
             balanceSnapshots.Object,
             fundAccounts.Object,
+            outbox.Object,
             unitOfWork.Object,
             TimeProvider.System);
     }
@@ -43,7 +46,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(50m);
 
-        await service.PostAsync(posting, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
 
         existing.Balance.Amount.Should().Be(150m);
         fundAccounts.Verify(
@@ -59,7 +62,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(-30m);
 
-        await service.PostAsync(posting, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
 
         existing.Balance.Amount.Should().Be(70m);
     }
@@ -72,7 +75,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync((FundAccount?)null);
         var posting = Posting(25m);
 
-        await service.PostAsync(posting, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
 
         fundAccounts.Verify(
             x => x.AddAsync(
@@ -90,7 +93,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(-15m);
 
-        var result = await service.PostAsync(posting, TestContext.Current.CancellationToken);
+        var result = await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
 
         result.Amount.Amount.Should().Be(-15m);
         result.SubAccountId.Should().Be(posting.SubAccountId);
@@ -110,7 +113,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(5m);
 
-        await service.PostAsync(posting, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
 
         balanceSnapshots.Verify(
             x => x.AddAsync(
@@ -131,7 +134,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(FundAccount.Create("client-1", Money.Zero("USDC"), DateTime.UtcNow));
         var posting = Posting(10m);
 
-        await service.PostAsync(posting, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
 
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

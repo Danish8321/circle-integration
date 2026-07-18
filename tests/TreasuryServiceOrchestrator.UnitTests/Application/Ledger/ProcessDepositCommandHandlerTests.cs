@@ -4,6 +4,7 @@ using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger;
@@ -15,6 +16,7 @@ public sealed class ProcessDepositCommandHandlerTests
     private readonly Mock<IFundAccountRepository> fundAccounts = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<IIdempotencyService> idempotency = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<ICallerContext> callerContext = new();
     private readonly LedgerPostingService ledgerPostingService;
     private readonly ProcessDepositCommandHandler handler;
@@ -34,6 +36,7 @@ public sealed class ProcessDepositCommandHandlerTests
             transactions.Object,
             balanceSnapshots.Object,
             fundAccounts.Object,
+            outbox.Object,
             unitOfWork.Object,
             TimeProvider.System);
 
@@ -81,6 +84,11 @@ public sealed class ProcessDepositCommandHandlerTests
         // Two SaveChangesAsync calls: one inside LedgerPostingService.PostAsync (state
         // transition), one inside IdempotencyExecutor after StoreResultAsync (reserve/complete).
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        outbox.Verify(
+            x => x.AddAsync(
+                It.Is<NotificationOutboxEntry>(e => e.EventType == "DepositCredited"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

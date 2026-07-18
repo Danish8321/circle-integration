@@ -4,6 +4,7 @@ using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Recipients;
@@ -11,12 +12,14 @@ namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Recipients;
 public sealed class ProcessRecipientDecisionHandlerTests
 {
     private readonly Mock<IRecipientRepository> recipients = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly ProcessRecipientDecisionHandler handler;
 
     public ProcessRecipientDecisionHandlerTests()
     {
-        handler = new ProcessRecipientDecisionHandler(recipients.Object, unitOfWork.Object, TimeProvider.System);
+        handler = new ProcessRecipientDecisionHandler(
+            recipients.Object, outbox.Object, unitOfWork.Object, TimeProvider.System);
     }
 
     private static Recipient PendingRecipient() => Recipient.Create(
@@ -39,6 +42,11 @@ public sealed class ProcessRecipientDecisionHandlerTests
         recipient.Status.Should().Be(RecipientStatus.Active);
         recipient.DenialReason.Should().BeNull();
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Verify(
+            x => x.AddAsync(
+                It.Is<NotificationOutboxEntry>(e => e.EventType == "RecipientApprovalDecided"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

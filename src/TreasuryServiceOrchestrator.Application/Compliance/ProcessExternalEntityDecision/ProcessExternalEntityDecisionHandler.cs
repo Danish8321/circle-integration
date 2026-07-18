@@ -2,6 +2,7 @@ using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
@@ -10,6 +11,7 @@ public sealed class ProcessExternalEntityDecisionHandler(
     ISubAccountRepository subAccounts,
     IEntityRegistrationRepository entityRegistrations,
     IAuditLogService auditLog,
+    INotificationOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
     : ICommandHandler<ProcessExternalEntityDecisionCommand, ProcessExternalEntityDecisionResult>
@@ -61,9 +63,32 @@ public sealed class ProcessExternalEntityDecisionHandler(
             JsonSerializer.Serialize(new { command.CircleWalletId, registrationStatus }),
             subAccount.ClientCompanyId, command.CorrelationId, cancellationToken);
 
+        await outbox.AddAsync(
+            BuildOutboxEntry(subAccount, command, registrationStatus, nowUtc), cancellationToken);
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ProcessExternalEntityDecisionResult(
             subAccount.Id, subAccount.ClientCompanyId, subAccount.LifecycleState);
     }
+
+    private static NotificationOutboxEntry BuildOutboxEntry(
+        SubAccount subAccount,
+        ProcessExternalEntityDecisionCommand command,
+        EntityRegistrationStatus registrationStatus,
+        DateTime nowUtc) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            EventType = "EntityRegistrationDecided",
+            ClientCompanyId = subAccount.ClientCompanyId,
+            EntityId = subAccount.Id.ToString(),
+            OccurredAtUtc = nowUtc,
+            CorrelationId = command.CircleWalletId,
+            PayloadJson = JsonSerializer.Serialize(new { registrationStatus }),
+            Status = NotificationDeliveryStatus.Pending,
+            AttemptCount = 0,
+            NextAttemptAtUtc = null,
+            DeliveredAtUtc = null,
+        };
 }

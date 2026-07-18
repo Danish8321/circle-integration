@@ -1,12 +1,15 @@
+using System.Text.Json;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Recipients;
 
 public sealed class ProcessRecipientDecisionHandler(
     IRecipientRepository recipients,
+    INotificationOutboxRepository outbox,
     IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
     : ICommandHandler<ProcessRecipientDecisionCommand, ProcessRecipientDecisionResult>
@@ -34,8 +37,27 @@ public sealed class ProcessRecipientDecisionHandler(
 
         recipient.UpdateStatus(mappedStatus, denialReason, nowUtc);
 
+        await outbox.AddAsync(BuildOutboxEntry(recipient, command), cancellationToken);
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ProcessRecipientDecisionResult(recipient.Id, recipient.Status);
     }
+
+    private static NotificationOutboxEntry BuildOutboxEntry(
+        Recipient recipient, ProcessRecipientDecisionCommand command) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            EventType = "RecipientApprovalDecided",
+            ClientCompanyId = recipient.ClientCompanyId,
+            EntityId = recipient.Id.ToString(),
+            OccurredAtUtc = recipient.UpdatedAtUtc,
+            CorrelationId = command.CircleRecipientId,
+            PayloadJson = JsonSerializer.Serialize(new { recipient.Status, recipient.DenialReason }),
+            Status = NotificationDeliveryStatus.Pending,
+            AttemptCount = 0,
+            NextAttemptAtUtc = null,
+            DeliveredAtUtc = null,
+        };
 }

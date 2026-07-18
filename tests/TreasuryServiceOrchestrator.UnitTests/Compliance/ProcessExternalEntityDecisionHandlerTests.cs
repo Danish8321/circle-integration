@@ -4,6 +4,7 @@ using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Compliance;
@@ -15,6 +16,7 @@ public sealed class ProcessExternalEntityDecisionHandlerTests
     private readonly Mock<ISubAccountRepository> subAccounts = new();
     private readonly Mock<IEntityRegistrationRepository> entityRegistrations = new();
     private readonly Mock<IAuditLogService> auditLog = new();
+    private readonly Mock<INotificationOutboxRepository> outbox = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
     private readonly Mock<TimeProvider> timeProvider = new();
     private readonly ProcessExternalEntityDecisionHandler handler;
@@ -27,6 +29,7 @@ public sealed class ProcessExternalEntityDecisionHandlerTests
             subAccounts.Object,
             entityRegistrations.Object,
             auditLog.Object,
+            outbox.Object,
             unitOfWork.Object,
             timeProvider.Object);
     }
@@ -65,6 +68,12 @@ public sealed class ProcessExternalEntityDecisionHandlerTests
         result.LifecycleState.Should().Be(SubAccountLifecycleState.Active);
         registration.Status.Should().Be(EntityRegistrationStatus.Accepted);
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Verify(
+            x => x.AddAsync(
+                It.Is<NotificationOutboxEntry>(e =>
+                    e.EventType == "EntityRegistrationDecided" && e.EntityId == subAccount.Id.ToString()),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
