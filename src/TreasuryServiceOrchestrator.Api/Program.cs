@@ -186,6 +186,8 @@ else
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
+
 app.UseExceptionHandler(_ => { });
 
 if (app.Environment.IsDevelopment())
