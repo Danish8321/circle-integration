@@ -17,4 +17,9 @@ public sealed class FundAccountRepository(TreasuryServiceOrchestratorDbContext d
     {
         await dbContext.FundAccounts.AddAsync(fundAccount, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<FundAccount>> ListAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await dbContext.FundAccounts.ToListAsync(cancellationToken);
+    }
 }

@@ -145,6 +145,9 @@ CircleSubAccountGateway>` registrations
 `BalanceSnapshotReason.Scheduled` already exists in the Domain enum (docs/features/04, ticket
 04.1) — this ticket is the periodic job that actually writes one. Blocked by: none.
 
+**Status: done, closed 2026-07-18.** All sub-tasks 18.1-18.3 shipped and verified: `check.sh`
+clean full solution, `test-fast.sh` 397/397, `test-full.sh` 67/67.
+
 ### 18.1 — Snapshot-all service
 - Files: `Application/Ledger/Snapshots/ScheduledBalanceSnapshotService.cs`.
 - Change: `RunOnceAsync(ct)` lists all `FundAccount`s, writes one `BalanceSnapshot(Reason =

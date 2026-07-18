@@ -17,6 +17,7 @@ using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
 using TreasuryServiceOrchestrator.Application.Ledger.Reconciliation;
+using TreasuryServiceOrchestrator.Application.Ledger.Snapshots;
 using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared;
@@ -29,6 +30,7 @@ using TreasuryServiceOrchestrator.Infrastructure.Notifications;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 using TreasuryServiceOrchestrator.Infrastructure.Reconciliation;
+using TreasuryServiceOrchestrator.Infrastructure.Snapshots;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -150,6 +152,13 @@ builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ReconciliationOptions>>().Value);
 builder.Services.AddScoped<DepositReconciliationService>();
 builder.Services.AddHostedService<DepositReconciliationBackgroundService>();
+
+builder.Services.Configure<BalanceSnapshotOptions>(
+    builder.Configuration.GetSection("BalanceSnapshot"));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BalanceSnapshotOptions>>().Value);
+builder.Services.AddScoped<ScheduledBalanceSnapshotService>();
+builder.Services.AddHostedService<ScheduledBalanceSnapshotBackgroundService>();
 
 builder.Services.Configure<MockProviderOptions>(
     builder.Configuration.GetSection(MockProviderOptions.SectionName));
