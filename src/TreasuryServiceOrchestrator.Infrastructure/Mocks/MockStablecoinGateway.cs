@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
@@ -178,6 +179,13 @@ public sealed class MockStablecoinGateway(
             "021000021",
             "****1234",
             "USD"));
+    }
+
+    public Task<Money> GetMainWalletBalanceAsync(CancellationToken ct = default)
+    {
+        MaybeThrowProviderUnavailable();
+
+        return Task.FromResult(new Money(options.Value.MainWalletBalanceAmount, "USDC"));
     }
 
     private void MaybeThrowProviderUnavailable()

@@ -1,3 +1,5 @@
+using TreasuryServiceOrchestrator.Domain;
+
 namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 
 /// <summary>
@@ -26,4 +28,11 @@ public interface IStablecoinGateway
 
     Task<WireInstructions> GetWireInstructionsAsync(
         string circleBankAccountId, CancellationToken ct = default);
+
+    // Ticket 08.4 — Master Account (Distributor) main-wallet balance, consumed only by
+    // GetMasterAccountSummaryQueryHandler (Admin module). walletId is deliberately omitted on
+    // the CircleMintGateway implementation's GET /v1/businessAccount/balances call — the one
+    // exception to the walletId-must-be-explicit rule elsewhere in this gateway, see
+    // docs/features/12-admin-cross-tenant-views.md §3.
+    Task<Money> GetMainWalletBalanceAsync(CancellationToken ct = default);
 }

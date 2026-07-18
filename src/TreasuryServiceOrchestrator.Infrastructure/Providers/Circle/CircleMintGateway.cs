@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 
@@ -158,5 +159,23 @@ public sealed class CircleMintGateway(HttpClient httpClient) : IStablecoinGatewa
             envelope.Data.BeneficiaryBank.RoutingNumber,
             envelope.Data.BeneficiaryBank.AccountNumber,
             envelope.Data.BeneficiaryBank.Currency);
+    }
+
+    public async Task<Money> GetMainWalletBalanceAsync(CancellationToken ct = default)
+    {
+        // docs/features/12-admin-cross-tenant-views.md §3 — walletId deliberately omitted:
+        // Circle defaults an omitted walletId to the Distributor's own main wallet, the one
+        // deliberate exception to every other walletId-scoped call in this gateway.
+        using var response = await httpClient.GetAsync("v1/businessAccount/balances", ct);
+        response.EnsureSuccessStatusCode();
+
+        var envelope = await response.Content.ReadFromJsonAsync<GetMainWalletBalanceCircleEnvelope>(ct)
+            ?? throw new InvalidOperationException("Circle returned an empty balances response.");
+
+        var amount = envelope.Data.Available.Count > 0
+            ? decimal.Parse(envelope.Data.Available[0].Amount, CultureInfo.InvariantCulture)
+            : 0m;
+
+        return new Money(amount, "USDC");
     }
 }

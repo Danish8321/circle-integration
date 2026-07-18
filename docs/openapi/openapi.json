@@ -1291,10 +1291,209 @@
           }
         }
       }
+    },
+    "/v1/admin/transactions": {
+      "get": {
+        "tags": [
+          "AdminTransactions"
+        ],
+        "parameters": [
+          {
+            "name": "clientCompanyId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionType"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionStatus"
+            }
+          },
+          {
+            "name": "fromUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminTransactionResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminTransactionResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminTransactionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/master-account/summary": {
+      "get": {
+        "tags": [
+          "MasterAccount"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AdminTransactionResponse": {
+        "required": [
+          "transactionId",
+          "subAccountId",
+          "clientCompanyId",
+          "type",
+          "status",
+          "amount",
+          "providerReferenceId",
+          "depositSourceType",
+          "failureReason",
+          "correlationId",
+          "createdAtUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientCompanyId": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TransactionType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TransactionStatus"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "providerReferenceId": {
+            "type": "string"
+          },
+          "depositSourceType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DepositSourceType"
+              }
+            ]
+          },
+          "failureReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "BalanceResponse": {
         "required": [
           "clientCompanyId",
@@ -1591,6 +1790,30 @@
           },
           "currency": {
             "type": "string"
+          }
+        }
+      },
+      "GetMasterAccountSummaryResult": {
+        "required": [
+          "mainWalletBalance",
+          "totalSubAccountBalance",
+          "subAccountCount"
+        ],
+        "type": "object",
+        "properties": {
+          "mainWalletBalance": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "totalSubAccountBalance": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "subAccountCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -2168,6 +2391,12 @@
     },
     {
       "name": "SubAccounts"
+    },
+    {
+      "name": "AdminTransactions"
+    },
+    {
+      "name": "MasterAccount"
     }
   ]
 }

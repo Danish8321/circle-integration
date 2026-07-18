@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using TreasuryServiceOrchestrator.Api.Middleware;
+using TreasuryServiceOrchestrator.Application.Admin;
 using TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.GetSubAccount;
 using TreasuryServiceOrchestrator.Application.Compliance.ListSubAccounts;
@@ -86,6 +87,7 @@ builder.Services.AddScoped<GetTransactionQueryHandler>();
 builder.Services.AddScoped<GetCurrentBalanceQueryHandler>();
 builder.Services.AddScoped<GetBalanceHistoryQueryHandler>();
 builder.Services.AddScoped<ListAllTransactionsQueryHandler>();
+builder.Services.AddScoped<GetMasterAccountSummaryQueryHandler>();
 builder.Services.AddScoped<ICommandHandler<ProcessDepositCommand, ProcessDepositResult>, ProcessDepositCommandHandler>();
 builder.Services.AddScoped<IValidator<ProcessDepositCommand>, ProcessDepositCommandValidator>();
 

@@ -20,4 +20,13 @@ public sealed class BalanceSnapshotRepository(TreasuryServiceOrchestratorDbConte
             .OrderBy(x => x.CapturedAtUtc)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<BalanceSnapshot?> GetLatestAsync(
+        Guid subAccountId, string clientCompanyId, CancellationToken cancellationToken = default)
+    {
+        return await dbContext.BalanceSnapshots
+            .Where(x => x.SubAccountId == subAccountId && x.ClientCompanyId == clientCompanyId)
+            .OrderByDescending(x => x.CapturedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }
