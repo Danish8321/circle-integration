@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
@@ -30,7 +31,8 @@ public sealed class NotificationDispatcherTests
         return new NotificationDispatcher(
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(options),
-            timeProvider);
+            timeProvider,
+            NullLogger<NotificationDispatcher>.Instance);
     }
 
     private static NotificationOutboxEntry CreateEntry() => new()

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
@@ -12,9 +13,17 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Notifications;
 /// Registered singleton (driven by <see cref="NotificationDispatchBackgroundService"/>); resolves
 /// its scoped dependencies through a fresh <see cref="IServiceScopeFactory"/> scope per call.
 /// </summary>
-public sealed class NotificationDispatcher(
-    IServiceScopeFactory scopeFactory, IOptions<NotificationDispatcherOptions> options, TimeProvider timeProvider)
+public sealed partial class NotificationDispatcher(
+    IServiceScopeFactory scopeFactory,
+    IOptions<NotificationDispatcherOptions> options,
+    TimeProvider timeProvider,
+    ILogger<NotificationDispatcher> logger)
 {
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Notification dispatch failed for outbox entry {EntryId} (event {EventType}, correlation {CorrelationId})")]
+    private partial void LogDispatchFailed(Exception ex, Guid entryId, string eventType, string? correlationId);
+
     public async Task<int> DispatchDueBatchAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();
@@ -28,7 +37,18 @@ public sealed class NotificationDispatcher(
 
         foreach (var entry in due)
         {
-            var delivered = await sender.SendAsync(entry, cancellationToken);
+            bool delivered;
+            try
+            {
+                delivered = await sender.SendAsync(entry, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // One entry's failure must not abort the rest of the batch.
+                LogDispatchFailed(ex, entry.Id, entry.EventType, entry.CorrelationId);
+                delivered = false;
+            }
+
             if (delivered)
             {
                 entry.Status = NotificationDeliveryStatus.Delivered;

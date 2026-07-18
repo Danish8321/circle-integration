@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Admin;
 using TreasuryServiceOrchestrator.Application.Exceptions;
@@ -24,7 +25,8 @@ public sealed class ReplayWebhookInboxEntryHandlerTests
     {
         timeProvider.Setup(x => x.GetUtcNow()).Returns(new DateTimeOffset(2026, 7, 18, 0, 0, 0, TimeSpan.Zero));
         topicProcessor.Setup(x => x.Topic).Returns("externalEntities");
-        var webhookProcessor = new WebhookProcessor(inbox.Object, [topicProcessor.Object], timeProvider.Object);
+        var webhookProcessor = new WebhookProcessor(
+            inbox.Object, [topicProcessor.Object], timeProvider.Object, NullLogger<WebhookProcessor>.Instance);
         handler = new ReplayWebhookInboxEntryHandler(
             webhookProcessor, inbox.Object, auditLog.Object, unitOfWork.Object, callerContext.Object);
     }

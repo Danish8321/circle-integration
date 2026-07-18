@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger;
@@ -29,7 +30,8 @@ public sealed class DepositReconciliationServiceTests
             processDepositHandler.Object,
             callerContext.Object,
             TimeProvider.System,
-            options);
+            options,
+            NullLogger<DepositReconciliationService>.Instance);
 
         transactions
             .Setup(x => x.GetByProviderReferenceIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))

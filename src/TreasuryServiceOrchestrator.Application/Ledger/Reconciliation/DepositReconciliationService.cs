@@ -1,5 +1,6 @@
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
+
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
@@ -12,15 +13,26 @@ namespace TreasuryServiceOrchestrator.Application.Ledger.Reconciliation;
 /// exact <see cref="ProcessDepositCommandHandler"/> the webhook path uses — reconciliation is not
 /// a parallel crediting mechanism. See docs/features/05-reliability-and-error-handling.md §7.4.
 /// </summary>
-public sealed class DepositReconciliationService(
+public sealed partial class DepositReconciliationService(
     ISubAccountRepository subAccountRepository,
     IStablecoinGateway stablecoinGateway,
     ITransactionRepository transactionRepository,
     ICommandHandler<ProcessDepositCommand, ProcessDepositResult> processDepositHandler,
     ISettableCallerContext callerContext,
     TimeProvider timeProvider,
-    ReconciliationOptions options)
+    ReconciliationOptions options,
+    ILogger<DepositReconciliationService> logger)
 {
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Deposit reconciliation failed to list deposits for wallet {CircleWalletId} (sub-account {SubAccountId})")]
+    private partial void LogListDepositsFailed(Exception ex, string circleWalletId, Guid subAccountId);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Deposit reconciliation failed to process deposit {ProviderReferenceId} for sub-account {SubAccountId}")]
+    private partial void LogProcessDepositFailed(Exception ex, string providerReferenceId, Guid subAccountId);
+
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)
     {
         var sinceUtc = timeProvider.GetUtcNow().UtcDateTime.AddMinutes(-options.LookbackWindowMinutes);
@@ -52,9 +64,7 @@ public sealed class DepositReconciliationService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // §7.4: a gateway failure for one wallet must not abort the rest of the pass.
-            Trace.TraceError(
-                $"DepositReconciliationService: failed to list deposits for wallet " +
-                $"{circleWalletId} (sub-account {subAccount.Id}): {ex}");
+            LogListDepositsFailed(ex, circleWalletId, subAccount.Id);
             return 0;
         }
 
@@ -102,9 +112,7 @@ public sealed class DepositReconciliationService(
         {
             // §7.4: a per-deposit failure must not abort the rest of that wallet's deposits or
             // the rest of the pass.
-            Trace.TraceError(
-                $"DepositReconciliationService: failed to process deposit " +
-                $"{deposit.ProviderReferenceId} for sub-account {subAccount.Id}: {ex}");
+            LogProcessDepositFailed(ex, deposit.ProviderReferenceId, subAccount.Id);
             return false;
         }
     }

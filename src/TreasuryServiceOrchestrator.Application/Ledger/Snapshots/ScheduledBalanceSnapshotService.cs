@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
@@ -13,13 +13,24 @@ namespace TreasuryServiceOrchestrator.Application.Ledger.Snapshots;
 /// Mirrors <see cref="Reconciliation.DepositReconciliationService"/>'s per-item try/catch shape:
 /// one account's failure must not abort the rest of the pass.
 /// </summary>
-public sealed class ScheduledBalanceSnapshotService(
+public sealed partial class ScheduledBalanceSnapshotService(
     IFundAccountRepository fundAccountRepository,
     ISubAccountRepository subAccountRepository,
     IBalanceSnapshotRepository balanceSnapshotRepository,
     IUnitOfWork unitOfWork,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<ScheduledBalanceSnapshotService> logger)
 {
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Scheduled snapshot skipped: no sub-account found for fund account {FundAccountId} (client company {ClientCompanyId})")]
+    private partial void LogNoSubAccountFound(Guid fundAccountId, string clientCompanyId);
+
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Scheduled balance snapshot failed for fund account {FundAccountId} (client company {ClientCompanyId})")]
+    private partial void LogSnapshotFailed(Exception ex, Guid fundAccountId, string clientCompanyId);
+
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)
     {
         var fundAccounts = await fundAccountRepository.ListAllAsync(cancellationToken);
@@ -47,9 +58,7 @@ public sealed class ScheduledBalanceSnapshotService(
                 // No sub-account on file for this tenant's fund account — nothing to key the
                 // snapshot off of (BalanceSnapshot requires a SubAccountId). Skip, don't abort
                 // the rest of the pass.
-                Trace.TraceError(
-                    $"ScheduledBalanceSnapshotService: no sub-account found for fund account " +
-                    $"{fundAccount.ClientCompanyId}; skipping scheduled snapshot.");
+                LogNoSubAccountFound(fundAccount.Id, fundAccount.ClientCompanyId);
                 return false;
             }
 
@@ -67,9 +76,7 @@ public sealed class ScheduledBalanceSnapshotService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // A failure writing one account's snapshot must not abort the rest of the pass.
-            Trace.TraceError(
-                $"ScheduledBalanceSnapshotService: failed to write scheduled snapshot for " +
-                $"fund account {fundAccount.ClientCompanyId}: {ex}");
+            LogSnapshotFailed(ex, fundAccount.Id, fundAccount.ClientCompanyId);
             return false;
         }
     }

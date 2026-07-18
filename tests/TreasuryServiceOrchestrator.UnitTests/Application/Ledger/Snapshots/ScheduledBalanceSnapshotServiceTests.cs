@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
@@ -23,7 +24,8 @@ public sealed class ScheduledBalanceSnapshotServiceTests
             subAccounts.Object,
             balanceSnapshots.Object,
             unitOfWork.Object,
-            TimeProvider.System);
+            TimeProvider.System,
+            NullLogger<ScheduledBalanceSnapshotService>.Instance);
     }
 
     [Fact]

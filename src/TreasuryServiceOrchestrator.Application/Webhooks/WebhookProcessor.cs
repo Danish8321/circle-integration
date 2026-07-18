@@ -1,13 +1,21 @@
+using Microsoft.Extensions.Logging;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 namespace TreasuryServiceOrchestrator.Application.Webhooks;
 
-public sealed class WebhookProcessor(
+public sealed partial class WebhookProcessor(
     IWebhookInboxRepository inbox,
     IEnumerable<IWebhookTopicProcessor> topicProcessors,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<WebhookProcessor> logger)
 {
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Webhook dispatch failed for inbox entry {EntryId} (topic {Topic})")]
+    private partial void LogDispatchFailed(Exception ex, Guid entryId, string topic);
+
+
     public async Task<WebhookProcessingStatus> HandleAsync(
         IncomingWebhookEvent incoming, CancellationToken cancellationToken = default)
     {
@@ -69,6 +77,7 @@ public sealed class WebhookProcessor(
         }
         catch (Exception ex)
         {
+            LogDispatchFailed(ex, entryId, topic);
             await inbox.MarkFailedAsync(entryId, ex.Message, cancellationToken);
             return WebhookProcessingStatus.Failed;
         }

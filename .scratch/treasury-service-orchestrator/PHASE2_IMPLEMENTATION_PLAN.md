@@ -174,6 +174,13 @@ clean full solution, `test-fast.sh` 397/397, `test-full.sh` 67/67.
 Scope per 2026-07-18 grilling: structured-logging audit only — no OpenTelemetry/metrics/tracing
 stack, matches the repo's current no-OTel state. Blocked by: none.
 
+**Status: done, closed 2026-07-18.** 19.1 audit found 7 genuine gaps (Trace.TraceError instead
+of ILogger<T>, silent swallows in notification dispatch, dead-letter logged at Warning not
+Error) + 2 confirmed non-gaps. 19.2 fixed all 7 via source-generated `[LoggerMessage]` partials
+(CA1848). `check.sh` clean, `test-fast.sh` 397/397, `test-full.sh` 67/67. New dependency
+`Microsoft.Extensions.Logging.Abstractions` added to the Application csproj (standard MS
+abstraction, matches existing `ILogger<T>` convention already used throughout Infrastructure).
+
 ### 19.1 — Audit
 - No files changed — an `Explore`/read-only pass across every handler and background service
   (`Application/**/*Handler.cs`, `Infrastructure/**/*BackgroundService.cs`) checking: does every

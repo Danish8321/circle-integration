@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
@@ -31,6 +32,7 @@ public sealed class MockWebhookDispatcherTests
         services.AddSingleton(inbox.Object);
         services.AddSingleton<IEnumerable<IWebhookTopicProcessor>>([topicProcessor.Object]);
         services.AddSingleton<TimeProvider>(timeProvider);
+        services.AddLogging();
         services.AddScoped<WebhookProcessor>();
         var provider = services.BuildServiceProvider();
 

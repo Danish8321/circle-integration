@@ -10,7 +10,7 @@ public sealed partial class WebhookInboxRepository(
     : IWebhookInboxRepository
 {
     [LoggerMessage(
-        Level = LogLevel.Warning,
+        Level = LogLevel.Error,
         Message = "WebhookInboxEntry {EntryId} (topic {Topic}, event {CircleEventId}) dead-lettered "
             + "after {Attempts} attempts. Last error: {LastError}")]
     private partial void LogDeadLettered(

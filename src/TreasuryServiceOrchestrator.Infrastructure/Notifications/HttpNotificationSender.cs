@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
@@ -11,9 +12,15 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Notifications;
 /// <c>AddHttpClient&lt;INotificationSender, HttpNotificationSender&gt;()</c> — never
 /// <c>new HttpClient()</c> (invariant 3).
 /// </summary>
-public sealed class HttpNotificationSender(HttpClient httpClient, IOptions<NotificationDispatcherOptions> options)
+public sealed partial class HttpNotificationSender(
+    HttpClient httpClient, IOptions<NotificationDispatcherOptions> options, ILogger<HttpNotificationSender> logger)
     : INotificationSender
 {
+    [LoggerMessage(
+        Level = LogLevel.Error,
+        Message = "Notification delivery failed for outbox entry {EntryId} (event {EventType}) to {EndpointUrl}")]
+    private partial void LogDeliveryFailed(Exception ex, Guid entryId, string eventType, string endpointUrl);
+
     public async Task<bool> SendAsync(NotificationOutboxEntry entry, CancellationToken cancellationToken)
     {
         var settings = options.Value;
@@ -42,8 +49,9 @@ public sealed class HttpNotificationSender(HttpClient httpClient, IOptions<Notif
             using var response = await httpClient.SendAsync(request, cancellationToken);
             return response.IsSuccessStatusCode;
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
+            LogDeliveryFailed(ex, entry.Id, entry.EventType, settings.EndpointUrl);
             return false;
         }
     }

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
@@ -20,7 +21,7 @@ public sealed class WebhookProcessorTests
     }
 
     private WebhookProcessor CreateProcessor(params IWebhookTopicProcessor[] processors) =>
-        new(inbox.Object, processors, timeProvider.Object);
+        new(inbox.Object, processors, timeProvider.Object, NullLogger<WebhookProcessor>.Instance);
 
     private static IncomingWebhookEvent Event(string topic = "externalEntities") =>
         new(topic, "msg-1", "{\"notificationType\":\"externalEntities.updated\"}");
