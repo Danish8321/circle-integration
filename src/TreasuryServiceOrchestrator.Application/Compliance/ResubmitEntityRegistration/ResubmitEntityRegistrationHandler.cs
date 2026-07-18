@@ -69,6 +69,8 @@ public sealed class ResubmitEntityRegistrationHandler(
         var gatewayResult = await gateway.CreateExternalEntityAsync(
             BuildGatewayRequest(command), cancellationToken);
 
+        subAccount.UpdateCircleWalletId(gatewayResult.WalletId);
+
         var registrationStatus = EntityRegistrationStatusMapper.Map(gatewayResult.ComplianceState);
         var registration = EntityRegistration.Create(
             subAccount.Id,

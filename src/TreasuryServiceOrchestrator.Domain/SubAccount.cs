@@ -84,4 +84,18 @@ public class SubAccount
 
         LifecycleState = SubAccountLifecycleState.PendingCompliance;
     }
+
+    // Resubmission issues a fresh externalEntities record at the provider, with its own wallet
+    // id distinct from the original rejected attempt's — the sub-account must track the id the
+    // provider will key its decision webhook off of, or that webhook can never find this row
+    // again (CircleWalletId is the lookup key in ProcessExternalEntityDecisionHandler).
+    public void UpdateCircleWalletId(string circleWalletId)
+    {
+        if (string.IsNullOrWhiteSpace(circleWalletId))
+        {
+            throw new ArgumentException("CircleWalletId is required.", nameof(circleWalletId));
+        }
+
+        CircleWalletId = circleWalletId;
+    }
 }
