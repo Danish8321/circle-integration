@@ -475,7 +475,13 @@ Spec: `docs/features/13-internal-notifications-outbox.md`,
 
 Spec: `docs/README.md` §5. Blocked by: 09. Terminal acceptance gate for Phase 1.
 
-### 10.1 — Single end-to-end integration test
+### 10.1 — Single end-to-end integration test [DONE 2026-07-18]
+- Proved by: `DemoScriptEndToEndTests.DemoScript_WalksEndToEnd_AcrossAllPhase1Slices`,
+  `test-full.sh` 54/54 green, `check.sh` clean. Surfaced and fixed two genuine defects in
+  already-shipped code along the way: ticket 15 (resubmission wallet-id not persisted) and
+  ticket 16 (RedeemRequest Fees/NetAmount persisted as NULL for a $0 fee, fixed by switching to
+  `.ToJson()` complex-property mapping). All Phase 1 tickets (02-10) are now implemented, tested
+  green, and pushed.
 - Files: new `tests/TreasuryServiceOrchestrator.IntegrationTests/DemoScriptEndToEndTests.cs`.
 - Change: walk PRD §15.1 demo script start to finish against tickets 01-09's **shipped** shapes
   (reconcile signatures at implementation time, not against the original doc draft): admin creates
