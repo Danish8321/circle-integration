@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Application.Admin;
+using TreasuryServiceOrchestrator.Domain;
+using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests.Admin;
 

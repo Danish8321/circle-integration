@@ -4,13 +4,10 @@
 
 > **Plain-language summary.** This is **Clean Architecture** — the only hard rule is
 > the dependency direction: Domain ← Application ← Infrastructure, Api wires all.
-> **All four tiers** are grouped first by **module** (`Compliance`, `Ledger`,
-> `Webhooks`, `Admin`, `Shared`); in Application/Api a second level is the **use-case**
+> Inside the Application (and Api) layer, handlers are grouped first by **module**
+> (`Compliance`, `Ledger`, `Webhooks`, `Admin`, `Shared`), then by **use-case**
 > (`CreateSubAccount/`, `GetSubAccount/`, …). That grouping is a filing convention,
-> nothing more. Two exceptions in Infrastructure: `Shared/` holds cross-cutting infra
-> no module owns (`DbContext`, `UnitOfWork`, idempotency, audit, Circle client
-> options), and `Migrations/` stays flat because EF Core requires one migrations folder
-> and one model snapshot per `DbContext`. Domain's `Money`/`AuditRecord` live in `Domain/Shared/`. Where the docs say "Vertical Slice / VSA", read it as
+> nothing more. Where the docs say "Vertical Slice / VSA", read it as
 > "use-case-named folders as the work-breakdown lens" — **not** feature slices that
 > cut through or collapse the layers. Layers stay strict and horizontal.
 > See `ARCHITECTURE.md` at the repo root for a traversal map and one fully-traced request.
@@ -38,13 +35,3 @@ Full modular-monolith isolation was rejected: the PRD scopes a single deployable
 ## Consequences
 
 New ports/handlers go under their module sub-namespace (`Application/<Module>/Ports`, `Application/<Module>/<UseCase>`), not a flat `Application/Ports`. Any implementation plan assuming a flat structure must be reconciled before scaffolding.
-
-**2026-07-19 — extended to Domain and Infrastructure.** The module axis now applies to
-all four tiers (previously only Application/Api carried it; Domain was flat and
-Infrastructure was grouped by technical concern). New entities go under
-`Domain/<Module>/`; new repositories/gateways under `Infrastructure/<Module>/`.
-Cross-cutting infra (`DbContext`, `UnitOfWork`, idempotency, audit, Circle client
-options) lives in `Infrastructure/Shared/`; `Migrations/` remains flat (one per
-`DbContext`, an EF Core constraint). Folder = namespace across every project; the EF
-model snapshot was updated to the new entity namespaces (`has-pending-model-changes`
-reports no schema change).

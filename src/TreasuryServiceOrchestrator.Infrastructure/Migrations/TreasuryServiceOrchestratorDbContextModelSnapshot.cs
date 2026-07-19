@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 #nullable disable
 
@@ -66,7 +67,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("WebhookInboxEntries");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Shared.AuditRecord", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.AuditRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -106,7 +107,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("AuditRecords");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.BalanceSnapshot", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.BalanceSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -126,7 +127,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.Property<Guid>("SubAccountId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Balance", "TreasuryServiceOrchestrator.Domain.Ledger.BalanceSnapshot.Balance#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Balance", "TreasuryServiceOrchestrator.Domain.BalanceSnapshot.Balance#Money", b1 =>
                         {
                             b1.IsRequired();
 
@@ -149,7 +150,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("BalanceSnapshots");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.DepositAddress", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.DepositAddress", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -188,7 +189,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("DepositAddresses");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Compliance.EntityRegistration", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.EntityRegistration", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -262,7 +263,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("EntityRegistrations");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.FundAccount", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.FundAccount", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -279,7 +280,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Balance", "TreasuryServiceOrchestrator.Domain.Ledger.FundAccount.Balance#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Balance", "TreasuryServiceOrchestrator.Domain.FundAccount.Balance#Money", b1 =>
                         {
                             b1.IsRequired();
 
@@ -303,7 +304,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("FundAccounts");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.LinkedBankAccount", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.LinkedBankAccount", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -401,7 +402,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("LinkedBankAccounts");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Webhooks.NotificationOutboxEntry", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.NotificationOutboxEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -453,7 +454,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("NotificationOutboxEntries");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.Recipient", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Recipient", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -508,7 +509,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("Recipients");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.RedeemRequest", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.RedeemRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -547,7 +548,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Fees", "TreasuryServiceOrchestrator.Domain.Ledger.RedeemRequest.Fees#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Fees", "TreasuryServiceOrchestrator.Domain.RedeemRequest.Fees#Money", b1 =>
                         {
                             b1.Property<decimal>("Amount");
 
@@ -558,7 +559,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                             b1.ToJson("FeesJson");
                         });
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "GrossAmount", "TreasuryServiceOrchestrator.Domain.Ledger.RedeemRequest.GrossAmount#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "GrossAmount", "TreasuryServiceOrchestrator.Domain.RedeemRequest.GrossAmount#Money", b1 =>
                         {
                             b1.IsRequired();
 
@@ -574,7 +575,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                                 .HasColumnName("GrossCurrencyCode");
                         });
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "NetAmount", "TreasuryServiceOrchestrator.Domain.Ledger.RedeemRequest.NetAmount#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "NetAmount", "TreasuryServiceOrchestrator.Domain.RedeemRequest.NetAmount#Money", b1 =>
                         {
                             b1.Property<decimal>("Amount");
 
@@ -594,7 +595,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("RedeemRequests");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Compliance.SubAccount", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.SubAccount", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -626,7 +627,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("SubAccounts");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.Transaction", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Transaction", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -669,7 +670,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "TreasuryServiceOrchestrator.Domain.Ledger.Transaction.Amount#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "TreasuryServiceOrchestrator.Domain.Transaction.Amount#Money", b1 =>
                         {
                             b1.IsRequired();
 
@@ -695,7 +696,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.ToTable("Transactions");
                 });
 
-            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Ledger.Transfer", b =>
+            modelBuilder.Entity("TreasuryServiceOrchestrator.Domain.Transfer", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -734,7 +735,7 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "TreasuryServiceOrchestrator.Domain.Ledger.Transfer.Amount#Money", b1 =>
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "Amount", "TreasuryServiceOrchestrator.Domain.Transfer.Amount#Money", b1 =>
                         {
                             b1.IsRequired();
 

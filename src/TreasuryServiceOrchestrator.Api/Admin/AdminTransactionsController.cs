@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
+using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Admin;
 

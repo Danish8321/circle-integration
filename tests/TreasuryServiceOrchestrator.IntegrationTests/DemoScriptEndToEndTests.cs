@@ -11,6 +11,9 @@ using TreasuryServiceOrchestrator.Api.Admin;
 using TreasuryServiceOrchestrator.Api.Compliance;
 using TreasuryServiceOrchestrator.Api.Ledger;
 using TreasuryServiceOrchestrator.Application.Admin;
+using TreasuryServiceOrchestrator.Domain;
+using TreasuryServiceOrchestrator.Infrastructure.Mocks;
+using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests;
 

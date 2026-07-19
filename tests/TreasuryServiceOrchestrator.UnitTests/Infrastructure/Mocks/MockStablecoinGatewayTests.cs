@@ -4,6 +4,9 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
+using TreasuryServiceOrchestrator.Domain;
+using TreasuryServiceOrchestrator.Infrastructure.Mocks;
+using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 using TreasuryServiceOrchestrator.TestUtilities;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Mocks;
@@ -25,7 +28,7 @@ public sealed class MockStablecoinGatewayTests
     private static CreateTransferGatewayRequest CreateTransferRequest(string destinationRecipientId = "mock-recipient-1") =>
         new(
             DestinationRecipientId: destinationRecipientId,
-            Amount: new global::TreasuryServiceOrchestrator.Domain.Shared.Money(100m, "USDC"),
+            Amount: new global::TreasuryServiceOrchestrator.Domain.Money(100m, "USDC"),
             IdempotencyKey: "transfer:sub-1:1");
 
     private static RedeemGatewayRequest CreateRedeemRequest() =>

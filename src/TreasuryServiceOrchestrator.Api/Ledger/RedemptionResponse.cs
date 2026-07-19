@@ -1,4 +1,5 @@
 using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
+using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Ledger;
 
