@@ -30,7 +30,7 @@ no code changed. `test-fast.sh` remains 402/402 (ticket 21 fix in place).
 ## Findings
 
 > **Fixed 2026-07-19:** F1, F4, F5 (test-fast 402/402), then F6 (test-fast 404/404, ticket 23).
-> Remaining open: F2, F3, F7, F8.
+> **F8 INVALID** (misdiagnosis — column is NOT NULL; see F8). Remaining open: F2, F3, F7.
 
 ### F1 — Domain entity leaks past the Application boundary (INV5). Correctness/layering. RESOLVED.
 Added `AdminTransactionResult` Application DTO; `ListAllTransactionsQueryHandler` now returns it;
@@ -99,13 +99,17 @@ calling one and leaking. **Fix**: add a global `HasQueryFilter(e => e.ClientComp
 on tenant-owned entities (with an explicit system-context bypass for webhook/reconciliation), so
 isolation holds by construction.
 
-### F8 — Unfiltered unique index on a nullable column. Latent schema.
-`Transaction.ProviderReferenceId` is nullable and its unique index is **unfiltered**. SQL Server
-permits only a **single NULL** row under a plain unique index. No caller passes null today (all 3
-`LedgerPosting` sites supply a Circle id), so latent — but the first internal/non-provider posting
-with a null reference would collide with the second. **Fix**: make it a filtered unique index
-`WHERE ProviderReferenceId IS NOT NULL` (EF: `.HasFilter(...)` / `.HasIndex(...).IsUnique()` with a
-filter), via `schema.sh new` — read the generated migration before applying.
+### F8 — Unfiltered unique index on a nullable column. INVALID (misdiagnosis, verified 2026-07-19).
+Premise was wrong: `Transaction.ProviderReferenceId` is **not nullable**. Verified:
+- EF config `entity.Property(x => x.ProviderReferenceId).IsRequired()` → column is
+  `nvarchar(128) NOT NULL` (model snapshot line 657).
+- Domain `Transaction.Create` throws `ArgumentException` on null/empty/whitespace
+  (`Transaction.cs:46-49`), so no empty reference can be persisted.
+- `LedgerPosting.ProviderReferenceId` is a non-nullable `string` record parameter.
+A unique index on a NOT NULL column has no single-NULL limitation — no collision is possible. The
+original finding assumed a nullable column and does not hold. **No fix, no migration.** If a future
+internal/non-provider posting ever needs a null reference, the column nullability + domain guard
+would change first, and the filtered-index question would be re-triaged then.
 
 ## Not exhaustively traced
 Per-handler INV11 walk covered the money-moving set (transfer, redemption payout, deposit) and the
