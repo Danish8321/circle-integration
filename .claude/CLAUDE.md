@@ -15,19 +15,29 @@ client in this repo — API-only.
 
 ## Tiers & layout
 
-| Tier | Path | Owns | Must not |
+This is plain **Clean Architecture**. One hard rule: dependencies point inward
+(Domain ← Application ← Infrastructure, Api wires all). Every tier files by **kind**
+(controller, handler, port, DTO, validator), not by business module or use-case
+folder — there is no second axis to learn. New here? Read `ARCHITECTURE.md` at the
+repo root: it has the "where does X live" map and one request traced end to end.
+
+Full "must not" rules per tier are path-scoped and auto-load from `.claude/rules/{domain,application,infrastructure,api}.md` — that's the single source, don't restate them here.
+
+| Tier | Path | Owns | Rules |
 |---|---|---|---|
-| Domain | `src/TreasuryServiceOrchestrator.Domain/` | Entities, value objects (`Money`), domain events, invariants. | Reference Application/Infrastructure/Api. Reference EF Core, ASP.NET, or any framework/IO type. No `DateTime.Now`. |
-| Application | `src/TreasuryServiceOrchestrator.Application/<Module>/` (`Compliance`, `Ledger`, `Webhooks`, `Admin`, `Shared` — B0.5) | Use-case handlers (`ICommandHandler`/`IQueryHandler`), ports (interfaces) under `<Module>/Ports/`, DTOs. | Reference Infrastructure or Api. Know SQL Server, `DbContext`, or any EF type exists. Live in a flat shared `Services/` folder — one folder per use case under its module. |
-| Infrastructure | `src/TreasuryServiceOrchestrator.Infrastructure/` | `DbContext`, EF configs/migrations, port implementations (repositories, `CircleSubAccountGateway`/`CircleMintGateway`), `HttpClient`-backed gateways. | Contain business/use-case logic. Be referenced by Application or Domain. |
-| Api | `src/TreasuryServiceOrchestrator.Api/` | Controllers (thin — dispatch to handler, return result), middleware, DI wiring (`Program.cs`), request/response contracts. | Contain business logic in controllers. Reference Domain entities directly in a response type (map to a DTO). |
+| Domain | `src/TreasuryServiceOrchestrator.Domain/` (flat — one file per entity/value object/enum) | Entities, value objects (`Money`), domain events, invariants. | `.claude/rules/domain.md` |
+| Application | `src/TreasuryServiceOrchestrator.Application/{Handlers,Ports,Dtos,Validators,Services,Exceptions}/` | Use-case handlers (`ICommandHandler`/`IQueryHandler`) in `Handlers/`, ports (interfaces) in `Ports/`, commands/queries/results in `Dtos/`, FluentValidation in `Validators/`, cross-cutting app logic (idempotency, tenant scope resolution, mappers) in `Services/`. | `.claude/rules/application.md` |
+| Infrastructure | `src/TreasuryServiceOrchestrator.Infrastructure/{Persistence,Providers/Circle,Mocks,Webhooks,Notifications,Reconciliation,Snapshots,Migrations}/` | `DbContext`, EF configs/migrations, port implementations (repositories, `CircleSubAccountGateway`/`CircleMintGateway`), `HttpClient`-backed gateways. | `.claude/rules/infrastructure.md` |
+| Api | `src/TreasuryServiceOrchestrator.Api/{Controllers,Dtos,Validators,Middleware,DependencyInjection}/` | Controllers (thin — dispatch to handler, return result), middleware, DI wiring (`Program.cs` + `DependencyInjection/`), request/response contracts. | `.claude/rules/api.md` |
 
 Clean dependency rule: Domain ← Application ← Infrastructure, and Api wires all three. Arrows
 point inward only; nothing inward-of a tier may reference outward.
 
-VSA: a "feature" is a use-case folder under its module (e.g.
-`Application/Ledger/ProcessDeposit/{ProcessDepositCommand,ProcessDepositHandler}.cs`), not a
-method bag in a shared service class.
+No use-case folders, no module folders. A new use-case is a `Command`/`Query` in `Dtos/`, a
+`Handler` in `Handlers/`, a `Result` in `Dtos/` — filenames (not folders) disambiguate one
+use-case from another. Earlier docs describing "VSA / Vertical Slice" or module sub-namespaces
+(`Compliance`/`Ledger`/`Webhooks`/`Admin`) describe a structure this repo no longer uses; see
+`docs/adr/0001-module-boundaries.md` for the superseding decision.
 
 ## The seam
 

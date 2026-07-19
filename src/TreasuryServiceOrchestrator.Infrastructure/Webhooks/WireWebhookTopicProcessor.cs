@@ -1,7 +1,4 @@
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
-using TreasuryServiceOrchestrator.Application.Webhooks;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 

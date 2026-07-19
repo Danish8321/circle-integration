@@ -1,6 +1,4 @@
 using Microsoft.Extensions.Options;
-using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Api.Middleware;
 

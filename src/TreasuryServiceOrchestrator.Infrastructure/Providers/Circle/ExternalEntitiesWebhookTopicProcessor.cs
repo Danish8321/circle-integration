@@ -1,6 +1,4 @@
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDecision;
-using TreasuryServiceOrchestrator.Application.Webhooks;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 

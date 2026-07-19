@@ -1,0 +1,3 @@
+namespace TreasuryServiceOrchestrator.Application.Dtos;
+
+public sealed record ReplayNotificationOutboxEntryCommand(Guid NotificationOutboxEntryId, string CorrelationId);

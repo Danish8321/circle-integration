@@ -1,7 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using TreasuryServiceOrchestrator.Application.Webhooks;
-using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
 

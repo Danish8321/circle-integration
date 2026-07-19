@@ -3,9 +3,7 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Options;
 
-using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;

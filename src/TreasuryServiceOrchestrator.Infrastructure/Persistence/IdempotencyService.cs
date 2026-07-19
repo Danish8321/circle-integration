@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
 

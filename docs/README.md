@@ -9,6 +9,17 @@ This is the entry point. Read it top to bottom once; after that, jump straight t
 file you need — each one is a complete, self-contained story (domain design through real Circle
 HTTP integration) for its slice.
 
+## Doc map — three trees, three jobs
+
+| Tree | Answers | Don't use it for |
+|---|---|---|
+| `docs/features/*.md` (indexed below) | "What should this feature do, and why?" — the accepted product/design spec per slice. | Raw Circle request/response shapes — see `circle-mint-docs/`. |
+| `docs/adr/*.md` | "Why is it built *this way* structurally?" — architecture decisions (module boundaries, etc.) with rationale and supersession history. | Feature behavior — see `features/`. |
+| `docs/circle-mint-docs/` | Circle's own API reference (concepts/howtos/quickstarts/reference), mirrored locally for offline lookup of exact request/response fields. | Product decisions — this is raw provider docs, not this repo's design. |
+
+`ARCHITECTURE.md` (repo root) is the fourth pointer — traversal map for the *code*, not the
+docs; start there if you're asking "where does X live in `src/`."
+
 ---
 
 ## 1. Vision & goals

@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;

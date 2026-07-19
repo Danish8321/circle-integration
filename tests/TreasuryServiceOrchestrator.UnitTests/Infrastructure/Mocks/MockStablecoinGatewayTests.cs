@@ -3,7 +3,6 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
