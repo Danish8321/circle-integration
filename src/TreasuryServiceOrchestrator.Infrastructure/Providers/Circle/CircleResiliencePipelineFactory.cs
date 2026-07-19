@@ -18,6 +18,18 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 /// Program.cs via <see cref="AddCircleResilienceHandler"/> (ticket 17.2). Translating an
 /// open-circuit failure into <see cref="TreasuryServiceOrchestrator.Application.Exceptions.ProviderUnavailableException"/>
 /// stays a gateway/error-translation concern (§5), not this pipeline's job.
+/// <para>
+/// <b>Breaker scope — per typed client, by decision (audit F3, ticket 22, 2026-07-19).</b>
+/// <see cref="AddResilienceHandler"/> builds a <em>separate</em> pipeline instance (hence a
+/// separate circuit-breaker state) for each Circle-backed typed client, even though they share
+/// this one <see cref="PipelineName"/> and config. So the mint gateway's breaker and the
+/// sub-account gateway's breaker trip independently: a storm on one Circle endpoint does not
+/// fast-fail calls to another. This is intentional — endpoint-level isolation over a single
+/// provider-wide breaker. Trade-off accepted: a genuine Circle-wide outage trips each breaker
+/// separately rather than once. Revisit (share a single <c>CircuitBreakerStateProvider</c> across
+/// the clients) only if provider-wide outages, not per-endpoint degradation, become the dominant
+/// failure mode.
+/// </para>
 /// </remarks>
 public static class CircleResiliencePipelineFactory
 {

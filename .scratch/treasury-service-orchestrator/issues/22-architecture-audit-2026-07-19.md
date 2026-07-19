@@ -30,7 +30,8 @@ no code changed. `test-fast.sh` remains 402/402 (ticket 21 fix in place).
 ## Findings
 
 > **Fixed 2026-07-19:** F1, F4, F5 (test-fast 402/402), then F6 (test-fast 404/404, ticket 23).
-> **F8 INVALID** (misdiagnosis — column is NOT NULL; see F8). Remaining open: F2, F3, F7.
+> **F8 INVALID** (misdiagnosis — column is NOT NULL; see F8). **F3 documented** (per-client
+> breakers kept, see F3). Remaining open: F2, F7.
 
 ### F1 — Domain entity leaks past the Application boundary (INV5). Correctness/layering. RESOLVED.
 Added `AdminTransactionResult` Application DTO; `ListAllTransactionsQueryHandler` now returns it;
@@ -47,12 +48,14 @@ entity crosses into the Api tier — the exact thing INV5 / `api.md` forbid.
 stablecoin mint/redeem calls that reference sub-accounts Circle never saw. Incoherent runtime.
 **Fix**: provide a `FakeStablecoinGateway` for dev, or make dev fully mock-mode.
 
-### F3 — Circuit breaker is per-typed-client, not shared. Design decision, undocumented.
-Each of the 3 `AddHttpClient<T>().AddCircleResilienceHandler()` registrations builds its own
-`circle-resilience` pipeline instance, so breaker state is independent per gateway — "Circle is
-down" trips each one separately. Probably intended (distinct endpoints), but nothing records the
-decision. **Fix**: confirm intent; document it, or share one pipeline if the intent was a single
-Circle-wide breaker.
+### F3 — Circuit breaker is per-typed-client, not shared. RESOLVED (documented, 2026-07-19).
+Decision: **keep per-client breakers** (endpoint-level isolation), do not share a Circle-wide
+breaker. `AddResilienceHandler` builds a separate pipeline (hence breaker state) per typed client
+despite the shared `circle-resilience` name/config; a storm on one Circle endpoint must not
+fast-fail calls to another. Trade-off accepted: a genuine provider-wide outage trips each breaker
+separately rather than once. Recorded in `CircleResiliencePipelineFactory` remarks with the
+revisit trigger (share a `CircuitBreakerStateProvider` if provider-wide outages become dominant).
+No behavior change.
 
 ### F4 — Stale doc comment. Trivial. RESOLVED.
 `CircleResiliencePipelineFactory` remarks corrected to say it is wired via
