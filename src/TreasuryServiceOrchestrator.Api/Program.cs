@@ -181,30 +181,24 @@ if (mockModeEnabled)
 else if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddScoped<ISubAccountGateway, FakeSubAccountGateway>();
-    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>((sp, client) =>
-    {
-        var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
-        client.BaseAddress = new Uri(circleOptions.BaseUrl);
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
-    }).AddCircleResilienceHandler();
+    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>(ConfigureCircleClient)
+        .AddCircleResilienceHandler();
 }
 else
 {
-    builder.Services.AddHttpClient<ISubAccountGateway, CircleSubAccountGateway>((sp, client) =>
-    {
-        var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
-        client.BaseAddress = new Uri(circleOptions.BaseUrl);
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
-    }).AddCircleResilienceHandler();
-    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>((sp, client) =>
-    {
-        var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
-        client.BaseAddress = new Uri(circleOptions.BaseUrl);
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
-    }).AddCircleResilienceHandler();
+    builder.Services.AddHttpClient<ISubAccountGateway, CircleSubAccountGateway>(ConfigureCircleClient)
+        .AddCircleResilienceHandler();
+    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>(ConfigureCircleClient)
+        .AddCircleResilienceHandler();
+}
+
+// Shared Circle typed-client setup (base address + bearer auth) for every Circle-backed gateway.
+static void ConfigureCircleClient(IServiceProvider sp, HttpClient client)
+{
+    var circleOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CircleOptions>>().Value;
+    client.BaseAddress = new Uri(circleOptions.BaseUrl);
+    client.DefaultRequestHeaders.Authorization =
+        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", circleOptions.ApiKey);
 }
 
 var app = builder.Build();

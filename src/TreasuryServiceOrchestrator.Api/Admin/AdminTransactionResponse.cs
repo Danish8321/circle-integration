@@ -1,3 +1,4 @@
+using TreasuryServiceOrchestrator.Application.Ledger;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Admin;
@@ -18,17 +19,17 @@ public sealed record AdminTransactionResponse(
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc)
 {
-    public static AdminTransactionResponse Map(Transaction transaction) => new(
-        transaction.Id,
-        transaction.SubAccountId,
-        transaction.ClientCompanyId,
-        transaction.Type,
-        transaction.Status,
-        transaction.Amount,
-        transaction.ProviderReferenceId,
-        transaction.DepositSourceType,
-        transaction.FailureReason,
-        transaction.CorrelationId,
-        transaction.CreatedAtUtc,
-        transaction.UpdatedAtUtc);
+    public static AdminTransactionResponse Map(AdminTransactionResult result) => new(
+        result.TransactionId,
+        result.SubAccountId,
+        result.ClientCompanyId,
+        result.Type,
+        result.Status,
+        result.Amount,
+        result.ProviderReferenceId,
+        result.DepositSourceType,
+        result.FailureReason,
+        result.CorrelationId,
+        result.CreatedAtUtc,
+        result.UpdatedAtUtc);
 }

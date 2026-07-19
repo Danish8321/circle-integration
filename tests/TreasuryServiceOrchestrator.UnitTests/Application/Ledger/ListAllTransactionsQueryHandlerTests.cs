@@ -31,7 +31,7 @@ public sealed class ListAllTransactionsQueryHandlerTests
         var results = await handler.HandleAsync(
             new ListAllTransactionsQuery(filter), TestContext.Current.CancellationToken);
 
-        results.Should().ContainSingle().Which.Should().Be(transaction);
+        results.Should().ContainSingle().Which.Should().Be(AdminTransactionResult.Map(transaction));
     }
 
     [Fact]

@@ -14,9 +14,9 @@ namespace TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 /// consecutive failures for <see cref="CircleClientOptions.CircuitBreakerDurationOfBreak"/>.
 /// </summary>
 /// <remarks>
-/// Wiring this handler onto the named "Circle" <see cref="System.Net.Http.HttpClient"/> registrations
-/// in Program.cs is ticket 17.2 — this factory is intentionally unreferenced by Program.cs today.
-/// Translating an open-circuit failure into <see cref="TreasuryServiceOrchestrator.Application.Exceptions.ProviderUnavailableException"/>
+/// Wired onto the Circle-backed typed <see cref="System.Net.Http.HttpClient"/> registrations in
+/// Program.cs via <see cref="AddCircleResilienceHandler"/> (ticket 17.2). Translating an
+/// open-circuit failure into <see cref="TreasuryServiceOrchestrator.Application.Exceptions.ProviderUnavailableException"/>
 /// stays a gateway/error-translation concern (§5), not this pipeline's job.
 /// </remarks>
 public static class CircleResiliencePipelineFactory
