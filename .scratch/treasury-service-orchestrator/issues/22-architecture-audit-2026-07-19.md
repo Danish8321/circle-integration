@@ -31,7 +31,9 @@ no code changed. `test-fast.sh` remains 402/402 (ticket 21 fix in place).
 
 > **Fixed 2026-07-19:** F1, F4, F5 (test-fast 402/402), then F6 (test-fast 404/404, ticket 23).
 > **F8 INVALID** (misdiagnosis — column is NOT NULL; see F8). **F3 documented** (per-client
-> breakers kept, see F3). **F2 fixed** (FakeStablecoinGateway for dev, see F2). Remaining open: F7.
+> breakers kept, see F3). **F2 fixed** (FakeStablecoinGateway for dev, see F2). **F7 fixed**
+> (global query filter, ticket 24 — code in commit a1dd6de, Testcontainers proof pending Docker).
+> All findings triaged; nothing open.
 
 ### F1 — Domain entity leaks past the Application boundary (INV5). Correctness/layering. RESOLVED.
 Added `AdminTransactionResult` Application DTO; `ListAllTransactionsQueryHandler` now returns it;
@@ -96,7 +98,18 @@ aggregate absent.
 reserve→gateway→complete in one DB transaction. Reconsider "reserve = cache check": a cache check
 is not a persisted reservation.
 
-### F7 — Tenant isolation is by-convention, not structural (INV7). Architecture vs invariant.
+### F7 — Tenant isolation is by-convention, not structural (INV7). RESOLVED (ticket 24, 2026-07-19).
+Fixed via a global EF `HasQueryFilter` on all 11 tenant-owned entities, sourced from the ambient
+`ICallerContext`: `IsAdmin || ClientCompanyId == CallerId`. A regular caller is now restricted to
+its own rows by construction; admin rides the `IsAdmin` bypass; an empty `CallerId` matches nothing
+(fails closed). System/discovery/background reads opt out explicitly with `.IgnoreQueryFilters()`
+(the 5 provider-id lookups + `GetByCircleWalletId` + the three cross-tenant background reads);
+`ScheduledBalanceSnapshotService` now `Set`s the per-tenant caller before its scoped read. Query
+filters are model metadata — no schema change. Code in commit a1dd6de (build clean, unit 404/404);
+the EF filter itself is proven by `TenantIsolationQueryFilterTests` (Testcontainers, test-full).
+INV7's CLAUDE.md wording ("structurally impossible at the data-access layer") already matches — no
+text change. Original finding follows.
+
 INV7 requires cross-tenant access be "structurally impossible at the data-access layer." Actual
 mechanism: every repo query method takes a `clientCompanyId` parameter that callers must remember
 to pass; there is no EF `HasQueryFilter` and no owned tenant-context type. `GetByProviderReference`

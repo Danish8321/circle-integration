@@ -1,4 +1,14 @@
-Status: S1+S2 shipped (build clean, unit 404/404). S3 (Testcontainers) + S4 (docs) remain.
+Status: S1+S2 shipped (commit a1dd6de). S4 docs done. S3 test written + compiles; RUN pending
+Docker (test-full). F7 not "closed" until S3 executes green.
+
+## S3 / S4 (this pass)
+- `TenantIsolationQueryFilterTests` (Testcontainers): regular caller sees only own rows; the same
+  other-tenant row is invisible via a filtered query; admin spans both; provider-id discovery
+  lookup resolves any tenant regardless of caller. Compiles; needs Docker to run.
+- Fixed a pre-existing compile break: `NotificationOutboxAtomicityTests` hand-builds the DbContext
+  outside DI, so it now passes an `AdminTestCaller` (Admin bypass) — its cross-tenant verify reads
+  stay meaningful.
+- Audit F7 flipped to RESOLVED; INV7 CLAUDE.md gloss already matches — no text change.
 
 ## Shipped (S1+S2)
 - DbContext injects `ICallerContext`; global `HasQueryFilter(x => callerContext.IsAdmin ||

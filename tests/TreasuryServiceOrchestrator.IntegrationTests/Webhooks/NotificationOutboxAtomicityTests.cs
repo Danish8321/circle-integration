@@ -2,6 +2,7 @@ using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Testcontainers.MsSql;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
@@ -27,7 +28,7 @@ public sealed class NotificationOutboxAtomicityTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<TreasuryServiceOrchestratorDbContext>()
             .UseSqlServer(sqlContainer.GetConnectionString())
             .Options;
-        using var dbContext = new TreasuryServiceOrchestratorDbContext(options);
+        using var dbContext = new TreasuryServiceOrchestratorDbContext(options, new AdminTestCaller());
         await dbContext.Database.EnsureCreatedAsync();
     }
 
@@ -94,7 +95,7 @@ public sealed class NotificationOutboxAtomicityTests : IAsyncLifetime
         var subAccountId = Guid.NewGuid();
         var outboxEntryId = Guid.NewGuid();
 
-        using (var dbContext = new TreasuryServiceOrchestratorDbContext(options))
+        using (var dbContext = new TreasuryServiceOrchestratorDbContext(options, new AdminTestCaller()))
         {
             var subAccount = SubAccount.Create($"client-{Guid.NewGuid():N}", DateTime.UtcNow);
             dbContext.SubAccounts.Add(subAccount);
@@ -120,7 +121,7 @@ public sealed class NotificationOutboxAtomicityTests : IAsyncLifetime
         var verifyOptions = new DbContextOptionsBuilder<TreasuryServiceOrchestratorDbContext>()
             .UseSqlServer(sqlContainer.GetConnectionString())
             .Options;
-        using var verifyContext = new TreasuryServiceOrchestratorDbContext(verifyOptions);
+        using var verifyContext = new TreasuryServiceOrchestratorDbContext(verifyOptions, new AdminTestCaller());
 
         var subAccountPersisted = await verifyContext.SubAccounts.AnyAsync(
             x => x.Id == subAccountId, TestContext.Current.CancellationToken);
@@ -129,5 +130,13 @@ public sealed class NotificationOutboxAtomicityTests : IAsyncLifetime
 
         Assert.False(subAccountPersisted, "The state change must not persist when the shared SaveChangesAsync fails.");
         Assert.False(outboxEntryPersisted, "The outbox row must not persist when the shared SaveChangesAsync fails.");
+    }
+
+    // This test hand-builds the DbContext outside DI, so it supplies its own caller. Admin bypasses
+    // the global tenant query filter (INV7), so the cross-tenant verify reads see every row.
+    private sealed class AdminTestCaller : ICallerContext
+    {
+        public string CallerId => "apiso-admin";
+        public CallerRole Role => CallerRole.Admin;
     }
 }
