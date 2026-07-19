@@ -1,3 +1,4 @@
+using Scalar.AspNetCore;
 using Serilog;
 using TreasuryServiceOrchestrator.Api.DependencyInjection;
 using TreasuryServiceOrchestrator.Api.Middleware;
@@ -23,6 +24,7 @@ app.UseExceptionHandler(_ => { });
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();

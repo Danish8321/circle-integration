@@ -21,6 +21,10 @@ dotnet restore
 bash .claude/scripts/run.sh          # starts the API (SQL Server LocalDB dev)
 ```
 
+In Development, browse `/scalar` for an interactive API reference (Scalar UI over
+the same `/openapi/v1.json` document `MapOpenApi()` emits) — no separate Swagger
+UI package, both routes are Development-only.
+
 Scripts you'll use constantly (all under `.claude/scripts/`):
 
 | Script | What it does |
