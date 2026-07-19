@@ -11,7 +11,7 @@ public sealed class CallerIdentityMiddleware(RequestDelegate next)
     // NotificationDispatcher (Infrastructure), not a tenant- or admin-facing endpoint — there is
     // no ICallerContext to establish for a call the background dispatcher makes to itself
     // (invariant 7 governs tenant endpoints; this is deliberately not one).
-    private static readonly string[] BypassPaths = ["/internal/notifications"];
+    private static readonly string[] BypassPaths = ["/internal/notifications", "/health"];
 
     public async Task InvokeAsync(
         HttpContext context,

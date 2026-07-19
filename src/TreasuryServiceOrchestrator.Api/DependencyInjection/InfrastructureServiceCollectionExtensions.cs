@@ -7,8 +7,14 @@ public static class InfrastructureServiceCollectionExtensions
 {
     public static WebApplicationBuilder AddInfrastructurePersistence(this WebApplicationBuilder builder)
     {
+        var connectionString = builder.Configuration.GetConnectionString("TreasuryServiceOrchestrator")
+            ?? throw new InvalidOperationException("Missing connection string 'TreasuryServiceOrchestrator'.");
+
         builder.Services.AddDbContext<TreasuryServiceOrchestratorDbContext>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("TreasuryServiceOrchestrator")));
+            options.UseSqlServer(connectionString));
+
+        builder.Services.AddHealthChecks()
+            .AddSqlServer(connectionString, name: "sql-server");
 
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         builder.Services.AddScoped<IAuditLogService, AuditLogService>();
