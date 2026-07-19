@@ -17,5 +17,10 @@
       "Bash(sh .claude/scripts/schema.sh apply:*)",
       "Bash(dotnet tool run dotnet-ef database update:*)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node \".claude/statusline-command.js\"",
+    "padding": 0
   }
 }
