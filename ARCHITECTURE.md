@@ -127,6 +127,11 @@ Follow the clickable refs; every hop is real.
   - mock mode → `MockSubAccountGateway` (hard-blocked in Production by `MockModeGuard.Validate`)
   - Development → `FakeSubAccountGateway`
   - Production → real `CircleSubAccountGateway` with a resilient HTTP handler.
+- Logging (Serilog: console + rolling file, correlation id enriched via
+  `CorrelationIdMiddleware`): `Api/DependencyInjection/LoggingServiceCollectionExtensions.cs`.
+- Tracing (OpenTelemetry, **feature flag** — `OpenTelemetry:Enabled` in config; disabled means
+  the method wires nothing, no collector required to run):
+  `Api/DependencyInjection/ObservabilityServiceCollectionExtensions.cs`.
 
 Read that chain once and every other use-case (`GetSubAccount`, `ListSubAccounts`, the
 `Ledger` operations) is the same shape — same folders, different filenames.

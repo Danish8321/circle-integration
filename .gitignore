@@ -3,3 +3,4 @@ obj/
 *.user
 .vs/
 docs/circle-mint-docs/graphify-out/cache/
+src/TreasuryServiceOrchestrator.Api/logs/

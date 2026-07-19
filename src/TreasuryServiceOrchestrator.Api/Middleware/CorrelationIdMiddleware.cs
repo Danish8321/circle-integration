@@ -1,3 +1,5 @@
+using Serilog.Context;
+
 namespace TreasuryServiceOrchestrator.Api.Middleware;
 
 public sealed class CorrelationIdMiddleware(RequestDelegate next)
@@ -12,6 +14,9 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next)
             return Task.CompletedTask;
         });
 
-        await next(context);
+        using (LogContext.PushProperty("CorrelationId", context.TraceIdentifier))
+        {
+            await next(context);
+        }
     }
 }
