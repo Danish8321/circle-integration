@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Testcontainers.MsSql;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Domain;
-using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests.Webhooks;
 

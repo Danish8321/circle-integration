@@ -5,7 +5,6 @@ using Moq;
 using TreasuryServiceOrchestrator.Api.Middleware;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Api;
 

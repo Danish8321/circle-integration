@@ -1,5 +1,4 @@
 using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Ledger;
 

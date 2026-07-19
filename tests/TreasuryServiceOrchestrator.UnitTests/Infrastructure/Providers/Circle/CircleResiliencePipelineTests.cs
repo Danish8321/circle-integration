@@ -2,7 +2,6 @@ using System.Net;
 
 using FluentAssertions;
 using Polly;
-using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Providers.Circle;
 

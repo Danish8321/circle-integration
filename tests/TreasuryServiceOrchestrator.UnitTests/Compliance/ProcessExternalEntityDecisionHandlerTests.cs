@@ -5,7 +5,6 @@ using TreasuryServiceOrchestrator.Application.Compliance.ProcessExternalEntityDe
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Compliance;
 

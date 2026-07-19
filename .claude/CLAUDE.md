@@ -23,9 +23,9 @@ request traced end to end.
 
 | Tier | Path | Owns | Must not |
 |---|---|---|---|
-| Domain | `src/TreasuryServiceOrchestrator.Domain/` | Entities, value objects (`Money`), domain events, invariants. | Reference Application/Infrastructure/Api. Reference EF Core, ASP.NET, or any framework/IO type. No `DateTime.Now`. |
+| Domain | `src/TreasuryServiceOrchestrator.Domain/<Module>/` (`Compliance`, `Ledger`, `Webhooks`, `Shared` — `Money`/`AuditRecord` under `Shared/`) | Entities, value objects (`Money`), domain events, invariants. | Reference Application/Infrastructure/Api. Reference EF Core, ASP.NET, or any framework/IO type. No `DateTime.Now`. |
 | Application | `src/TreasuryServiceOrchestrator.Application/<Module>/` (`Compliance`, `Ledger`, `Webhooks`, `Admin`, `Shared` — B0.5) | Use-case handlers (`ICommandHandler`/`IQueryHandler`), ports (interfaces) under `<Module>/Ports/`, DTOs. | Reference Infrastructure or Api. Know SQL Server, `DbContext`, or any EF type exists. Live in a flat shared `Services/` folder — one folder per use case under its module. |
-| Infrastructure | `src/TreasuryServiceOrchestrator.Infrastructure/` | `DbContext`, EF configs/migrations, port implementations (repositories, `CircleSubAccountGateway`/`CircleMintGateway`), `HttpClient`-backed gateways. | Contain business/use-case logic. Be referenced by Application or Domain. |
+| Infrastructure | `src/TreasuryServiceOrchestrator.Infrastructure/<Module>/` (same modules + `Shared/` for cross-cutting: `DbContext`, `UnitOfWork`, idempotency, audit, Circle client options; `Migrations/` stays flat — EF requires one per `DbContext`) | `DbContext`, EF configs/migrations, port implementations (repositories, `CircleSubAccountGateway`/`CircleMintGateway`), `HttpClient`-backed gateways. | Contain business/use-case logic. Be referenced by Application or Domain. |
 | Api | `src/TreasuryServiceOrchestrator.Api/` | Controllers (thin — dispatch to handler, return result), middleware, DI wiring (`Program.cs`), request/response contracts. | Contain business logic in controllers. Reference Domain entities directly in a response type (map to a DTO). |
 
 Clean dependency rule: Domain ← Application ← Infrastructure, and Api wires all three. Arrows

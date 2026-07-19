@@ -5,7 +5,6 @@ using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Compliance.CreateSubAccount;
 

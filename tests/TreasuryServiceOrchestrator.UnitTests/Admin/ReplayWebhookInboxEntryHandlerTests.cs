@@ -7,7 +7,6 @@ using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Admin;
 

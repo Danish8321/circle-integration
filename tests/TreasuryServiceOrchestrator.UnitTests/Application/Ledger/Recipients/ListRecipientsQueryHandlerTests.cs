@@ -5,7 +5,6 @@ using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Recipients;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Recipients;
 

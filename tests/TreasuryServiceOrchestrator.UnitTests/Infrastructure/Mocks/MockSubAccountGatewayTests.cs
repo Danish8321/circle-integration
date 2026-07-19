@@ -4,8 +4,6 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using TreasuryServiceOrchestrator.Application.Exceptions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Infrastructure.Mocks;
-using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 using TreasuryServiceOrchestrator.TestUtilities;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Mocks;

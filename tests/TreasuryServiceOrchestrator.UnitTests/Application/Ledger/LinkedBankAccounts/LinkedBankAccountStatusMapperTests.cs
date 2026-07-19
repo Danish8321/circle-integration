@@ -1,6 +1,5 @@
 using FluentAssertions;
 using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.LinkedBankAccounts;
 

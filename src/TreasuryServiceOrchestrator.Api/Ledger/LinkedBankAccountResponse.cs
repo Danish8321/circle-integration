@@ -1,5 +1,4 @@
 using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Ledger;
 

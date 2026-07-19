@@ -1,6 +1,5 @@
 using FluentAssertions;
 using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Transfers;
 

@@ -3,8 +3,6 @@ using System.Net.Http.Json;
 
 using FluentAssertions;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
-using TreasuryServiceOrchestrator.Domain;
-using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Providers.Circle;
 

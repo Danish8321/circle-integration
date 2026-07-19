@@ -6,7 +6,6 @@ using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistrat
 using TreasuryServiceOrchestrator.Application.Compliance.SetSubAccountDisabled;
 using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Api.Compliance;
 

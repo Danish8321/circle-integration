@@ -54,6 +54,14 @@ Arrows only point inward. That is the whole architecture.
 So a handler lives at `Application / Compliance / CreateSubAccount /`
 = layer / module / use-case. Once you know the operation, the path writes itself.
 
+**All four tiers now use the module axis** (`Compliance / Ledger / Webhooks / Admin /
+Shared`), so a business area sits in the same-named folder in every project. Two
+deliberate exceptions in Infrastructure: `Shared/` holds cross-cutting infra that no
+single module owns (`DbContext`, `UnitOfWork`, idempotency, audit, Circle client
+options), and `Migrations/` stays flat because EF Core requires one migrations folder
+and one model snapshot per `DbContext`. Domain's cross-cutting pieces (`Money`,
+`AuditRecord`) live in `Domain/Shared/`.
+
 Older docs call axis 3 "VSA / Vertical Slice". Ignore the buzzword: it just means
 "one folder per use-case." Layers stay strict and horizontal — slices do **not** cut
 through or collapse them.
@@ -68,8 +76,8 @@ through or collapse them.
 | Request-shape validation | `Api/<Module>/<UseCase>RequestValidator.cs` (FluentValidation; a global filter runs it) |
 | A new use-case (business operation) | `Application/<Module>/<UseCase>/` — a `Command`/`Query`, a `Handler`, a `Result` |
 | A new port (something the handler needs from outside) | `Application/<Module>/Ports/I<Name>.cs` (interface only) |
-| The real implementation of a port | `Infrastructure/` (`Persistence/…Repository.cs` or `Providers/Circle/…Gateway.cs`) |
-| A new entity / invariant / state transition | `Domain/<Entity>.cs` (private setters, static `Create`, guarded transitions) |
+| The real implementation of a port | `Infrastructure/<Module>/…Repository.cs` or `…Gateway.cs` (cross-cutting → `Infrastructure/Shared/`) |
+| A new entity / invariant / state transition | `Domain/<Module>/<Entity>.cs` (private setters, static `Create`, guarded transitions) |
 | Wire a port → implementation | `Program.cs` (one file; see gateway env-gating below) |
 | A schema change | `.claude/scripts/schema.sh new` → **read** the migration → `apply` |
 
@@ -101,17 +109,18 @@ Follow the clickable refs; every hop is real.
     `IEntityRegistrationRepository.cs`.
 
 **3. Domain — the rules**
-- `src/TreasuryServiceOrchestrator.Domain/SubAccount.cs` — `Create` (state `Created`),
+- `src/TreasuryServiceOrchestrator.Domain/Compliance/SubAccount.cs` — `Create` (state `Created`),
   `BeginCompliance` (`Created → PendingCompliance`, sets `CircleWalletId`).
-- `src/TreasuryServiceOrchestrator.Domain/EntityRegistration.cs` — `Create` (`Pending`).
+- `src/TreasuryServiceOrchestrator.Domain/Compliance/EntityRegistration.cs` — `Create` (`Pending`).
   Private setters, static factories, guarded transitions. Zero framework refs.
 
 **4. Infrastructure — the real outside world**
-- `src/TreasuryServiceOrchestrator.Infrastructure/Providers/Circle/CircleSubAccountGateway.cs`
+- `src/TreasuryServiceOrchestrator.Infrastructure/Compliance/CircleSubAccountGateway.cs`
   — implements `ISubAccountGateway`, typed `HttpClient`, `POST v1/externalEntities`.
-- `src/TreasuryServiceOrchestrator.Infrastructure/Persistence/SubAccountRepository.cs`
+- `src/TreasuryServiceOrchestrator.Infrastructure/Compliance/SubAccountRepository.cs`
   — implements `ISubAccountRepository` over `DbContext` (use-case-shaped queries, no
-  generic `IRepository<T>`). `UnitOfWork.cs` commits.
+  generic `IRepository<T>`). `Infrastructure/Shared/UnitOfWork.cs` commits;
+  `Infrastructure/Shared/…DbContext.cs` is the one `DbContext` for all modules.
 
 **5. DI wiring — `Program.cs` (one file)**
 - Handlers / repos / validators: around `Program.cs:54-67`.

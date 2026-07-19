@@ -7,7 +7,6 @@ using TreasuryServiceOrchestrator.Application.Ledger.Transfers;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 

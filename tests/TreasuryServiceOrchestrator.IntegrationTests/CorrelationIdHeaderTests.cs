@@ -1,8 +1,6 @@
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TreasuryServiceOrchestrator.Domain;
-using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests;
 

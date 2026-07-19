@@ -25,13 +25,6 @@ using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
-using TreasuryServiceOrchestrator.Infrastructure.Mocks;
-using TreasuryServiceOrchestrator.Infrastructure.Notifications;
-using TreasuryServiceOrchestrator.Infrastructure.Persistence;
-using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
-using TreasuryServiceOrchestrator.Infrastructure.Reconciliation;
-using TreasuryServiceOrchestrator.Infrastructure.Snapshots;
-using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
 

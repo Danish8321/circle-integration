@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
-using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Providers.Circle;
 

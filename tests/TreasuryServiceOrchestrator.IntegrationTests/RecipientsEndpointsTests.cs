@@ -5,9 +5,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Api.Ledger;
-using TreasuryServiceOrchestrator.Domain;
-using TreasuryServiceOrchestrator.Infrastructure.Mocks;
-using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests;
 

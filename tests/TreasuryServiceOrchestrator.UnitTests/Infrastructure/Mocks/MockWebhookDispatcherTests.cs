@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
-using TreasuryServiceOrchestrator.Infrastructure.Mocks;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Mocks;
 

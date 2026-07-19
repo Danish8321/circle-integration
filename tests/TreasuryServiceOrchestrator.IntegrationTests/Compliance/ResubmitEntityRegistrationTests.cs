@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Api.Compliance;
-using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests.Compliance;
 

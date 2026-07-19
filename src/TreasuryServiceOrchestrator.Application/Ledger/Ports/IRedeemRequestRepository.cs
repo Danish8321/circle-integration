@@ -1,5 +1,4 @@
 using TreasuryServiceOrchestrator.Application.Shared;
-using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Ports;
 

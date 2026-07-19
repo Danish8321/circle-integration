@@ -4,8 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TreasuryServiceOrchestrator.Api.Admin;
 using TreasuryServiceOrchestrator.Application.Webhooks;
-using TreasuryServiceOrchestrator.Domain;
-using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests.Admin;
 
