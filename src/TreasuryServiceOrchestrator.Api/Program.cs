@@ -5,6 +5,8 @@ using TreasuryServiceOrchestrator.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+await builder.AddProductionSecretsAsync();
+
 builder.AddSerilogLogging();
 builder.AddObservability();
 builder.AddWebApiCore();
