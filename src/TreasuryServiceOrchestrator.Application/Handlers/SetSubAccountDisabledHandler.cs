@@ -23,7 +23,14 @@ public sealed class SetSubAccountDisabledHandler(
         var subAccount = await subAccounts.GetByClientCompanyIdAsync(command.ClientCompanyId, cancellationToken)
             ?? throw new NotFoundException($"No sub-account for client company '{command.ClientCompanyId}'.");
 
-        subAccount.SetDisabled(command.Disabled);
+        if (command.Disabled)
+        {
+            subAccount.Disable();
+        }
+        else
+        {
+            subAccount.Enable();
+        }
 
         await auditLog.AppendAsync(
             "SubAccountDisabledSet", "SubAccount", subAccount.Id.ToString(),

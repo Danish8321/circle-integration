@@ -112,33 +112,33 @@ public sealed class SubAccountTests
     }
 
     [Fact]
-    public void SetDisabled_True_SetsIsDisabled()
+    public void Disable_SetsIsDisabled()
     {
         var subAccount = SubAccount.Create("client-1", NowUtc);
 
-        subAccount.SetDisabled(true);
+        subAccount.Disable();
 
         Assert.True(subAccount.IsDisabled);
     }
 
     [Fact]
-    public void SetDisabled_TrueTwice_IsIdempotent()
+    public void Disable_Twice_IsIdempotent()
     {
         var subAccount = SubAccount.Create("client-1", NowUtc);
 
-        subAccount.SetDisabled(true);
-        subAccount.SetDisabled(true);
+        subAccount.Disable();
+        subAccount.Disable();
 
         Assert.True(subAccount.IsDisabled);
     }
 
     [Fact]
-    public void SetDisabled_FalseAfterTrue_ClearsIsDisabled()
+    public void Enable_AfterDisable_ClearsIsDisabled()
     {
         var subAccount = SubAccount.Create("client-1", NowUtc);
-        subAccount.SetDisabled(true);
+        subAccount.Disable();
 
-        subAccount.SetDisabled(false);
+        subAccount.Enable();
 
         Assert.False(subAccount.IsDisabled);
     }

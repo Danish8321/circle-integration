@@ -69,9 +69,14 @@ public class SubAccount
         LifecycleState = SubAccountLifecycleState.Active;
     }
 
-    public void SetDisabled(bool disabled)
+    public void Disable()
     {
-        IsDisabled = disabled;
+        IsDisabled = true;
+    }
+
+    public void Enable()
+    {
+        IsDisabled = false;
     }
 
     public void ResubmitCompliance()

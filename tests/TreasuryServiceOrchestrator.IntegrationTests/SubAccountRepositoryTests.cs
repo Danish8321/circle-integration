@@ -19,7 +19,7 @@ public sealed class SubAccountRepositoryTests(TreasuryServiceOrchestratorApiFact
         var disabledWithWallet = SubAccount.Create($"client-{Guid.NewGuid():N}", DateTime.UtcNow);
         disabledWithWallet.BeginCompliance($"wallet-{Guid.NewGuid():N}");
         disabledWithWallet.MarkAccepted();
-        disabledWithWallet.SetDisabled(true);
+        disabledWithWallet.Disable();
 
         var activeNoWallet = SubAccount.Create($"client-{Guid.NewGuid():N}", DateTime.UtcNow);
 

@@ -88,7 +88,7 @@ public sealed class SetSubAccountDisabledHandlerTests
     public async Task HandleAsync_WhenAlreadyDisabled_SettingDisabledAgainStillSucceeds()
     {
         var subAccount = ExistingSubAccount();
-        subAccount.SetDisabled(true);
+        subAccount.Disable();
         subAccounts
             .Setup(x => x.GetByClientCompanyIdAsync("client-1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(subAccount);
@@ -104,7 +104,7 @@ public sealed class SetSubAccountDisabledHandlerTests
     public async Task HandleAsync_AsAdmin_ReEnablesDisabledSubAccount()
     {
         var subAccount = ExistingSubAccount();
-        subAccount.SetDisabled(true);
+        subAccount.Disable();
         subAccounts
             .Setup(x => x.GetByClientCompanyIdAsync("client-1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(subAccount);

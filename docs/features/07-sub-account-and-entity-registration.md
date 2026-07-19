@@ -87,7 +87,8 @@ public class SubAccount
     public void BeginCompliance(string circleWalletId);                        // Created -> PendingCompliance
     public void MarkRejected();                                                // PendingCompliance -> Rejected
     public void ResubmitCompliance();                                          // Rejected -> PendingCompliance
-    public void SetDisabled(bool disabled);                                    // overlay, any state
+    public void Disable();                                                     // overlay, any state
+    public void Enable();                                                      // overlay, any state
 }
 ```
 
@@ -237,7 +238,7 @@ the controller's `TenantScopeResolver`, per `01-tenancy-and-authorization.md` §
 `ISubAccountRepository.ListAsync` query.
 
 **`SetSubAccountDisabledHandler`** — Admin-only (defense-in-depth re-check, same pattern), calls
-`subAccount.SetDisabled(command.Disabled)`, audits `SubAccountDisabledSet`.
+`subAccount.Disable()`/`Enable()` per `command.Disabled`, audits `SubAccountDisabledSet`.
 
 **`GetSubAccountHandler`** — no role guard beyond the controller's tenant scoping (an owning
 SubAccount caller or Admin naming that tenant may read); looks up the sub-account, then its latest
@@ -393,8 +394,8 @@ Per the testing-strategy table in `.claude/CLAUDE.md`.
   blank `circleWalletId`; result state `PendingCompliance`.
 - `SubAccount.MarkRejected` only from `PendingCompliance`.
 - `SubAccount.ResubmitCompliance` only from `Rejected`.
-- `SubAccount.SetDisabled` is unconstrained by lifecycle state (works from any state — it's an
-  independent overlay).
+- `SubAccount.Disable`/`Enable` are unconstrained by lifecycle state (work from any state —
+  it's an independent overlay).
 - `EntityRegistration.Create` rejects empty `subAccountId`/blank `clientCompanyId`/blank
   `businessName`; starts `Pending`.
 - `EntityRegistration.Reject` only from `Pending`; rejects blank reason.
