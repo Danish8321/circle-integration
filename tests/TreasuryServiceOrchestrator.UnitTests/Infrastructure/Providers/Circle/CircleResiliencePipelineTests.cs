@@ -95,7 +95,13 @@ public sealed class CircleResiliencePipelineTests
 
     private static ResiliencePipeline<HttpResponseMessage> BuildPipeline(CircleClientOptions options)
     {
-        var builder = new ResiliencePipelineBuilder<HttpResponseMessage> { TimeProvider = new InstantTimeProvider() };
+        // Collapse only sub-timeout delays (retry backoff). The per-attempt timeout and the
+        // circuit-breaker's sampling/break windows stay on the real clock — harmless, because
+        // every call in these tests completes in-memory in microseconds and never approaches them.
+        var builder = new ResiliencePipelineBuilder<HttpResponseMessage>
+        {
+            TimeProvider = new CollapseShortDelaysTimeProvider(TimeSpan.FromSeconds(options.TimeoutSeconds)),
+        };
         CircleResiliencePipelineFactory.ConfigurePipeline(builder, options);
         return builder.Build();
     }
@@ -109,13 +115,29 @@ public sealed class CircleResiliencePipelineTests
             cancellationToken).AsTask();
 
     /// <summary>
-    /// Makes Polly's timer-driven delays (retry backoff, circuit-breaker sampling) fire
-    /// immediately, so these tests don't sleep for real backoff durations.
+    /// Fires only <em>short, positive</em> Polly timers immediately — i.e. retry backoff delays
+    /// (sub-second to a few seconds) — so these tests don't sleep for real backoff.
+    /// <para>
+    /// Two classes of timer are left untouched, and collapsing either is the ticket-21 flake:
+    /// <list type="bullet">
+    ///   <item>A <see cref="Timeout.InfiniteTimeSpan"/> (-1ms) due-time is a <em>disarmed</em>
+    ///   timer that Polly arms later via <see cref="ITimer.Change"/> (the per-attempt timeout is
+    ///   created this way). Forcing it to <see cref="TimeSpan.Zero"/> fires a dormant timer at once
+    ///   — cancelling the in-flight attempt and throwing a spurious
+    ///   <c>TimeoutRejectedException</c>.</item>
+    ///   <item>Any real delay at or above <paramref name="collapseBelow"/> (the per-attempt
+    ///   timeout, the circuit-breaker sampling/break windows) stays on the real clock — harmless,
+    ///   since every call here completes in-memory in microseconds and never reaches it.</item>
+    /// </list>
+    /// </para>
     /// </summary>
-    private sealed class InstantTimeProvider : TimeProvider
+    private sealed class CollapseShortDelaysTimeProvider(TimeSpan collapseBelow) : TimeProvider
     {
-        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
-            base.CreateTimer(callback, state, TimeSpan.Zero, period);
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var collapse = dueTime > TimeSpan.Zero && dueTime < collapseBelow;
+            return base.CreateTimer(callback, state, collapse ? TimeSpan.Zero : dueTime, period);
+        }
     }
 
     private sealed class CountingStubHttpMessageHandler(
