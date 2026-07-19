@@ -5,5 +5,10 @@ public sealed record SnsEnvelope(
     string MessageId,
     string TopicArn,
     string Message,
+    string Timestamp,
     string Signature,
-    string SigningCertURL);
+    string SignatureVersion,
+    string SigningCertURL,
+    string? Subject,
+    string? SubscribeURL,
+    string? Token);

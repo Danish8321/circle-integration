@@ -13,8 +13,9 @@ public sealed class CircleWebhooksController(
         [FromBody] CircleSnsEnvelopeRequest request, CancellationToken cancellationToken)
     {
         var snsEnvelope = new SnsEnvelope(
-            request.Type, request.MessageId, request.TopicArn, request.Message,
-            request.Signature, request.SigningCertURL);
+            request.Type, request.MessageId, request.TopicArn, request.Message, request.Timestamp,
+            request.Signature, request.SignatureVersion, request.SigningCertURL,
+            request.Subject, request.SubscribeURL, request.Token);
 
         if (!await signatureVerifier.VerifyAsync(snsEnvelope, cancellationToken))
         {

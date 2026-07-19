@@ -8,7 +8,6 @@ public static class CircleIntegrationServiceCollectionExtensions
 {
     public static WebApplicationBuilder AddCircleIntegration(this WebApplicationBuilder builder)
     {
-        builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
         builder.Services.AddScoped<IWebhookTopicProcessor, ExternalEntitiesWebhookTopicProcessor>();
         builder.Services.AddScoped<IWebhookTopicProcessor, DepositsWebhookTopicProcessor>();
         builder.Services.AddScoped<IWebhookTopicProcessor, AddressBookRecipientsWebhookTopicProcessor>();
@@ -42,6 +41,19 @@ public static class CircleIntegrationServiceCollectionExtensions
                 .AddCircleResilienceHandler();
             builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>(ConfigureCircleClient)
                 .AddCircleResilienceHandler();
+        }
+
+        // Structural guard (invariant 9's pattern): the always-accepting mock verifier is only
+        // reachable in mock mode, which MockModeGuard already makes impossible in Production.
+        if (mockModeEnabled)
+        {
+            builder.Services.AddScoped<ISnsSignatureVerifier, MockSnsSignatureVerifier>();
+        }
+        else
+        {
+            builder.Services.AddMemoryCache();
+            builder.Services.AddHttpClient("AwsSnsSigningCert");
+            builder.Services.AddScoped<ISnsSignatureVerifier, AwsSnsSignatureVerifier>();
         }
 
         return builder;

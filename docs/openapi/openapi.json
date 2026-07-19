@@ -5,66 +5,103 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/v1/webhooks/circle": {
-      "post": {
+    "/v1/admin/transactions": {
+      "get": {
         "tags": [
-          "CircleWebhooks"
+          "AdminTransactions"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
-              }
+        "parameters": [
+          {
+            "name": "clientCompanyId",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionType"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionStatus"
+            }
+          },
+          {
+            "name": "fromUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
           }
-        }
-      }
-    },
-    "/internal/notifications": {
-      "post": {
-        "tags": [
-          "InternalNotificationsStub"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminTransactionResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminTransactionResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminTransactionResponse"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -154,6 +191,38 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/v1/webhooks/circle": {
+      "post": {
+        "tags": [
+          "CircleWebhooks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircleSnsEnvelopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -572,6 +641,86 @@
         }
       }
     },
+    "/v1/admin/webhooks/{id}/replay": {
+      "post": {
+        "tags": [
+          "DeadLetter"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/notifications/{id}/replay": {
+      "post": {
+        "tags": [
+          "DeadLetter"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/deposit-addresses": {
       "get": {
         "tags": [
@@ -703,6 +852,38 @@
         }
       }
     },
+    "/internal/notifications": {
+      "post": {
+        "tags": [
+          "InternalNotificationsStub"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InternalNotificationEnvelopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/v1/sub-accounts/{subAccountId}/linked-bank-accounts/{linkedBankAccountId}": {
       "get": {
         "tags": [
@@ -745,6 +926,35 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LinkedBankAccountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/master-account/summary": {
+      "get": {
+        "tags": [
+          "MasterAccount"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
                 }
               }
             }
@@ -974,202 +1184,6 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RedemptionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/sub-accounts/{subAccountId}/transactions/{transactionId}": {
-      "get": {
-        "tags": [
-          "TransactionDetail"
-        ],
-        "parameters": [
-          {
-            "name": "subAccountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "transactionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/sub-accounts/{subAccountId}/transactions": {
-      "get": {
-        "tags": [
-          "Transactions"
-        ],
-        "parameters": [
-          {
-            "name": "subAccountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TransactionResponse"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TransactionResponse"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TransactionResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/sub-accounts/{subAccountId}/transfers/{transferId}": {
-      "get": {
-        "tags": [
-          "TransferDetail"
-        ],
-        "parameters": [
-          {
-            "name": "subAccountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "transferId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransferResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransferResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransferResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/sub-accounts/{subAccountId}/linked-bank-accounts/{linkedBankAccountId}/wire-instructions": {
-      "get": {
-        "tags": [
-          "WireInstructions"
-        ],
-        "parameters": [
-          {
-            "name": "subAccountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "linkedBankAccountId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/WireInstructions"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WireInstructions"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WireInstructions"
                 }
               }
             }
@@ -1444,115 +1458,23 @@
         }
       }
     },
-    "/v1/admin/transactions": {
+    "/v1/sub-accounts/{subAccountId}/transactions/{transactionId}": {
       "get": {
         "tags": [
-          "AdminTransactions"
+          "TransactionDetail"
         ],
         "parameters": [
           {
-            "name": "clientCompanyId",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/TransactionType"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/TransactionStatus"
-            }
-          },
-          {
-            "name": "fromUtc",
-            "in": "query",
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string",
-              "format": "date-time"
+              "format": "uuid"
             }
           },
           {
-            "name": "toUtc",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AdminTransactionResponse"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AdminTransactionResponse"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AdminTransactionResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/admin/webhooks/{id}/replay": {
-      "post": {
-        "tags": [
-          "DeadLetter"
-        ],
-        "parameters": [
-          {
-            "name": "id",
+            "name": "transactionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1567,17 +1489,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                  "$ref": "#/components/schemas/TransactionResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                  "$ref": "#/components/schemas/TransactionResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReplayWebhookInboxEntryResponse"
+                  "$ref": "#/components/schemas/TransactionResponse"
                 }
               }
             }
@@ -1585,14 +1507,14 @@
         }
       }
     },
-    "/v1/admin/notifications/{id}/replay": {
-      "post": {
+    "/v1/sub-accounts/{subAccountId}/transactions": {
+      "get": {
         "tags": [
-          "DeadLetter"
+          "Transactions"
         ],
         "parameters": [
           {
-            "name": "id",
+            "name": "subAccountId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1607,17 +1529,26 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReplayNotificationOutboxEntryResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransactionResponse"
+                  }
                 }
               }
             }
@@ -1625,10 +1556,30 @@
         }
       }
     },
-    "/v1/admin/master-account/summary": {
+    "/v1/sub-accounts/{subAccountId}/transfers/{transferId}": {
       "get": {
         "tags": [
-          "MasterAccount"
+          "TransferDetail"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1636,17 +1587,66 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                  "$ref": "#/components/schemas/TransferResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                  "$ref": "#/components/schemas/TransferResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GetMasterAccountSummaryResult"
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sub-accounts/{subAccountId}/linked-bank-accounts/{linkedBankAccountId}/wire-instructions": {
+      "get": {
+        "tags": [
+          "WireInstructions"
+        ],
+        "parameters": [
+          {
+            "name": "subAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "linkedBankAccountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WireInstructions"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WireInstructions"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WireInstructions"
                 }
               }
             }
@@ -1794,11 +1794,35 @@
           "Message": {
             "type": "string"
           },
+          "Timestamp": {
+            "type": "string"
+          },
           "Signature": {
+            "type": "string"
+          },
+          "SignatureVersion": {
             "type": "string"
           },
           "SigningCertURL": {
             "type": "string"
+          },
+          "Subject": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "SubscribeURL": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "Token": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2643,16 +2667,16 @@
   },
   "tags": [
     {
-      "name": "CircleWebhooks"
-    },
-    {
-      "name": "InternalNotificationsStub"
+      "name": "AdminTransactions"
     },
     {
       "name": "BalanceHistory"
     },
     {
       "name": "Balances"
+    },
+    {
+      "name": "CircleWebhooks"
     },
     {
       "name": "CreateLinkedBankAccount"
@@ -2673,10 +2697,19 @@
       "name": "Transfers"
     },
     {
+      "name": "DeadLetter"
+    },
+    {
       "name": "DepositAddresses"
     },
     {
+      "name": "InternalNotificationsStub"
+    },
+    {
       "name": "LinkedBankAccountDetail"
+    },
+    {
+      "name": "MasterAccount"
     },
     {
       "name": "RecipientDetail"
@@ -2691,6 +2724,9 @@
       "name": "RedemptionDetail"
     },
     {
+      "name": "SubAccounts"
+    },
+    {
       "name": "TransactionDetail"
     },
     {
@@ -2701,18 +2737,6 @@
     },
     {
       "name": "WireInstructions"
-    },
-    {
-      "name": "SubAccounts"
-    },
-    {
-      "name": "AdminTransactions"
-    },
-    {
-      "name": "DeadLetter"
-    },
-    {
-      "name": "MasterAccount"
     }
   ]
 }
