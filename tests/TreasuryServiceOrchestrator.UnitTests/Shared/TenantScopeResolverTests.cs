@@ -1,7 +1,5 @@
 using FluentAssertions;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Shared;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Shared;
 

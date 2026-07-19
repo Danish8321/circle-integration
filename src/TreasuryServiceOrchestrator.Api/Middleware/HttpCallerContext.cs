@@ -1,4 +1,3 @@
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Api.Middleware;
 

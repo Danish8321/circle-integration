@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
-using TreasuryServiceOrchestrator.Api.Admin;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 

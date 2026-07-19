@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using TreasuryServiceOrchestrator.Application.Ledger.Ports;
-using TreasuryServiceOrchestrator.Application.Shared;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;

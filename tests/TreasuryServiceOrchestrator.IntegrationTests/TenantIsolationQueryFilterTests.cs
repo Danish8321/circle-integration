@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using TreasuryServiceOrchestrator.Application.Webhooks;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Mocks;
 

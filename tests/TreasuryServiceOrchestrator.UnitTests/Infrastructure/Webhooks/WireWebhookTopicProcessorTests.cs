@@ -1,7 +1,5 @@
 using FluentAssertions;
 using Moq;
-using TreasuryServiceOrchestrator.Application.Ledger.LinkedBankAccounts;
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Webhooks;
 

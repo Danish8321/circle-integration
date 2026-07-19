@@ -1,5 +1,4 @@
 using FluentAssertions;
-using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Webhooks;

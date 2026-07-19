@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 
 using FluentAssertions;
-using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 

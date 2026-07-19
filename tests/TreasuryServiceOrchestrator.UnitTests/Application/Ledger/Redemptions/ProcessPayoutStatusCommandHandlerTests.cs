@@ -1,11 +1,6 @@
 using FluentAssertions;
 using Moq;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Ledger;
-using TreasuryServiceOrchestrator.Application.Ledger.Ports;
-using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
-using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Redemptions;

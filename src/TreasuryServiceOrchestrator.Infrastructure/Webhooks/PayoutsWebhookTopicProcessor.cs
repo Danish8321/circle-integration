@@ -1,8 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-using TreasuryServiceOrchestrator.Application.Ledger.Redemptions;
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
-using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Webhooks;

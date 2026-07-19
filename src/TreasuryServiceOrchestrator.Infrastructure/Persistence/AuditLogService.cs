@@ -1,4 +1,3 @@
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;

@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using TreasuryServiceOrchestrator.Api.Compliance;
 
 namespace TreasuryServiceOrchestrator.IntegrationTests.Compliance;
 

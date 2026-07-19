@@ -1,6 +1,4 @@
 using System.Net.Http.Json;
-using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Providers.Circle;
 

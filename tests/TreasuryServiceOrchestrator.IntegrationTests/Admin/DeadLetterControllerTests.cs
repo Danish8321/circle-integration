@@ -2,8 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TreasuryServiceOrchestrator.Api.Admin;
-using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 using TreasuryServiceOrchestrator.Infrastructure.Persistence;
 

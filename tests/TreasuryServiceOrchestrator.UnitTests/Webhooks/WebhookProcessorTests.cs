@@ -1,8 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using TreasuryServiceOrchestrator.Application.Webhooks;
-using TreasuryServiceOrchestrator.Application.Webhooks.Ports;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Webhooks;
 

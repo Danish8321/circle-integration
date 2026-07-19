@@ -1,10 +1,6 @@
 using FluentAssertions;
 using Moq;
-using TreasuryServiceOrchestrator.Application.Compliance.Ports;
-using TreasuryServiceOrchestrator.Application.Compliance.ResubmitEntityRegistration;
 using TreasuryServiceOrchestrator.Application.Exceptions;
-using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
-using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Compliance;

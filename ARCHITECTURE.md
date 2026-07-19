@@ -1,8 +1,8 @@
 # Architecture — how to read this repo
 
-**One sentence:** this is **Clean Architecture**. Handlers are filed by *module*,
-then by *use-case*. That folder convention is the only thing on top of Clean — there
-is no separate "VSA framework" to learn.
+**One sentence:** this is plain **Clean Architecture**. Nothing else. Every tier is
+organized by *kind of thing* (controller, handler, port, DTO, validator, entity,
+repository, gateway) — no business-module folders, no per-use-case folders.
 
 If a request feels hard to follow, it is because a request crosses all four tiers.
 This document traces one from HTTP to database so you see a whole flow once.
@@ -32,10 +32,10 @@ This document traces one from HTTP to database so you see a whole flow once.
         └───────────────────────────────────────────────┘
 ```
 
-- **Domain** knows nothing about anyone. No EF, no ASP.NET, no `DateTime.Now`.
-- **Application** defines **ports** (interfaces like `ISubAccountGateway`,
-  `ISubAccountRepository`) and use-case **handlers**. It does not know SQL Server or
-  `DbContext` exist.
+- **Domain** knows nothing about anyone. No EF, no ASP.NET, no `DateTime.Now`. Flat —
+  one file per entity/value object/enum, no subfolders.
+- **Application** defines **ports** (interfaces) and use-case **handlers**. It does
+  not know SQL Server or `DbContext` exist.
 - **Infrastructure** *implements* those ports (real Circle HTTP gateway, EF
   repositories). Nobody inward of it references it.
 - **Api** is thin: resolve tenant → build a command → call a handler → return a DTO.
@@ -45,18 +45,19 @@ Arrows only point inward. That is the whole architecture.
 
 ---
 
-## The three ways things are grouped (so nothing feels like magic)
+## Folders, by tier — grouped by kind, not by business area
 
-1. **Layer** (Clean) — Domain / Application / Infrastructure / Api. *Which project.*
-2. **Module** — `Compliance`, `Ledger`, `Webhooks`, `Admin`, `Shared`. *Which business area.*
-3. **Use-case folder** — `CreateSubAccount/`, `GetSubAccount/`. *Which single operation.*
+| Tier | Folders | What goes there |
+|---|---|---|
+| **Domain** | *(flat, no subfolders)* | One file per entity, value object (`Money`), enum. |
+| **Application** | `Handlers/` `Ports/` `Dtos/` `Validators/` `Services/` `Exceptions/` | `Handlers/` = every `*Handler.cs` + `ICommandHandler`. `Ports/` = every port interface (`ISubAccountGateway`, `IUnitOfWork`, `ICallerContext`, …) and the request/result shapes that cross a port. `Dtos/` = every `Command`/`Query`/`Result`. `Validators/` = FluentValidation classes. `Services/` = cross-cutting app logic that isn't a handler (`IdempotencyExecutor`, `TenantScopeResolver`, `LedgerPostingService`, status mappers, background-service option classes). `Exceptions/` = the exception taxonomy. |
+| **Infrastructure** | `Persistence/` `Providers/Circle/` `Mocks/` `Webhooks/` `Notifications/` `Reconciliation/` `Snapshots/` `Migrations/` | Grouped by technical concern: EF repositories + `DbContext`, real Circle HTTP gateways, mock/fake gateways, webhook inbox/processors, notification dispatch, background reconciliation/snapshot services, EF migrations (flat — one per `DbContext`, an EF Core constraint). |
+| **Api** | `Controllers/` `Dtos/` `Validators/` `Middleware/` | `Controllers/` = every `*Controller.cs` (thin). `Dtos/` = every request/response record. `Validators/` = FluentValidation for requests. `Middleware/` = pipeline pieces (tenant resolution, correlation id, exception handling). `Program.cs` stays at the root — it's the one file that wires everything. |
 
-So a handler lives at `Application / Compliance / CreateSubAccount /`
-= layer / module / use-case. Once you know the operation, the path writes itself.
-
-Older docs call axis 3 "VSA / Vertical Slice". Ignore the buzzword: it just means
-"one folder per use-case." Layers stay strict and horizontal — slices do **not** cut
-through or collapse them.
+No file's home depends on "which business area" — only on "what kind of thing is
+this." A request/result DTO for `Ledger` and one for `Compliance` sit in the same
+`Dtos/` folder; the filename (`CreateSubAccountCommand.cs`, `CreateTransferCommand.cs`)
+is what tells them apart.
 
 ---
 
@@ -64,11 +65,11 @@ through or collapse them.
 
 | I want to change / add… | Go to |
 |---|---|
-| A new HTTP endpoint | `Api/<Module>/<Thing>Controller.cs` (thin), + a request/response DTO beside it |
-| Request-shape validation | `Api/<Module>/<UseCase>RequestValidator.cs` (FluentValidation; a global filter runs it) |
-| A new use-case (business operation) | `Application/<Module>/<UseCase>/` — a `Command`/`Query`, a `Handler`, a `Result` |
-| A new port (something the handler needs from outside) | `Application/<Module>/Ports/I<Name>.cs` (interface only) |
-| The real implementation of a port | `Infrastructure/` (`Persistence/…Repository.cs` or `Providers/Circle/…Gateway.cs`) |
+| A new HTTP endpoint | `Api/Controllers/<Thing>Controller.cs` (thin), + a request/response record in `Api/Dtos/` |
+| Request-shape validation | `Api/Validators/<UseCase>RequestValidator.cs` (FluentValidation; a global filter runs it) |
+| A new use-case (business operation) | `Application/Dtos/<UseCase>Command.cs` (or `Query`), `Application/Handlers/<UseCase>Handler.cs`, `Application/Dtos/<UseCase>Result.cs` |
+| A new port (something the handler needs from outside) | `Application/Ports/I<Name>.cs` |
+| The real implementation of a port | `Infrastructure/Persistence/…Repository.cs` or `Infrastructure/Providers/Circle/…Gateway.cs` |
 | A new entity / invariant / state transition | `Domain/<Entity>.cs` (private setters, static `Create`, guarded transitions) |
 | Wire a port → implementation | `Program.cs` (one file; see gateway env-gating below) |
 | A schema change | `.claude/scripts/schema.sh new` → **read** the migration → `apply` |
@@ -80,7 +81,7 @@ through or collapse them.
 Follow the clickable refs; every hop is real.
 
 **1. Api — thin controller**
-- `src/TreasuryServiceOrchestrator.Api/Compliance/SubAccountsController.cs:77` — the
+- `src/TreasuryServiceOrchestrator.Api/Controllers/SubAccountsController.cs:77` — the
   `[HttpPost]` action. Resolves the tenant from `ICallerContext` (never trusts the
   raw body id): `TenantScopeResolver.Resolve(...)` at `:85`, builds the command `:90`,
   dispatches to the handler, returns `CreatedAtAction` with a `CreateSubAccountResponse` `:106`.
@@ -89,16 +90,18 @@ Follow the clickable refs; every hop is real.
   returns an RFC 7807 `ProblemDetails` 400 on failure.
 
 **2. Application — the handler (the orchestration)**
-- `src/TreasuryServiceOrchestrator.Application/Compliance/CreateSubAccount/CreateSubAccountHandler.cs:24`
+- `src/TreasuryServiceOrchestrator.Application/Handlers/CreateSubAccountHandler.cs:24`
   — `HandleAsync`. Shape:
   - admin-only guard → `TenantForbiddenException`
   - command-level validation
-  - `IdempotencyExecutor.ExecuteAsync(...)` wraps the money-safe sequence:
+  - `IdempotencyExecutor.ExecuteAsync(...)` (`Application/Services/`) wraps the
+    money-safe sequence:
     - **reserve**: `SubAccount.Create(...)` → `repo.AddAsync` → audit `"SubAccountRequested"` → `SaveChangesAsync`
     - **gateway**: `ISubAccountGateway.CreateExternalEntityAsync(...)`
     - **complete**: `SubAccount.BeginCompliance(walletId)` → `EntityRegistration.Create(...)` → commit
-  - Ports it depends on: `Compliance/Ports/ISubAccountGateway.cs`, `ISubAccountRepository.cs`,
-    `IEntityRegistrationRepository.cs`.
+  - Ports it depends on: `Application/Ports/ISubAccountGateway.cs`, `ISubAccountRepository.cs`,
+    `IEntityRegistrationRepository.cs`. Command/result shapes:
+    `Application/Dtos/CreateSubAccountCommand.cs`, `CreateSubAccountResult.cs`.
 
 **3. Domain — the rules**
 - `src/TreasuryServiceOrchestrator.Domain/SubAccount.cs` — `Create` (state `Created`),
@@ -121,12 +124,12 @@ Follow the clickable refs; every hop is real.
   - Production → real `CircleSubAccountGateway` with a resilient HTTP handler.
 
 Read that chain once and every other use-case (`GetSubAccount`, `ListSubAccounts`, the
-`Ledger` operations) is the same shape in a different module folder.
+`Ledger` operations) is the same shape — same folders, different filenames.
 
 ---
 
 ## Pointers
 
-- The accepted decision behind the module grouping: `docs/adr/0001-module-boundaries.md`.
+- The accepted decision behind this layout: `docs/adr/0001-module-boundaries.md`.
 - Tier rules and invariants (money type, idempotency, tenant isolation): `.claude/CLAUDE.md`.
 - Ubiquitous language / glossary: `CONTEXT.md`.
