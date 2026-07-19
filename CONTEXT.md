@@ -48,12 +48,16 @@ Provider-facing identifiers that cross the Domain/Application boundary use **pro
 Two gateway ports, not one — confirmed in `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`
 and `docs/features/07-sub-account-and-entity-registration.md`, not ambiguous:
 
-- **`ISubAccountGateway`** (`Application.Compliance.Ports`) — entity/registration provider operations only (`CircleSubAccountGateway` / `MockSubAccountGateway`).
-- **`IStablecoinGateway`** (`Application.Ledger.Ports`) — money-moving provider operations: transfers, redemptions, transfer/redemption status, deposit-address generation (`GenerateDepositAddressAsync`), recipient registration (`RegisterRecipientAsync`), and deposit listing (`ListRecentDepositsAsync`) — implemented by `CircleMintGateway` / `MockStablecoinGateway`. Recipients and deposit addresses are Ledger-module entities (ADR 0001), not Compliance, so their gateway calls live here, not on `ISubAccountGateway`. See `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`.
+- **`ISubAccountGateway`** (`Application.Ports`) — entity/registration provider operations only (`CircleSubAccountGateway` / `MockSubAccountGateway`).
+- **`IStablecoinGateway`** (`Application.Ports`) — money-moving provider operations: transfers, redemptions, transfer/redemption status, deposit-address generation (`GenerateDepositAddressAsync`), recipient registration (`RegisterRecipientAsync`), and deposit listing (`ListRecentDepositsAsync`) — implemented by `CircleMintGateway` / `MockStablecoinGateway`. Recipients and deposit addresses aren't Compliance-owned, so their gateway calls live here, not on `ISubAccountGateway`. See `docs/adr/0006-deposit-listing-on-stablecoin-gateway.md`.
 
-## Modules (B0.5 architecture decision)
+## Folder structure (superseding note)
 
-`Compliance`, `Ledger`, `Webhooks`, `Admin`, `Shared` — named sub-namespaces under `Application`/`Domain`. See `docs/adr/0001-module-boundaries.md` for the full decision and rationale.
+There is no module axis (`Compliance`/`Ledger`/`Webhooks`/`Admin`/`Shared`) in this repo —
+that was the original B0.5 decision but was superseded 2026-07-19 in favor of flat by-kind
+folders (`Handlers/`, `Ports/`, `Dtos/`, `Validators/`, `Services/`). See
+`docs/adr/0001-module-boundaries.md` and `ARCHITECTURE.md` for the current structure; treat any
+mention above of a module name as ubiquitous-language/domain grouping only, not a namespace.
 
 ## Idempotency & error contract
 
