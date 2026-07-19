@@ -20,6 +20,9 @@ HTTP integration) for its slice.
 `ARCHITECTURE.md` (repo root) is the fourth pointer — traversal map for the *code*, not the
 docs; start there if you're asking "where does X live in `src/`."
 
+New to this repo? Start at `docs/ONBOARDING.md` instead of this file — it's the setup guide
+plus every feature's request flow with worked examples; it links back here for depth.
+
 ---
 
 ## 1. Vision & goals
