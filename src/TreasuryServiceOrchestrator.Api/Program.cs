@@ -180,9 +180,10 @@ if (mockModeEnabled)
 }
 else if (builder.Environment.IsDevelopment())
 {
+    // Both Circle gateways fake together (audit F2) — a fake sub-account gateway paired with the
+    // real mint gateway would issue live money-moving calls against sub-accounts Circle never saw.
     builder.Services.AddScoped<ISubAccountGateway, FakeSubAccountGateway>();
-    builder.Services.AddHttpClient<IStablecoinGateway, CircleMintGateway>(ConfigureCircleClient)
-        .AddCircleResilienceHandler();
+    builder.Services.AddScoped<IStablecoinGateway, FakeStablecoinGateway>();
 }
 else
 {

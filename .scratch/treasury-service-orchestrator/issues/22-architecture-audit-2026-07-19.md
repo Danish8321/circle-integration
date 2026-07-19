@@ -31,7 +31,7 @@ no code changed. `test-fast.sh` remains 402/402 (ticket 21 fix in place).
 
 > **Fixed 2026-07-19:** F1, F4, F5 (test-fast 402/402), then F6 (test-fast 404/404, ticket 23).
 > **F8 INVALID** (misdiagnosis — column is NOT NULL; see F8). **F3 documented** (per-client
-> breakers kept, see F3). Remaining open: F2, F7.
+> breakers kept, see F3). **F2 fixed** (FakeStablecoinGateway for dev, see F2). Remaining open: F7.
 
 ### F1 — Domain entity leaks past the Application boundary (INV5). Correctness/layering. RESOLVED.
 Added `AdminTransactionResult` Application DTO; `ListAllTransactionsQueryHandler` now returns it;
@@ -42,11 +42,15 @@ Added `AdminTransactionResult` Application DTO; `ListAllTransactionsQueryHandler
 entity crosses into the Api tier — the exact thing INV5 / `api.md` forbid.
 **Fix**: add an `AdminTransactionResult` Application DTO; map inside the handler.
 
-### F2 — Development (non-mock) wires a fake + a real gateway. Footgun.
-`Program.cs:181` Development branch: `ISubAccountGateway → FakeSubAccountGateway` but
-`IStablecoinGateway → CircleMintGateway` (live Circle HTTP). Faked sub-accounts alongside real
-stablecoin mint/redeem calls that reference sub-accounts Circle never saw. Incoherent runtime.
-**Fix**: provide a `FakeStablecoinGateway` for dev, or make dev fully mock-mode.
+### F2 — Development (non-mock) wires a fake + a real gateway. RESOLVED (2026-07-19).
+Added `FakeStablecoinGateway` (deterministic, no-network, all 8 `IStablecoinGateway` methods;
+status literals map to usable states — recipient "active", linked bank "complete"). Development
+now wires `ISubAccountGateway → FakeSubAccountGateway` and `IStablecoinGateway →
+FakeStablecoinGateway` together; the real `CircleMintGateway` HTTP client is gone from the dev
+branch (still wired in the Production branch). Both Circle gateways fake together or neither — no
+more live mint/redeem/transfer calls against sub-accounts Circle never saw. "Full mock-mode" was
+not chosen: the formal mock-provider system (PRD §13) doesn't exist in this repo yet. check.sh
+clean, test-fast 404/404. No test for the fake (deterministic stub, mirrors `FakeSubAccountGateway`).
 
 ### F3 — Circuit breaker is per-typed-client, not shared. RESOLVED (documented, 2026-07-19).
 Decision: **keep per-client breakers** (endpoint-level isolation), do not share a Circle-wide
