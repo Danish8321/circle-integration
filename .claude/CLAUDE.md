@@ -2,10 +2,12 @@
 
 @CONTEXT.md
 
-Greenfield: no code yet. Rules below come from `docs/README.md` and the feature files it
-indexes under `docs/features/` (B0.5 module-boundaries decision, 2026-07-16, see
-`docs/adr/0001-module-boundaries.md`). Items marked **(assumed)** aren't nailed down in docs —
-tighten/replace once real code lands.
+All four tiers implemented (Domain/Application/Infrastructure/Api), invariants below enforced
+by `NetArchTest` fitness tests (`tests/TreasuryServiceOrchestrator.ArchitectureTests`). See
+`.scratch/architecture-review/spec.md` for the latest full review. Rules below come from
+`docs/README.md` and the feature files it indexes under `docs/features/` (B0.5
+module-boundaries decision, 2026-07-16, see `docs/adr/0001-module-boundaries.md`). Items
+marked **(assumed)** aren't nailed down in docs — tighten/replace as they firm up.
 
 ## Stack
 
