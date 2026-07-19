@@ -15,6 +15,12 @@ client in this repo — API-only.
 
 ## Tiers & layout
 
+This is plain **Clean Architecture**. One hard rule: dependencies point inward
+(Domain ← Application ← Infrastructure, Api wires all). Handlers are filed by module,
+then use-case — a folder convention, not a fourth architectural style. New here?
+Read `ARCHITECTURE.md` at the repo root: it has the "where does X live" map and one
+request traced end to end.
+
 | Tier | Path | Owns | Must not |
 |---|---|---|---|
 | Domain | `src/TreasuryServiceOrchestrator.Domain/` | Entities, value objects (`Money`), domain events, invariants. | Reference Application/Infrastructure/Api. Reference EF Core, ASP.NET, or any framework/IO type. No `DateTime.Now`. |
@@ -25,9 +31,11 @@ client in this repo — API-only.
 Clean dependency rule: Domain ← Application ← Infrastructure, and Api wires all three. Arrows
 point inward only; nothing inward-of a tier may reference outward.
 
-VSA: a "feature" is a use-case folder under its module (e.g.
+Filing convention: a "feature" is a use-case folder under its module (e.g.
 `Application/Ledger/ProcessDeposit/{ProcessDepositCommand,ProcessDepositHandler}.cs`), not a
-method bag in a shared service class.
+method bag in a shared service class. Where older docs say "VSA / Vertical Slice", read it as
+this folder convention — **not** feature slices that cut through or collapse the layers. Layers
+stay strict.
 
 ## The seam
 

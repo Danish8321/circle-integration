@@ -1,10 +1,20 @@
-# ADR 0001: Clean Architecture + VSA hybrid with named module boundaries
+# ADR 0001: Clean Architecture, handlers organized by module and use-case
 
 **Status:** Accepted (2026-07-16)
 
+> **Plain-language summary.** This is **Clean Architecture** — the only hard rule is
+> the dependency direction: Domain ← Application ← Infrastructure, Api wires all.
+> Inside the Application (and Api) layer, handlers are grouped first by **module**
+> (`Compliance`, `Ledger`, `Webhooks`, `Admin`, `Shared`), then by **use-case**
+> (`CreateSubAccount/`, `GetSubAccount/`, …). That grouping is a filing convention,
+> nothing more. Where the docs say "Vertical Slice / VSA", read it as
+> "use-case-named folders as the work-breakdown lens" — **not** feature slices that
+> cut through or collapse the layers. Layers stay strict and horizontal.
+> See `ARCHITECTURE.md` at the repo root for a traversal map and one fully-traced request.
+
 ## Decision
 
-Clean Architecture (layered, dependency rule: Domain ← Application ← Infrastructure, Api wires all) with Vertical Slice as the work-breakdown lens, not a folder-per-feature layer-collapse. `Application`/`Domain` are organized into four named module sub-namespaces plus a cross-cutting one, instead of a flat `Application/Ports` bag:
+Clean Architecture (layered, dependency rule: Domain ← Application ← Infrastructure, Api wires all), with handlers organized by module then use-case. Use-case-named folders are the work-breakdown lens — a filing convention, not a folder-per-feature layer-collapse. `Application`/`Domain` are organized into four named module sub-namespaces plus a cross-cutting one, instead of a flat `Application/Ports` bag:
 
 | Module | Owns | PRD sections |
 |---|---|---|
