@@ -38,7 +38,9 @@ public sealed class TransferRepository(TreasuryServiceOrchestratorDbContext dbCo
     public async Task<Transfer?> FindByCircleTransferIdAsync(
         string circleTransferId, CancellationToken cancellationToken = default)
     {
+        // System-context lookup (webhook tenant discovery): bypass the global tenant query filter.
         return await dbContext.Transfers
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.CircleTransferId == circleTransferId, cancellationToken);
     }
 }

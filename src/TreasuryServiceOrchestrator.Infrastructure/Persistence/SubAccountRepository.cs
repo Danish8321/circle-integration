@@ -21,7 +21,10 @@ public sealed class SubAccountRepository(TreasuryServiceOrchestratorDbContext db
     public async Task<SubAccount?> GetByCircleWalletIdAsync(
         string circleWalletId, CancellationToken cancellationToken = default)
     {
+        // System-context lookup (webhook tenant discovery / compliance): resolves the owning
+        // tenant by provider wallet id, so it bypasses the global tenant query filter.
         return await dbContext.SubAccounts
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.CircleWalletId == circleWalletId, cancellationToken);
     }
 
@@ -41,7 +44,10 @@ public sealed class SubAccountRepository(TreasuryServiceOrchestratorDbContext db
 
     public async Task<IReadOnlyList<SubAccount>> ListActiveWithWalletAsync(CancellationToken ct = default)
     {
+        // Background reconciliation pass: spans all tenants with no HTTP caller. Bypass the global
+        // tenant query filter (INV7 backstop); the caller sets per-tenant identity before crediting.
         return await dbContext.SubAccounts
+            .IgnoreQueryFilters()
             .Where(x => x.LifecycleState == SubAccountLifecycleState.Active
                 && !x.IsDisabled
                 && x.CircleWalletId != null

@@ -5,6 +5,7 @@ using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Snapshots;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.UnitTests.Application.Ledger.Snapshots;
@@ -15,6 +16,7 @@ public sealed class ScheduledBalanceSnapshotServiceTests
     private readonly Mock<ISubAccountRepository> subAccounts = new();
     private readonly Mock<IBalanceSnapshotRepository> balanceSnapshots = new();
     private readonly Mock<IUnitOfWork> unitOfWork = new();
+    private readonly Mock<ISettableCallerContext> callerContext = new();
     private readonly ScheduledBalanceSnapshotService service;
 
     public ScheduledBalanceSnapshotServiceTests()
@@ -24,6 +26,7 @@ public sealed class ScheduledBalanceSnapshotServiceTests
             subAccounts.Object,
             balanceSnapshots.Object,
             unitOfWork.Object,
+            callerContext.Object,
             TimeProvider.System,
             NullLogger<ScheduledBalanceSnapshotService>.Instance);
     }

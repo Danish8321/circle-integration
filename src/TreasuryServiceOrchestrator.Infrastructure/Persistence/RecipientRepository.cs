@@ -38,7 +38,9 @@ public sealed class RecipientRepository(TreasuryServiceOrchestratorDbContext dbC
     public async Task<Recipient?> FindByCircleRecipientIdAsync(
         string circleRecipientId, CancellationToken cancellationToken = default)
     {
+        // System-context lookup (webhook tenant discovery): bypass the global tenant query filter.
         return await dbContext.Recipients
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.CircleRecipientId == circleRecipientId, cancellationToken);
     }
 }

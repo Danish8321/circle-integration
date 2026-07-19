@@ -39,7 +39,9 @@ public sealed class RedeemRequestRepository(TreasuryServiceOrchestratorDbContext
     public async Task<RedeemRequest?> FindByCircleRedeemIdAsync(
         string circleRedeemId, CancellationToken cancellationToken = default)
     {
+        // System-context lookup (webhook tenant discovery): bypass the global tenant query filter.
         return await dbContext.RedeemRequests
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.CircleRedeemId == circleRedeemId, cancellationToken);
     }
 }

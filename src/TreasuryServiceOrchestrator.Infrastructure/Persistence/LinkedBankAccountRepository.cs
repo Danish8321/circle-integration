@@ -39,7 +39,9 @@ public sealed class LinkedBankAccountRepository(TreasuryServiceOrchestratorDbCon
     public async Task<LinkedBankAccount?> FindByCircleBankAccountIdAsync(
         string circleBankAccountId, CancellationToken cancellationToken = default)
     {
+        // System-context lookup (webhook tenant discovery): bypass the global tenant query filter.
         return await dbContext.LinkedBankAccounts
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.CircleBankAccountId == circleBankAccountId, cancellationToken);
     }
 }

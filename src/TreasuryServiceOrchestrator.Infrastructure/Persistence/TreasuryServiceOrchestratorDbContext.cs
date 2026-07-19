@@ -1,11 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Application.Webhooks;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Infrastructure.Persistence;
 
-public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServiceOrchestratorDbContext> options)
+// Structural tenant isolation (INV7, audit F7 / ticket 24). A global HasQueryFilter on every
+// tenant-owned entity restricts a regular (SubAccount-role) caller to its own ClientCompanyId by
+// construction — forgetting an explicit .Where, or calling a tenant-less lookup, can no longer
+// leak across tenants. Admin bypasses the predicate (scoping stays in the explicit ListAll*
+// predicate + INV8 audit). An empty CallerId matches nothing (NOT NULL column), so a wiring bug
+// fails closed. System-context lookups (webhook/reconciliation tenant discovery) opt out
+// explicitly via .IgnoreQueryFilters() at the query. Query filters are model metadata — no schema
+// change, no migration. callerContext is scoped, matching this DbContext's scoped lifetime.
+public class TreasuryServiceOrchestratorDbContext(
+    DbContextOptions<TreasuryServiceOrchestratorDbContext> options,
+    ICallerContext callerContext)
     : DbContext(options)
 {
     public DbSet<SubAccount> SubAccounts => Set<SubAccount>();
@@ -25,12 +36,23 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        ConfigureCoreEntities(modelBuilder);
+        ConfigureInfraEntities(modelBuilder);
+        ConfigureLedgerEntities(modelBuilder);
+        ConfigureRecipientAndTransferEntities(modelBuilder);
+        ConfigureLinkedBankAccountAndRedeemRequestEntities(modelBuilder);
+        ConfigureNotificationOutboxEntity(modelBuilder);
+    }
+
+    private void ConfigureCoreEntities(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<SubAccount>(entity =>
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
             entity.HasIndex(x => x.ClientCompanyId).IsUnique();
             entity.Property(x => x.CircleWalletId).HasMaxLength(64);
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
         modelBuilder.Entity<EntityRegistration>(entity =>
@@ -40,6 +62,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.BusinessName).IsRequired().HasMaxLength(200);
             entity.Property(x => x.CircleWalletId).HasMaxLength(64);
             entity.HasIndex(x => x.SubAccountId);
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
         modelBuilder.Entity<AuditRecord>(entity =>
@@ -47,8 +70,12 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.HasKey(x => x.Id);
             entity.Property(x => x.EventType).IsRequired().HasMaxLength(100);
             entity.Property(x => x.ClientCompanyId).IsRequired().HasMaxLength(64);
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
+    }
 
+    private static void ConfigureInfraEntities(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<IdempotencyRecord>(entity =>
         {
             entity.HasKey(x => x.Id);
@@ -77,14 +104,9 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.CircleAddressId).HasMaxLength(64);
             entity.HasIndex(x => new { x.SubAccountId, x.Chain, x.Currency }).IsUnique();
         });
-
-        ConfigureLedgerEntities(modelBuilder);
-        ConfigureRecipientAndTransferEntities(modelBuilder);
-        ConfigureLinkedBankAccountAndRedeemRequestEntities(modelBuilder);
-        ConfigureNotificationOutboxEntity(modelBuilder);
     }
 
-    private static void ConfigureNotificationOutboxEntity(ModelBuilder modelBuilder)
+    private void ConfigureNotificationOutboxEntity(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NotificationOutboxEntry>(entity =>
         {
@@ -94,10 +116,11 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.EntityId).IsRequired().HasMaxLength(128);
             entity.Property(x => x.CorrelationId).IsRequired().HasMaxLength(128);
             entity.HasIndex(x => new { x.Status, x.NextAttemptAtUtc });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
     }
 
-    private static void ConfigureLedgerEntities(ModelBuilder modelBuilder)
+    private void ConfigureLedgerEntities(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Transaction>(entity =>
         {
@@ -113,6 +136,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
                 amount.Property(x => x.Amount).HasColumnName("Amount").HasPrecision(28, 8);
                 amount.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
             });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
         modelBuilder.Entity<BalanceSnapshot>(entity =>
@@ -125,6 +149,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
                 balance.Property(x => x.Amount).HasColumnName("Balance").HasPrecision(28, 8);
                 balance.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
             });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
         modelBuilder.Entity<FundAccount>(entity =>
@@ -137,11 +162,12 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
                 balance.Property(x => x.Amount).HasColumnName("Balance").HasPrecision(28, 8);
                 balance.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
             });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
     }
 
-    private static void ConfigureRecipientAndTransferEntities(ModelBuilder modelBuilder)
+    private void ConfigureRecipientAndTransferEntities(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Recipient>(entity =>
         {
@@ -154,6 +180,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.DenialReason).HasMaxLength(500);
             entity.HasIndex(x => x.CircleRecipientId);
             entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
         modelBuilder.Entity<Transfer>(entity =>
@@ -170,11 +197,12 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
                 amount.Property(x => x.Amount).HasColumnName("Amount").HasPrecision(28, 8);
                 amount.Property(x => x.CurrencyCode).HasColumnName("CurrencyCode").IsRequired().HasMaxLength(16);
             });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
     }
 
-    private static void ConfigureLinkedBankAccountAndRedeemRequestEntities(ModelBuilder modelBuilder)
+    private void ConfigureLinkedBankAccountAndRedeemRequestEntities(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<LinkedBankAccount>(entity =>
         {
@@ -196,12 +224,13 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.CircleBankAccountId).HasMaxLength(64);
             entity.HasIndex(x => x.CircleBankAccountId);
             entity.HasIndex(x => new { x.SubAccountId, x.ClientCompanyId });
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
 
         ConfigureRedeemRequestEntity(modelBuilder);
     }
 
-    private static void ConfigureRedeemRequestEntity(ModelBuilder modelBuilder)
+    private void ConfigureRedeemRequestEntity(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<RedeemRequest>(entity =>
         {
@@ -219,6 +248,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             });
 
             ConfigureRedeemRequestFeesAndNetAmount(entity);
+            entity.HasQueryFilter(x => callerContext.IsAdmin || x.ClientCompanyId == callerContext.CallerId);
         });
     }
 

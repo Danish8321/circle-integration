@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using TreasuryServiceOrchestrator.Application.Compliance.Ports;
 using TreasuryServiceOrchestrator.Application.Ledger.Ports;
 using TreasuryServiceOrchestrator.Application.Shared.Abstractions;
+using TreasuryServiceOrchestrator.Application.Shared.Ports;
 using TreasuryServiceOrchestrator.Domain;
 
 namespace TreasuryServiceOrchestrator.Application.Ledger.Snapshots;
@@ -18,6 +19,7 @@ public sealed partial class ScheduledBalanceSnapshotService(
     ISubAccountRepository subAccountRepository,
     IBalanceSnapshotRepository balanceSnapshotRepository,
     IUnitOfWork unitOfWork,
+    ISettableCallerContext callerContext,
     TimeProvider timeProvider,
     ILogger<ScheduledBalanceSnapshotService> logger)
 {
@@ -51,6 +53,11 @@ public sealed partial class ScheduledBalanceSnapshotService(
     {
         try
         {
+            // The snapshot pass has no HTTP caller, so establish this fund account's tenant
+            // identity before the tenant-scoped sub-account read — the global tenant query filter
+            // (INV7) keys off ICallerContext. Same pattern as DepositReconciliationService.
+            callerContext.Set(fundAccount.ClientCompanyId, CallerRole.SubAccount);
+
             var subAccount = await subAccountRepository.GetByClientCompanyIdAsync(
                 fundAccount.ClientCompanyId, cancellationToken);
             if (subAccount is null)

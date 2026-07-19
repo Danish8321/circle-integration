@@ -33,7 +33,10 @@ public sealed class TransactionRepository(TreasuryServiceOrchestratorDbContext d
     public async Task<Transaction?> GetByProviderReferenceIdAsync(
         string providerReferenceId, CancellationToken cancellationToken = default)
     {
+        // System-context lookup (reconciliation): no tenant on the ambient caller yet, so bypass
+        // the global tenant query filter explicitly. Discovers the owning tenant by provider id.
         return await dbContext.Transactions
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.ProviderReferenceId == providerReferenceId, cancellationToken);
     }
 

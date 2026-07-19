@@ -20,6 +20,9 @@ public sealed class FundAccountRepository(TreasuryServiceOrchestratorDbContext d
 
     public async Task<IReadOnlyList<FundAccount>> ListAllAsync(CancellationToken cancellationToken = default)
     {
-        return await dbContext.FundAccounts.ToListAsync(cancellationToken);
+        // Background snapshot pass: spans all tenants with no HTTP caller. Bypass the global
+        // tenant query filter (INV7 backstop) — the caller re-establishes per-tenant identity
+        // before any tenant-scoped read/write.
+        return await dbContext.FundAccounts.IgnoreQueryFilters().ToListAsync(cancellationToken);
     }
 }
