@@ -1,11 +1,11 @@
-namespace TreasuryServiceOrchestrator.UnitTests.Infrastructure.Mocks;
+namespace TreasuryServiceOrchestrator.TestUtilities;
 
 /// <summary>
 /// Minimal manually-controlled <see cref="TimeProvider"/> for tests. No
 /// <c>Microsoft.Extensions.Time.Testing.FakeTimeProvider</c> package is referenced anywhere in
 /// the repo, so this is constructed by hand rather than adding a new dependency.
 /// </summary>
-internal sealed class FakeTimeProvider(DateTimeOffset start) : TimeProvider
+public sealed class FakeTimeProvider(DateTimeOffset start) : TimeProvider
 {
     private DateTimeOffset now = start;
 

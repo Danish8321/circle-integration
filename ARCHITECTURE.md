@@ -50,7 +50,7 @@ Arrows only point inward. That is the whole architecture.
 | Tier | Folders | What goes there |
 |---|---|---|
 | **Domain** | *(flat, no subfolders)* | One file per entity, value object (`Money`), enum. |
-| **Application** | `Handlers/` `Ports/` `Dtos/` `Validators/` `Services/` `Exceptions/` | `Handlers/` = every `*Handler.cs` + `ICommandHandler`. `Ports/` = every port interface (`ISubAccountGateway`, `IUnitOfWork`, `ICallerContext`, …) and the request/result shapes that cross a port. `Dtos/` = every `Command`/`Query`/`Result`. `Validators/` = FluentValidation classes. `Services/` = cross-cutting app logic that isn't a handler (`IdempotencyExecutor`, `TenantScopeResolver`, `LedgerPostingService`, status mappers, background-service option classes). `Exceptions/` = the exception taxonomy. |
+| **Application** | `Handlers/` `Ports/` `Dtos/` `Validators/` `Services/` `Exceptions/` | `Handlers/` = every `*Handler.cs`, plus `ICommandHandler`/`IQueryHandler` (the one exception to "interfaces live in `Ports/`" — they're generic dispatch contracts, not something Infrastructure implements). `Ports/` = every port interface (`ISubAccountGateway`, `IUnitOfWork`, `ICallerContext`, …) and the request/result shapes that cross a port. `Dtos/` = every `Command`/`Query`/`Result`. `Validators/` = FluentValidation classes. `Services/` = cross-cutting app logic that isn't a handler (`IdempotencyExecutor`, `TenantScopeResolver`, `LedgerPostingService`, status mappers, background-service option classes). `Exceptions/` = the exception taxonomy. |
 | **Infrastructure** | `Persistence/` `Providers/Circle/` `Mocks/` `Webhooks/` `Notifications/` `Reconciliation/` `Snapshots/` `Migrations/` | Grouped by technical concern: EF repositories + `DbContext`, real Circle HTTP gateways, mock/fake gateways, webhook inbox/processors, notification dispatch, background reconciliation/snapshot services, EF migrations (flat — one per `DbContext`, an EF Core constraint). |
 | **Api** | `Controllers/` `Dtos/` `Validators/` `Middleware/` | `Controllers/` = every `*Controller.cs` (thin). `Dtos/` = every request/response record. `Validators/` = FluentValidation for requests. `Middleware/` = pipeline pieces (tenant resolution, correlation id, exception handling). `Program.cs` stays at the root — it's the one file that wires everything. |
 
@@ -71,7 +71,7 @@ is what tells them apart.
 | A new port (something the handler needs from outside) | `Application/Ports/I<Name>.cs` |
 | The real implementation of a port | `Infrastructure/Persistence/…Repository.cs` or `Infrastructure/Providers/Circle/…Gateway.cs` |
 | A new entity / invariant / state transition | `Domain/<Entity>.cs` (private setters, static `Create`, guarded transitions) |
-| Wire a port → implementation | `Program.cs` (one file; see gateway env-gating below) |
+| Wire a port → implementation | `Api/DependencyInjection/*ServiceCollectionExtensions.cs` (see below) |
 | A schema change | `.claude/scripts/schema.sh new` → **read** the migration → `apply` |
 
 ---
@@ -116,9 +116,14 @@ Follow the clickable refs; every hop is real.
   — implements `ISubAccountRepository` over `DbContext` (use-case-shaped queries, no
   generic `IRepository<T>`). `UnitOfWork.cs` commits.
 
-**5. DI wiring — `Program.cs` (one file)**
-- Handlers / repos / validators: around `Program.cs:54-67`.
-- Gateway port → implementation is **environment-gated** (`Program.cs:166-194`):
+**5. DI wiring — `Api/DependencyInjection/*.cs`, called from `Program.cs`**
+- `Program.cs` is ~30 lines: `builder.AddWebApiCore()`, `.AddInfrastructurePersistence()`,
+  `.AddApplicationHandlers()`, `.AddCircleIntegration()`, `.AddBackgroundServices()`, then the
+  middleware pipeline.
+- Handlers / validators: `Api/DependencyInjection/ApplicationServiceCollectionExtensions.cs`.
+- Repos / `DbContext`: `Api/DependencyInjection/InfrastructureServiceCollectionExtensions.cs`.
+- Gateway port → implementation is **environment-gated**,
+  `Api/DependencyInjection/CircleIntegrationServiceCollectionExtensions.cs`:
   - mock mode → `MockSubAccountGateway` (hard-blocked in Production by `MockModeGuard.Validate`)
   - Development → `FakeSubAccountGateway`
   - Production → real `CircleSubAccountGateway` with a resilient HTTP handler.

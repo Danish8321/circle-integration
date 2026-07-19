@@ -17,7 +17,7 @@ public static class RecipientStatusMapper
 {
     public static RecipientStatus Map(string rawStatus, Action<string>? logUnknown = null)
     {
-        return rawStatus.Trim().ToLowerInvariant() switch
+        return StatusLiteral.Normalize(rawStatus) switch
         {
             "active" => RecipientStatus.Active,
             "denied" => RecipientStatus.Denied,

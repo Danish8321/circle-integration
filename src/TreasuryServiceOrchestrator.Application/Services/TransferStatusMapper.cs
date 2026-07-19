@@ -13,7 +13,7 @@ public static class TransferStatusMapper
 {
     public static TransferStatus Map(string rawStatus, Action<string>? logUnknown = null)
     {
-        return rawStatus.Trim().ToLowerInvariant() switch
+        return StatusLiteral.Normalize(rawStatus) switch
         {
             "pending" or "running" => TransferStatus.Pending,
             "complete" => TransferStatus.Complete,

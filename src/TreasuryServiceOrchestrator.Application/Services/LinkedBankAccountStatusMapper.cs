@@ -13,7 +13,7 @@ public static class LinkedBankAccountStatusMapper
 {
     public static LinkedBankAccountStatus Map(string rawStatus)
     {
-        return rawStatus.Trim().ToLowerInvariant() switch
+        return StatusLiteral.Normalize(rawStatus) switch
         {
             "pending" => LinkedBankAccountStatus.Pending,
             "complete" => LinkedBankAccountStatus.Active,

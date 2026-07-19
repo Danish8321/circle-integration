@@ -6,11 +6,11 @@ public static class EntityRegistrationStatusMapper
 {
     public static EntityRegistrationStatus Map(string circleComplianceState)
     {
-        return circleComplianceState.Trim().ToUpperInvariant() switch
+        return StatusLiteral.Normalize(circleComplianceState) switch
         {
-            "PENDING" => EntityRegistrationStatus.Pending,
-            "ACCEPTED" => EntityRegistrationStatus.Accepted,
-            "REJECTED" => EntityRegistrationStatus.Rejected,
+            "pending" => EntityRegistrationStatus.Pending,
+            "accepted" => EntityRegistrationStatus.Accepted,
+            "rejected" => EntityRegistrationStatus.Rejected,
             _ => throw new ArgumentOutOfRangeException(
                 nameof(circleComplianceState), circleComplianceState, "Unrecognized compliance state."),
         };
