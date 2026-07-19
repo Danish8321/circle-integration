@@ -57,7 +57,7 @@ public sealed class ProcessDepositCommandHandler(
             command.CorrelationId);
 
         var transaction = await ledgerPostingService.PostAsync(
-            posting, txn => BuildOutboxEntry(txn, command), cancellationToken);
+            posting, txn => BuildOutboxEntry(txn, command), deferCommit: true, ct: cancellationToken);
 
         return Map(transaction);
     }

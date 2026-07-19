@@ -69,7 +69,7 @@ public sealed class ProcessPayoutStatusCommandHandler(
                 redeemRequest.CorrelationId);
 
             await ledgerPostingService.PostAsync(
-                posting, _ => BuildOutboxEntry(redeemRequest, command), cancellationToken);
+                posting, _ => BuildOutboxEntry(redeemRequest, command), ct: cancellationToken);
         }
         else
         {

@@ -25,9 +25,17 @@ public sealed class LedgerPostingService(
     /// commits atomically with the posting — never call this from outside after <c>PostAsync</c>
     /// returns, that lands in a later, separate commit (see ticket 09.4's atomicity proof).
     /// </param>
+    /// <param name="deferCommit">
+    /// When <c>true</c>, stage the posting but do <b>not</b> call <c>SaveChangesAsync</c> — the
+    /// caller commits it in a single outer save together with its aggregate and the idempotency
+    /// completion (reserve → gateway → complete, CLAUDE.md invariant 11 / ticket 23). When
+    /// <c>false</c> (the default, for callers not wrapped in <see cref="IdempotencyExecutor"/>),
+    /// the posting commits on its own here.
+    /// </param>
     public async Task<Transaction> PostAsync(
         LedgerPosting posting,
         Func<Transaction, NotificationOutboxEntry>? outboxEntryBuilder,
+        bool deferCommit = false,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(posting);
@@ -73,7 +81,10 @@ public sealed class LedgerPostingService(
             await outbox.AddAsync(outboxEntryBuilder(transaction), ct);
         }
 
-        await unitOfWork.SaveChangesAsync(ct);
+        if (!deferCommit)
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+        }
 
         return transaction;
     }

@@ -20,9 +20,9 @@ public sealed class RegisterRecipientCommandHandlerTests
     public RegisterRecipientCommandHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("client-1");
 
         handler = new RegisterRecipientCommandHandler(
@@ -58,12 +58,12 @@ public sealed class RegisterRecipientCommandHandlerTests
         result.CircleRecipientId.Should().Be("circle-recipient-1");
         result.Status.Should().Be(RecipientStatus.PendingApproval);
         idempotency.Verify(
-            x => x.TryGetCachedResultJsonAsync(
+            x => x.TryBeginAsync(
                 "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
         recipients.Verify(
             x => x.AddAsync(It.IsAny<Recipient>(), It.IsAny<CancellationToken>()), Times.Once);
-        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -75,9 +75,9 @@ public sealed class RegisterRecipientCommandHandlerTests
             RecipientStatus.PendingApproval, DateTime.UtcNow);
         var expectedKey = $"recipient:client-1:ETH:0xabc";
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(System.Text.Json.JsonSerializer.Serialize(cachedResult));
+            .ReturnsAsync(new IdempotencyOutcome.Replay(System.Text.Json.JsonSerializer.Serialize(cachedResult)));
 
         var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 

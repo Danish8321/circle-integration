@@ -23,9 +23,9 @@ public sealed class CreateSubAccountHandlerTests
     public CreateSubAccountHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("apiso-admin");
         callerContext.Setup(x => x.Role).Returns(CallerRole.Admin);
         callerContext.Setup(x => x.IsAdmin).Returns(true);
@@ -73,7 +73,7 @@ public sealed class CreateSubAccountHandlerTests
         subAccounts.Verify(x => x.AddAsync(It.IsAny<SubAccount>(), It.IsAny<CancellationToken>()), Times.Once);
         entityRegistrations.Verify(
             x => x.AddAsync(It.IsAny<EntityRegistration>(), It.IsAny<CancellationToken>()), Times.Once);
-        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -100,9 +100,9 @@ public sealed class CreateSubAccountHandlerTests
         var cachedResult = new CreateSubAccountResult(
             Guid.NewGuid(), "client-1", "wallet-cached", SubAccountLifecycleState.PendingCompliance);
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 "client-1", "idem-key-1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(System.Text.Json.JsonSerializer.Serialize(cachedResult));
+            .ReturnsAsync(new IdempotencyOutcome.Replay(System.Text.Json.JsonSerializer.Serialize(cachedResult)));
 
         var result = await handler.HandleAsync(ValidCommand(), TestContext.Current.CancellationToken);
 

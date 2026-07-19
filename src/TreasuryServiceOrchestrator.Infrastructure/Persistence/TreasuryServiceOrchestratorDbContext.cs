@@ -55,6 +55,7 @@ public class TreasuryServiceOrchestratorDbContext(DbContextOptions<TreasuryServi
             entity.Property(x => x.TenantId).IsRequired().HasMaxLength(64);
             entity.Property(x => x.IdempotencyKey).IsRequired().HasMaxLength(128);
             entity.Property(x => x.RequestHash).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.Status).IsRequired().HasConversion<string>().HasMaxLength(16);
             entity.HasIndex(x => new { x.TenantId, x.IdempotencyKey }).IsUnique();
         });
 

@@ -79,7 +79,8 @@ public sealed class CreateTransferCommandHandler(
             null,
             command.CorrelationId);
 
-        await ledgerPostingService.PostAsync(posting, outboxEntryBuilder: null, cancellationToken);
+        await ledgerPostingService.PostAsync(
+            posting, outboxEntryBuilder: null, deferCommit: true, ct: cancellationToken);
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 

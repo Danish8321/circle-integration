@@ -46,7 +46,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(50m);
 
-        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, ct: TestContext.Current.CancellationToken);
 
         existing.Balance.Amount.Should().Be(150m);
         fundAccounts.Verify(
@@ -62,7 +62,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(-30m);
 
-        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, ct: TestContext.Current.CancellationToken);
 
         existing.Balance.Amount.Should().Be(70m);
     }
@@ -75,7 +75,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync((FundAccount?)null);
         var posting = Posting(25m);
 
-        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, ct: TestContext.Current.CancellationToken);
 
         fundAccounts.Verify(
             x => x.AddAsync(
@@ -93,7 +93,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(-15m);
 
-        var result = await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
+        var result = await service.PostAsync(posting, outboxEntryBuilder: null, ct: TestContext.Current.CancellationToken);
 
         result.Amount.Amount.Should().Be(-15m);
         result.SubAccountId.Should().Be(posting.SubAccountId);
@@ -113,7 +113,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(existing);
         var posting = Posting(5m);
 
-        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, ct: TestContext.Current.CancellationToken);
 
         balanceSnapshots.Verify(
             x => x.AddAsync(
@@ -134,7 +134,7 @@ public sealed class LedgerPostingServiceTests
             .ReturnsAsync(FundAccount.Create("client-1", Money.Zero("USDC"), DateTime.UtcNow));
         var posting = Posting(10m);
 
-        await service.PostAsync(posting, outboxEntryBuilder: null, TestContext.Current.CancellationToken);
+        await service.PostAsync(posting, outboxEntryBuilder: null, ct: TestContext.Current.CancellationToken);
 
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

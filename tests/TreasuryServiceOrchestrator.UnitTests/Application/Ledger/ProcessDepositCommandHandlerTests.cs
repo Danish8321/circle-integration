@@ -24,9 +24,9 @@ public sealed class ProcessDepositCommandHandlerTests
     public ProcessDepositCommandHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("client-1");
         fundAccounts
             .Setup(x => x.FindByClientCompanyIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -68,7 +68,7 @@ public sealed class ProcessDepositCommandHandlerTests
         result.Status.Should().Be(TransactionStatus.Complete);
 
         idempotency.Verify(
-            x => x.TryGetCachedResultJsonAsync(
+            x => x.TryBeginAsync(
                 "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
         transactions.Verify(
@@ -77,12 +77,13 @@ public sealed class ProcessDepositCommandHandlerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
         idempotency.Verify(
-            x => x.StoreResultAsync(
-                "client-1", expectedKey, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            x => x.CompleteAsync(
+                "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
-        // Two SaveChangesAsync calls: one inside LedgerPostingService.PostAsync (state
-        // transition), one inside IdempotencyExecutor after StoreResultAsync (reserve/complete).
+        // Two SaveChangesAsync calls: reserve (SaveChanges #1, InProgress record before the state
+        // transition) and complete (SaveChanges #2, the deferred ledger posting + idempotency
+        // completion committed atomically — ticket 23).
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
         outbox.Verify(
             x => x.AddAsync(
@@ -99,9 +100,9 @@ public sealed class ProcessDepositCommandHandlerTests
         var cachedResult = new ProcessDepositResult(
             Guid.NewGuid(), command.SubAccountId, command.Amount, TransactionStatus.Complete, DateTime.UtcNow);
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(System.Text.Json.JsonSerializer.Serialize(cachedResult));
+            .ReturnsAsync(new IdempotencyOutcome.Replay(System.Text.Json.JsonSerializer.Serialize(cachedResult)));
 
         var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 

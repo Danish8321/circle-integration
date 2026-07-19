@@ -24,9 +24,9 @@ public sealed class CreateRedemptionCommandHandlerTests
     public CreateRedemptionCommandHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("client-1");
 
         handler = new CreateRedemptionCommandHandler(
@@ -100,7 +100,7 @@ public sealed class CreateRedemptionCommandHandlerTests
 
         // No ledger posting at creation time — only the reserve/complete SaveChangesAsync
         // inside IdempotencyExecutor.
-        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]

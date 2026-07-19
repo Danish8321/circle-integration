@@ -23,9 +23,9 @@ public sealed class ResubmitEntityRegistrationHandlerTests
     public ResubmitEntityRegistrationHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("client-1");
         callerContext.Setup(x => x.Role).Returns(CallerRole.SubAccount);
         callerContext.Setup(x => x.IsAdmin).Returns(false);
@@ -93,7 +93,7 @@ public sealed class ResubmitEntityRegistrationHandlerTests
             Times.Once);
         entityRegistrations.Verify(
             x => x.AddAsync(It.IsAny<EntityRegistration>(), It.IsAny<CancellationToken>()), Times.Once);
-        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -136,9 +136,9 @@ public sealed class ResubmitEntityRegistrationHandlerTests
             SubAccountLifecycleState.PendingCompliance.ToString(),
             EntityRegistrationStatus.Pending.ToString());
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 "client-1", "idem-key-1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(System.Text.Json.JsonSerializer.Serialize(cachedResult));
+            .ReturnsAsync(new IdempotencyOutcome.Replay(System.Text.Json.JsonSerializer.Serialize(cachedResult)));
 
         var result = await handler.HandleAsync(ValidCommand(), TestContext.Current.CancellationToken);
 

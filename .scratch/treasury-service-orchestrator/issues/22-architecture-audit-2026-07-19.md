@@ -29,7 +29,8 @@ no code changed. `test-fast.sh` remains 402/402 (ticket 21 fix in place).
 
 ## Findings
 
-> **Fixed 2026-07-19 (test-fast 402/402):** F1, F4, F5. Remaining open: F2, F3, F6, F7, F8.
+> **Fixed 2026-07-19:** F1, F4, F5 (test-fast 402/402), then F6 (test-fast 404/404, ticket 23).
+> Remaining open: F2, F3, F7, F8.
 
 ### F1 — Domain entity leaks past the Application boundary (INV5). Correctness/layering. RESOLVED.
 Added `AdminTransactionResult` Application DTO; `ListAllTransactionsQueryHandler` now returns it;
@@ -61,7 +62,17 @@ Circle-wide breaker.
 Extracted `static void ConfigureCircleClient(IServiceProvider, HttpClient)` in Program.cs; all 3
 `AddHttpClient` registrations use the method group.
 
-### F6 — Money-moving handlers commit in two separate transactions (INV11 atomicity). Robustness.
+### F6 — Money-moving handlers commit in two separate transactions (INV11 atomicity). RESOLVED (ticket 23).
+Fixed via Option C (persisted reservation). `IIdempotencyService` gained `TryBeginAsync`
+(stages an `InProgress` record, SaveChanges #1 before the gateway) / `CompleteAsync` (flips to
+`Completed`, SaveChanges #2). `IdempotencyExecutor` reserves before the provider call and commits
+the completion together with the deferred ledger posting (`LedgerPostingService.PostAsync(...,
+deferCommit: true)`) and aggregate in one atomic SaveChanges #2. The after-gateway crash case is
+now self-healing via re-drive (`InFlightRetry`). Migration `AddIdempotencyReservationState`
+(Status backfilled `Completed`, ResultJson→nullable). test-fast 404/404.
+Original finding follows.
+
+
 `CreateTransferCommandHandler` (and the `ProcessPayoutStatus` redemption debit) run:
 gateway call → `LedgerPostingService.PostAsync` **SaveChanges #1** (ledger) → back in
 `IdempotencyExecutor` **SaveChanges #2** (idempotency record + aggregate row). There is **no

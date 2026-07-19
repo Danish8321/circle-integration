@@ -29,9 +29,9 @@ public sealed class CreateTransferCommandHandlerTests
     public CreateTransferCommandHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("client-1");
         fundAccounts
             .Setup(x => x.FindByClientCompanyIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -87,7 +87,7 @@ public sealed class CreateTransferCommandHandlerTests
         result.CircleTransferId.Should().Be("circle-transfer-1");
 
         idempotency.Verify(
-            x => x.TryGetCachedResultJsonAsync(
+            x => x.TryBeginAsync(
                 "client-1", "idem-1", It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -100,9 +100,68 @@ public sealed class CreateTransferCommandHandlerTests
 
         transfers.Verify(x => x.AddAsync(It.IsAny<Transfer>(), It.IsAny<CancellationToken>()), Times.Once);
 
-        // Two SaveChangesAsync calls: one inside LedgerPostingService.PostAsync (state
-        // transition), one inside IdempotencyExecutor after StoreResultAsync (reserve/complete).
+        // Two SaveChangesAsync calls: reserve (SaveChanges #1, the InProgress record before the
+        // gateway) and complete (SaveChanges #2, the deferred ledger posting + Transfer aggregate +
+        // idempotency completion committed atomically — ticket 23).
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task HandleAsync_CommitsTheReservationBeforeCallingTheGateway()
+    {
+        // F6: the idempotency reservation must be durably persisted (SaveChanges #1) before the
+        // money-moving provider call, so a crash after the gateway leaves a recoverable in-flight
+        // record rather than a silent gap only Circle knows about.
+        var recipient = ActiveRecipient();
+        var command = ValidCommand(recipient.Id);
+        recipients
+            .Setup(x => x.FindByIdAsync(recipient.Id, "client-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(recipient);
+
+        var order = new List<string>();
+        unitOfWork
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => order.Add("save"))
+            .Returns(Task.CompletedTask);
+        gateway
+            .Setup(x => x.CreateTransferAsync(It.IsAny<CreateTransferGatewayRequest>(), It.IsAny<CancellationToken>()))
+            .Callback(() => order.Add("gateway"))
+            .ReturnsAsync(new CreatedTransfer("circle-transfer-1", "pending"));
+
+        await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+        order.Should().Equal("save", "gateway", "save");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithInFlightReservation_ReDrivesWorkWithoutASecondReserveSave()
+    {
+        // A prior attempt reserved but never completed (e.g. crashed after the gateway). The retry
+        // re-drives: the reservation is already persisted, so no reserve SaveChanges — only the
+        // completion commit. The gateway is re-called (Circle dedups on the idempotency key).
+        var recipient = ActiveRecipient();
+        var command = ValidCommand(recipient.Id);
+        recipients
+            .Setup(x => x.FindByIdAsync(recipient.Id, "client-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(recipient);
+        idempotency
+            .Setup(x => x.TryBeginAsync(
+                "client-1", "idem-1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IdempotencyOutcome.InFlightRetry());
+        gateway
+            .Setup(x => x.CreateTransferAsync(It.IsAny<CreateTransferGatewayRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CreatedTransfer("circle-transfer-1", "pending"));
+
+        await handler.HandleAsync(command, TestContext.Current.CancellationToken);
+
+        gateway.Verify(
+            x => x.CreateTransferAsync(It.IsAny<CreateTransferGatewayRequest>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        idempotency.Verify(
+            x => x.CompleteAsync("client-1", "idem-1", It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        // Only the completion commit — the InFlightRetry branch skips the reserve SaveChanges.
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -169,9 +228,9 @@ public sealed class CreateTransferCommandHandlerTests
             Guid.NewGuid(), recipient.SubAccountId, recipient.Id, command.Amount, "circle-transfer-cached",
             TransferStatus.Pending, null, DateTime.UtcNow);
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 "client-1", "idem-1", It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(System.Text.Json.JsonSerializer.Serialize(cachedResult));
+            .ReturnsAsync(new IdempotencyOutcome.Replay(System.Text.Json.JsonSerializer.Serialize(cachedResult)));
 
         var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 

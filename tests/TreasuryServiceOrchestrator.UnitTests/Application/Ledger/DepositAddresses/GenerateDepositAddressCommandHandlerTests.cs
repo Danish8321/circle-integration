@@ -21,9 +21,9 @@ public sealed class GenerateDepositAddressCommandHandlerTests
     public GenerateDepositAddressCommandHandlerTests()
     {
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .ReturnsAsync(new IdempotencyOutcome.Started());
         callerContext.Setup(x => x.CallerId).Returns("client-1");
 
         handler = new GenerateDepositAddressCommandHandler(
@@ -60,12 +60,12 @@ public sealed class GenerateDepositAddressCommandHandlerTests
         result.Address.Should().Be("0xabc");
         result.SubAccountId.Should().Be(command.SubAccountId);
         idempotency.Verify(
-            x => x.TryGetCachedResultJsonAsync(
+            x => x.TryBeginAsync(
                 "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
         depositAddresses.Verify(
             x => x.AddAsync(It.IsAny<DepositAddress>(), It.IsAny<CancellationToken>()), Times.Once);
-        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -76,9 +76,9 @@ public sealed class GenerateDepositAddressCommandHandlerTests
             Guid.NewGuid(), command.SubAccountId, "ETH", "USDC", "0xcached", DateTime.UtcNow);
         var expectedKey = $"deposit-address:{command.SubAccountId}:ETH:USDC";
         idempotency
-            .Setup(x => x.TryGetCachedResultJsonAsync(
+            .Setup(x => x.TryBeginAsync(
                 "client-1", expectedKey, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(System.Text.Json.JsonSerializer.Serialize(cachedResult));
+            .ReturnsAsync(new IdempotencyOutcome.Replay(System.Text.Json.JsonSerializer.Serialize(cachedResult)));
 
         var result = await handler.HandleAsync(command, TestContext.Current.CancellationToken);
 
